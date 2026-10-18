@@ -1,0 +1,23 @@
+schema_version = 1
+
+[app]
+name = "TG-bot Editor"
+version = "0.1.0"
+main_class = "tg_bot_editor.Main"
+icon_linux = "src/main/resources/icon.png"
+
+[build]
+mode = "distribution"
+tasks = ["installDist"]
+jar = "build/install/tg-bot-editor/lib/tg-bot-editor-{version}.jar"
+
+[javafx]
+version = "25.0.1"
+
+[runtime]
+modules = ["javafx.controls", "java.logging", "java.xml", "jdk.charsets", "java.net.http", "java.compiler", "jdk.compiler"]
+exclude_natives = ["libjfxwebkit.so", "libjfxmedia.so", "jfxwebkit.dll"]
+
+[linux]
+package_name = "tg-bot-editor"
+menu_group = "Office"
