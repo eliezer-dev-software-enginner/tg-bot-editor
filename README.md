@@ -22,6 +22,7 @@ The flow body is a short Java expression or block, such as `return MeuNovoScript
 **Abrir projeto** selects a `bot.json`; **Fechar projeto** preserves the current draft and clears the canvas; **Abrir recente** uses a list of the ten most recent paths. The path list is stored separately at `~/.config/tg-bot-editor/recent-projects.properties` (or under `XDG_CONFIG_HOME`). Existing `~/Documents/TG-bot Editor/bot.json` projects are recognized and receive missing external scripts. When an older bundled G1/ROM starter is opened, the missing ads routes are merged without replacing existing flows.
 
 Click a card to edit its trigger and Java body. **Excluir** in Properties removes the selected command; **Salvar projeto** persists the change. Switching cards retains edits in memory. The Java editor provides syntax colors, line numbers and indentation. **Executar teste** runs the selected action locally; use it only for project code you trust, since project scripts run with your user permissions.
+Drag empty canvas space with the primary mouse button to pan the graph. Drag a card to change its position.
 
 ## Project variables and runner
 

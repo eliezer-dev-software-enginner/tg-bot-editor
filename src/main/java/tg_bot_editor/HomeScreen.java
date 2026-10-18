@@ -98,7 +98,7 @@ public final class HomeScreen implements ScreenComponent {
                 new Text("Teste local (sem Telegram)"), new Input(sample, field("/start")),
                 new Button("Executar teste").onClick(this::test));
         var workspace = new Row(new RowProps().spacingOf(12).fillHeight()).children(
-                new Scroll(canvas).fillAvailableHeight(), new Scroll(inspector).fillAvailableHeight());
+                new Scroll(canvas).pannableCanvas().fillAvailableHeight(), new Scroll(inspector).fillAvailableHeight());
         var base = new Container(new ContainerProps().fillHeight()).children(heading, workspace);
         var newProject = new Container(new ContainerProps().paddingAll(24).spacingOf(12).width(430)).children(
                 new Text("Novo projeto", new TextProps().fontSize(21)),
