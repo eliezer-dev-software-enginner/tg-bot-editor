@@ -2,7 +2,6 @@ package tg_bot_editor;
 
 import megalodonte.application.MegalodonteApp;
 import megalodonte.base.theme.ThemeManager;
-import megalodonte.theme.DefaultTheme;
 
 public final class Main {
     public static void main(String[] args) throws Exception {
@@ -15,7 +14,7 @@ public final class Main {
             }
             return;
         }
-        ThemeManager.setTheme(new DefaultTheme());
+        ThemeManager.setTheme(new EditorTheme());
         MegalodonteApp.appName("TG-bot Editor");
         MegalodonteApp.appIcon("/icon.png");
         MegalodonteApp.run(context -> context.useView(new HomeScreen(), 1240, 640));
