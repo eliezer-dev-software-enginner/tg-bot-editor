@@ -11,7 +11,7 @@ The project was generated with `megalodonte-cli --mode native`. Its visual graph
 ./gradlew run
 ```
 
-The Java script for the selected flow appears near the top of the **Propriedades** panel. The first flow is selected when the editor opens; click another action on the canvas to see its script. Edit the body there, click **Aplicar script e propriedades**, then **Salvar projeto**. Switching flows preserves the current draft in memory, while saving writes it to `~/Documents/TG-bot Editor/bot.json`. **Executar teste** runs a selected interval/daily action locally or routes the sample text to a command, text, or callback flow. Scripts are trusted local Java code and execute with the current user's permissions; open only projects you trust.
+The Java script for the selected flow appears near the top of the **Propriedades** panel. The first flow is selected when the editor opens; click another action on the canvas to see its script and the selected card's border. The Megalodonte Java code editor has syntax colors, line numbers, and automatic indentation. Edit the body there, click **Aplicar script e propriedades**, then **Salvar projeto**. Switching flows preserves the current draft in memory, while saving writes it to `~/Documents/TG-bot Editor/bot.json`. **Executar teste** runs a selected interval/daily action locally or routes the sample text to a command, text, or callback flow. Scripts are trusted local Java code and execute with the current user's permissions; open only projects you trust.
 
 The standalone runner loads the same data file and uses **one** bot token. Keep credentials outside Git:
 

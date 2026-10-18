@@ -8,7 +8,7 @@ import megalodonte.components.FlowCanvas;
 import megalodonte.components.Scroll;
 import megalodonte.components.Text;
 import megalodonte.components.inputs.Input;
-import megalodonte.components.inputs.TextAreaInput;
+import megalodonte.components.inputs.JavaCodeEditor;
 import megalodonte.components.layout_components.Container;
 import megalodonte.components.layout_components.Row;
 import megalodonte.props.ContainerProps;
@@ -66,7 +66,7 @@ public final class HomeScreen implements ScreenComponent {
                 new Text("Propriedades", new TextProps().fontSize(20)),
                 new Text("Título"), new Input(title, field("Nome da ação")),
                 new Text("Script Java · edite e retorne texto ou BotReply"),
-                new TextAreaInput(script, field("return \"Olá!\";").height(260)),
+                new JavaCodeEditor(script, 260),
                 new Button("Aplicar script e propriedades").onClick(this::apply),
                 new Text("Tipo de gatilho"), new Text(trigger),
                 new Row(new RowProps().spacingOf(6)).children(
@@ -106,6 +106,7 @@ public final class HomeScreen implements ScreenComponent {
         trigger.set(selected.trigger);
         targetChatEnv.set(selected.targetChatEnv);
         script.set(selected.script);
+        canvas.select(id);
         status.set("Editando " + selected.title);
     }
 
