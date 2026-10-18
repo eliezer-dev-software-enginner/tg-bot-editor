@@ -4,7 +4,8 @@ A native Megalodonte desktop application for visually defining Telegram bot rout
 
 ## Projects and scripts
 
-The editor and bot projects are separate. **Novo projeto** creates a portable folder (by default under `~/Documents/TG-bot Editor/projects/`):
+The editor and bot projects are separate. **Novo projeto** creates a portable,
+independently buildable folder (by default under `~/Documents/TG-bot Editor/projects/`):
 
 On first launch, the editor installs and opens an editable `meu-primeiro-projeto` starter at `~/Documents/TG-bot Editor/projects/meu-primeiro-projeto/`. Its 15 G1, ROM, and Genshin Ads flows and three Java script files are copied from the package. An earlier starter stored as `projects/arsenal-soup/` is renamed in place so its scripts and local data remain intact. Later launches reopen the most recent project; existing project files are not overwritten.
 
@@ -12,10 +13,22 @@ On first launch, the editor installs and opens an editable `meu-primeiro-projeto
 Meu bot/
 ├── bot.json          # visual flows and Java action bodies
 ├── scripts/          # editable Java classes such as MeuNovoScript.java
+├── runtime/          # standalone headless runner and bot API source
+├── pom.xml           # Maven build; produces target/tg-bot-project.jar
+├── README.md         # build and Termux instructions
+├── .env.example      # local configuration template without secrets
 ├── .env              # local variable values; never commit
-├── .gitignore        # excludes .env and data/
+├── .gitignore        # excludes .env, data/ and target/
 └── data/             # generated runtime state; never commit
 ```
+
+Every new project includes the runner sources and Maven build. In that project's
+directory, run `mvn clean package` followed by
+`java -jar target/tg-bot-project.jar --check bot.json` to validate it without a
+Telegram token. Fill an ignored `.env` and omit `--check` to start the bot.
+The editor packages these runner sources from its own code so generated projects
+do not depend on the editor installation. The included project README documents
+cloning and running with OpenJDK 25 on Termux.
 
 The flow body is a short Java expression or block, such as `return MeuNovoScript.run();`. **+ Script** asks for a Java class name and creates a compilable `scripts/MeuNovoScript.java`. **Abrir pasta do projeto** opens this folder for IntelliJ, VS Code or a file manager. Edit these classes externally, then use **Salvar projeto** to compile every script and action together. Flow bodies and project Java files are loaded by a project class loader; the example-specific `G1NewsAction`, `RomPostAction` and `GenshinAdsAction` are not built into the editor application.
 

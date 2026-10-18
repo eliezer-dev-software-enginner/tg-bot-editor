@@ -118,6 +118,11 @@ class FlowProjectTest {
 
     @Test void projectScriptsAndVariablesAreSeparateFromTheEditor() throws Exception {
         Path file = ProjectWorkspace.create(directory, "Meu bot");
+        assertTrue(java.nio.file.Files.isRegularFile(file.getParent().resolve("pom.xml")));
+        assertTrue(java.nio.file.Files.isRegularFile(file.getParent().resolve("README.md")));
+        assertTrue(java.nio.file.Files.isRegularFile(file.getParent().resolve("runtime/src/main/java/tg_bot_editor/BotRunner.java")));
+        assertTrue(java.nio.file.Files.readString(file.getParent().resolve(".gitignore")).contains("/target/"));
+        BotRunner.main(new String[]{"--check", file.toString()});
         Path script = ProjectWorkspace.createScript(file.getParent(), "MeuNovoScript");
         assertTrue(java.nio.file.Files.readString(script).contains("class MeuNovoScript"));
         ProjectEnvironment.write(file.getParent(), "MEU_TOKEN=TESTE\nMEU_TOKEN2=TESTEABC\n");

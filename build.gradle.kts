@@ -21,6 +21,19 @@ application {
     applicationDefaultJvmArgs = listOf("--enable-native-access=javafx.graphics,ALL-UNNAMED")
 }
 tasks.test { useJUnitPlatform() }
+tasks.processResources {
+    from("src/main/java") {
+        include(
+            "tg_bot_editor/ActionCompiler.java", "tg_bot_editor/BotAction.java",
+            "tg_bot_editor/BotButton.java", "tg_bot_editor/BotContext.java",
+            "tg_bot_editor/BotDelivery.java", "tg_bot_editor/BotReply.java",
+            "tg_bot_editor/BotRunner.java", "tg_bot_editor/FlowProject.java",
+            "tg_bot_editor/FlowRouter.java", "tg_bot_editor/FlowStore.java",
+            "tg_bot_editor/FlowValidator.java", "tg_bot_editor/ProjectEnvironment.java"
+        )
+        into("templates/project-runtime")
+    }
+}
 tasks.register<JavaExec>("runBot") {
     group = "application"
     description = "Run all saved flows through one Telegram bot token"

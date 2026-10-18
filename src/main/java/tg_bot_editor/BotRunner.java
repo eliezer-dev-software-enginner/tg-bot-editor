@@ -36,12 +36,21 @@ public final class BotRunner {
     }
 
     public static void main(String[] args) throws Exception {
-        if (args.length != 1) throw new IllegalArgumentException("Uso: BotRunner <arquivo-do-projeto.json>");
-        Path projectFile = Path.of(args[0]).toAbsolutePath().normalize();
+        boolean check = args.length == 2 && "--check".equals(args[0]);
+        if ((!check && args.length != 1) || (args.length == 2 && !check))
+            throw new IllegalArgumentException("Uso: BotRunner [--check] <arquivo-do-projeto.json>");
+        Path projectFile = Path.of(args[check ? 1 : 0]).toAbsolutePath().normalize();
+        var project = FlowStore.read(projectFile);
+        if (check) {
+            FlowValidator.validate(project);
+            int count = ActionCompiler.compileProject(projectFile.getParent(), project).size();
+            System.out.println("Projeto válido: " + count + " fluxos Java compilados.");
+            return;
+        }
         ProjectEnvironment.activate(projectFile.getParent());
         String token = ProjectEnvironment.get("TG_BOT_TOKEN");
         if (token == null || token.isBlank()) throw new IllegalStateException("Defina TG_BOT_TOKEN fora do projeto");
-        var runner = new BotRunner(token, projectFile.getParent(), FlowStore.read(projectFile));
+        var runner = new BotRunner(token, projectFile.getParent(), project);
         runner.startSchedules();
         runner.poll();
     }

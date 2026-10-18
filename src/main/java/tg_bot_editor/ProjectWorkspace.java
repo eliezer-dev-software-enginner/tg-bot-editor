@@ -4,10 +4,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.List;
 
 /** Portable bot project layout: bot.json, scripts/, and an ignored local .env. */
 public final class ProjectWorkspace {
     public static final String STARTER_NAME = "meu-primeiro-projeto";
+    private static final List<String> RUNTIME_SOURCES = List.of(
+            "ActionCompiler", "BotAction", "BotButton", "BotContext", "BotDelivery", "BotReply",
+            "BotRunner", "FlowProject", "FlowRouter", "FlowStore", "FlowValidator", "ProjectEnvironment");
     private ProjectWorkspace() { }
 
     public static Path defaultProjectsDirectory() {
@@ -25,8 +30,23 @@ public final class ProjectWorkspace {
         var project = new FlowProject();
         project.name = trimmed;
         FlowStore.write(directory.resolve("bot.json"), project);
-        Files.writeString(directory.resolve(".gitignore"), ".env\n/data/\n");
+        Files.writeString(directory.resolve(".gitignore"), ".env\n/data/\n/target/\n/.idea/\n");
+        Files.writeString(directory.resolve(".env.example"), "# Copy to .env and set your Telegram bot token locally.\nTG_BOT_TOKEN=\n");
+        copyTemplate("/templates/project-build/pom.xml", directory.resolve("pom.xml"));
+        copyTemplate("/templates/project-build/README.md", directory.resolve("README.md"));
+        Path runtime = directory.resolve("runtime/src/main/java/tg_bot_editor");
+        Files.createDirectories(runtime);
+        for (String source : RUNTIME_SOURCES)
+            copyTemplate("/templates/project-runtime/tg_bot_editor/" + source + ".java",
+                    runtime.resolve(source + ".java"));
         return directory.resolve("bot.json");
+    }
+
+    private static void copyTemplate(String resource, Path destination) throws IOException {
+        try (InputStream input = ProjectWorkspace.class.getResourceAsStream(resource)) {
+            if (input == null) throw new IOException("Arquivo de projeto ausente no editor: " + resource);
+            Files.copy(input, destination, StandardCopyOption.REPLACE_EXISTING);
+        }
     }
 
     public static Path createScript(Path projectDirectory, String className) throws IOException {
