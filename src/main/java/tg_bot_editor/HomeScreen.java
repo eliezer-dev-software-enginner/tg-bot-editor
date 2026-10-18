@@ -47,8 +47,10 @@ public final class HomeScreen implements ScreenComponent {
         try {
             refreshRecents();
             Path legacy = Path.of(System.getProperty("user.home"), "Documents", "TG-bot Editor", "bot.json");
-            if (!recent.list().isEmpty()) load(recent.list().getFirst());
-            else if (Files.isRegularFile(legacy)) load(legacy);
+            Path initial = recent.list().stream().filter(Files::isRegularFile).findFirst().orElse(null);
+            if (initial == null && Files.isRegularFile(legacy)) initial = legacy;
+            if (initial == null) initial = ProjectWorkspace.ensureStarter(ProjectWorkspace.defaultProjectsDirectory());
+            load(initial);
         } catch (Exception error) { status.set("Não foi possível restaurar o projeto: " + error.getMessage()); }
         refresh();
     }

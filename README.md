@@ -6,6 +6,8 @@ A native Megalodonte desktop application for visually defining Telegram bot rout
 
 The editor and bot projects are separate. **Novo projeto** creates a portable folder (by default under `~/Documents/TG-bot Editor/projects/`):
 
+On first launch, the editor installs and opens an editable `arsenal-soup` starter at `~/Documents/TG-bot Editor/projects/arsenal-soup/`. Its 15 G1, ROM, and Genshin Ads flows and three Java script files are copied from the package. Later launches reopen the most recent project; existing project files are not overwritten.
+
 ```text
 Meu bot/
 ├── bot.json          # visual flows and Java action bodies

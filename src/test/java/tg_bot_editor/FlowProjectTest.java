@@ -86,6 +86,15 @@ class FlowProjectTest {
         assertEquals(project.flows.size(), ActionCompiler.compileProject(file.getParent(), project).size());
     }
 
+    @Test void firstLaunchInstallsAnEditableProjectOnlyOnce() throws Exception {
+        Path file = ProjectWorkspace.ensureStarter(directory);
+        assertEquals(15, FlowStore.read(file).flows.size());
+        assertTrue(java.nio.file.Files.isRegularFile(file.getParent().resolve("scripts/GenshinAdsAction.java")));
+        java.nio.file.Files.writeString(file.getParent().resolve("scripts/MyChange.java"), "class MyChange {}\n");
+        assertEquals(file, ProjectWorkspace.ensureStarter(directory));
+        assertTrue(java.nio.file.Files.isRegularFile(file.getParent().resolve("scripts/MyChange.java")));
+    }
+
     @Test void projectScriptsAndVariablesAreSeparateFromTheEditor() throws Exception {
         Path file = ProjectWorkspace.create(directory, "Meu bot");
         Path script = ProjectWorkspace.createScript(file.getParent(), "MeuNovoScript");

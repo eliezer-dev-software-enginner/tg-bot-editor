@@ -90,4 +90,13 @@ public final class ProjectWorkspace {
         initializeLegacyScripts(directory, FlowStore.read(projectFile));
         return projectFile;
     }
+
+    /** Install the bundled example once, leaving any existing project untouched. */
+    public static Path ensureStarter(Path parent) throws IOException {
+        Path projectFile = parent.resolve("arsenal-soup").resolve("bot.json");
+        if (Files.isRegularFile(projectFile)) return projectFile;
+        if (Files.exists(projectFile.getParent()))
+            throw new IOException("A pasta arsenal-soup já existe sem bot.json: " + projectFile.getParent());
+        return copyStarter(parent);
+    }
 }
