@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "name": "Bot unificado",
+  "name": "meu-primeiro-projeto",
   "flows": [
     {
       "id": "g1-news",

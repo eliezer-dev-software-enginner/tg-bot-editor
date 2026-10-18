@@ -95,7 +95,7 @@ public final class BotRunner {
     }
 
     private void poll() throws Exception {
-        System.out.println("Bot unificado iniciado com " + project.flows.size() + " fluxo(s).");
+        System.out.println("Projeto " + project.name + " iniciado com " + project.flows.size() + " fluxo(s).");
         while (!Thread.currentThread().isInterrupted()) {
             try {
                 JsonNode response = call("getUpdates", "offset=" + offset + "&timeout=30", 40);

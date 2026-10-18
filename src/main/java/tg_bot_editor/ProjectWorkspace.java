@@ -7,6 +7,7 @@ import java.nio.file.Path;
 
 /** Portable bot project layout: bot.json, scripts/, and an ignored local .env. */
 public final class ProjectWorkspace {
+    public static final String STARTER_NAME = "meu-primeiro-projeto";
     private ProjectWorkspace() { }
 
     public static Path defaultProjectsDirectory() {
@@ -50,7 +51,7 @@ public final class ProjectWorkspace {
             if (project.flows.stream().noneMatch(flow -> flow.script != null && flow.script.contains(name + "."))) continue;
             Path target = scripts.resolve(name + ".java");
             if (Files.exists(target)) continue;
-            try (InputStream source = ProjectWorkspace.class.getResourceAsStream("/templates/arsenal-soup/scripts/" + name + ".java")) {
+            try (InputStream source = ProjectWorkspace.class.getResourceAsStream("/templates/meu-primeiro-projeto/scripts/" + name + ".java")) {
                 if (source == null) throw new IOException("Missing bundled script: " + name);
                 Files.copy(source, target);
             }
@@ -67,7 +68,7 @@ public final class ProjectWorkspace {
         if (!project.flows.stream().anyMatch(flow -> "g1-news".equals(flow.id))
                 || !project.flows.stream().anyMatch(flow -> "daily-roms".equals(flow.id))) return false;
         boolean changed = false;
-        try (InputStream input = ProjectWorkspace.class.getResourceAsStream("/templates/arsenal-soup/bot.json")) {
+        try (InputStream input = ProjectWorkspace.class.getResourceAsStream("/templates/meu-primeiro-projeto/bot.json")) {
             if (input == null) throw new IOException("Missing starter project");
             for (var flow : FlowStore.read(input).flows) {
                 if (!flow.id.startsWith("ads-")) continue;
@@ -81,9 +82,9 @@ public final class ProjectWorkspace {
     }
 
     public static Path copyStarter(Path parent) throws IOException {
-        Path projectFile = create(parent, "arsenal-soup");
+        Path projectFile = create(parent, STARTER_NAME);
         Path directory = projectFile.getParent();
-        try (InputStream input = ProjectWorkspace.class.getResourceAsStream("/templates/arsenal-soup/bot.json")) {
+        try (InputStream input = ProjectWorkspace.class.getResourceAsStream("/templates/meu-primeiro-projeto/bot.json")) {
             if (input == null) throw new IOException("Missing starter project");
             FlowStore.write(projectFile, FlowStore.read(input));
         }
@@ -92,11 +93,26 @@ public final class ProjectWorkspace {
     }
 
     /** Install the bundled example once, leaving any existing project untouched. */
-    public static Path ensureStarter(Path parent) throws IOException {
-        Path projectFile = parent.resolve("arsenal-soup").resolve("bot.json");
+    public static Path migrateStarter(Path parent) throws IOException {
+        Path projectFile = parent.resolve(STARTER_NAME).resolve("bot.json");
         if (Files.isRegularFile(projectFile)) return projectFile;
+        Path old = parent.resolve("arsenal-soup");
+        if (!Files.isRegularFile(old.resolve("bot.json")) || Files.exists(projectFile.getParent())) return null;
+        Files.move(old, projectFile.getParent());
+        var project = FlowStore.read(projectFile);
+        if ("Bot unificado".equals(project.name) || "arsenal-soup".equals(project.name)) {
+            project.name = STARTER_NAME;
+            FlowStore.write(projectFile, project);
+        }
+        return projectFile;
+    }
+
+    public static Path ensureStarter(Path parent) throws IOException {
+        Path projectFile = migrateStarter(parent);
+        if (projectFile != null) return projectFile;
+        projectFile = parent.resolve(STARTER_NAME).resolve("bot.json");
         if (Files.exists(projectFile.getParent()))
-            throw new IOException("A pasta arsenal-soup já existe sem bot.json: " + projectFile.getParent());
+            throw new IOException("A pasta " + STARTER_NAME + " já existe sem bot.json: " + projectFile.getParent());
         return copyStarter(parent);
     }
 }

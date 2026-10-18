@@ -46,10 +46,12 @@ public final class HomeScreen implements ScreenComponent {
         });
         try {
             refreshRecents();
+            Path starter = ProjectWorkspace.migrateStarter(ProjectWorkspace.defaultProjectsDirectory());
             Path legacy = Path.of(System.getProperty("user.home"), "Documents", "TG-bot Editor", "bot.json");
             Path initial = recent.list().stream().filter(Files::isRegularFile).findFirst().orElse(null);
             if (initial == null && Files.isRegularFile(legacy)) initial = legacy;
-            if (initial == null) initial = ProjectWorkspace.ensureStarter(ProjectWorkspace.defaultProjectsDirectory());
+            if (initial == null) initial = starter == null
+                    ? ProjectWorkspace.ensureStarter(ProjectWorkspace.defaultProjectsDirectory()) : starter;
             load(initial);
         } catch (Exception error) { status.set("Não foi possível restaurar o projeto: " + error.getMessage()); }
         refresh();
@@ -98,7 +100,7 @@ public final class HomeScreen implements ScreenComponent {
                 new Text("Teste local (sem Telegram)"), new Input(sample, field("/start")),
                 new Button("Executar teste").onClick(this::test));
         var workspace = new Row(new RowProps().spacingOf(12).fillHeight()).children(
-                new Scroll(canvas).pannableCanvas().fillAvailableWidth().fillAvailableHeight(),
+                canvas,
                 new Scroll(inspector).fillAvailableHeight());
         var base = new Container(new ContainerProps().fillHeight()).children(heading, workspace);
         var newProject = new Container(new ContainerProps().paddingAll(24).spacingOf(12).width(430)).children(
@@ -134,7 +136,8 @@ public final class HomeScreen implements ScreenComponent {
         if (file == null) { status.set("Crie ou abra um projeto primeiro."); return; }
         int index = project.flows.size();
         var flow = new FlowProject.Flow(UUID.randomUUID().toString(), "Nova ação", "/comando" + (index + 1),
-                35 + (index % 3) * 315, 30 + (index / 3) * 125);
+                canvas.viewToModelX(35 + (index % 3) * 315),
+                canvas.viewToModelY(30 + (index / 3) * 125));
         project.flows.add(flow); refresh(); select(flow.id);
     }
 
@@ -202,11 +205,11 @@ public final class HomeScreen implements ScreenComponent {
         ProjectEnvironment.activate(absolute.getParent());
         project = loaded; file = absolute; selected = null;
         environment.set(ProjectEnvironment.read(file.getParent()));
-        projectLabel.set(project.name + " · " + file.getParent());
-        refresh(); canvas.select(null);
+        projectLabel.set("Projeto aberto: " + file.getParent().getFileName());
+        canvas.resetView(); refresh(); canvas.select(null);
         if (!project.flows.isEmpty()) select(project.flows.getFirst().id);
         else { title.set(""); pattern.set(""); script.set(""); }
-        recent.remember(file); refreshRecents(); status.set("Projeto aberto: " + file);
+        recent.remember(file); refreshRecents(); status.set("Pasta: " + file.getParent());
     }
     private void openProject() {
         try {
@@ -227,7 +230,7 @@ public final class HomeScreen implements ScreenComponent {
         catch (Exception error) { status.set("Não foi possível fechar sem salvar o rascunho: " + error.getMessage()); return; }
         file = null; selected = null; project = new FlowProject();
         projectLabel.set("Nenhum projeto aberto"); title.set(""); pattern.set("");
-        script.set(""); environment.set(""); refresh(); canvas.select(null);
+        script.set(""); environment.set(""); canvas.resetView(); refresh(); canvas.select(null);
         status.set("Projeto fechado. O último rascunho foi salvo.");
     }
     private void persistDraft() throws Exception {

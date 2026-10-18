@@ -6,7 +6,7 @@ A native Megalodonte desktop application for visually defining Telegram bot rout
 
 The editor and bot projects are separate. **Novo projeto** creates a portable folder (by default under `~/Documents/TG-bot Editor/projects/`):
 
-On first launch, the editor installs and opens an editable `arsenal-soup` starter at `~/Documents/TG-bot Editor/projects/arsenal-soup/`. Its 15 G1, ROM, and Genshin Ads flows and three Java script files are copied from the package. Later launches reopen the most recent project; existing project files are not overwritten.
+On first launch, the editor installs and opens an editable `meu-primeiro-projeto` starter at `~/Documents/TG-bot Editor/projects/meu-primeiro-projeto/`. Its 15 G1, ROM, and Genshin Ads flows and three Java script files are copied from the package. An earlier starter stored as `projects/arsenal-soup/` is renamed in place so its scripts and local data remain intact. Later launches reopen the most recent project; existing project files are not overwritten.
 
 ```text
 Meu bot/
@@ -22,7 +22,7 @@ The flow body is a short Java expression or block, such as `return MeuNovoScript
 **Abrir projeto** selects a `bot.json`; **Fechar projeto** preserves the current draft and clears the canvas; **Abrir recente** uses a list of the ten most recent paths. The path list is stored separately at `~/.config/tg-bot-editor/recent-projects.properties` (or under `XDG_CONFIG_HOME`). Existing `~/Documents/TG-bot Editor/bot.json` projects are recognized and receive missing external scripts. When an older bundled G1/ROM starter is opened, the missing ads routes are merged without replacing existing flows.
 
 Click a card to edit its trigger and Java body. **Excluir** in Properties removes the selected command; **Salvar projeto** persists the change. Switching cards retains edits in memory. The Java editor provides syntax colors, line numbers and indentation. **Executar teste** runs the selected action locally; use it only for project code you trust, since project scripts run with your user permissions.
-Drag empty canvas space with the primary mouse button to pan the graph. Drag a card to change its position.
+Drag empty canvas space with the primary mouse button to pan the graph without bounds or scroll bars. Drag a card to change its position; pan position never changes saved card coordinates.
 
 ## Project variables and runner
 
@@ -40,10 +40,10 @@ Process environment variables override `.env` values. The **Canal agendado · no
 ```bash
 ./gradlew test
 ./gradlew run
-./gradlew runBot -PbotProject=examples/arsenal-soup/bot.json
+./gradlew runBot -PbotProject=examples/meu-primeiro-projeto/bot.json
 ```
 
-The example project is [examples/arsenal-soup](examples/arsenal-soup). Copy `.env.example` to `.env` and set local values before starting its runner. The editor itself does not start the runner.
+The example project is [examples/meu-primeiro-projeto](examples/meu-primeiro-projeto). Copy `.env.example` to `.env` and set local values before starting its runner. The editor itself does not start the runner.
 
 ## Migrated example flows
 

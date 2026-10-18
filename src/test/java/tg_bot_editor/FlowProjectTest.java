@@ -88,11 +88,32 @@ class FlowProjectTest {
 
     @Test void firstLaunchInstallsAnEditableProjectOnlyOnce() throws Exception {
         Path file = ProjectWorkspace.ensureStarter(directory);
+        assertEquals("meu-primeiro-projeto", file.getParent().getFileName().toString());
+        assertEquals("meu-primeiro-projeto", FlowStore.read(file).name);
         assertEquals(15, FlowStore.read(file).flows.size());
         assertTrue(java.nio.file.Files.isRegularFile(file.getParent().resolve("scripts/GenshinAdsAction.java")));
         java.nio.file.Files.writeString(file.getParent().resolve("scripts/MyChange.java"), "class MyChange {}\n");
         assertEquals(file, ProjectWorkspace.ensureStarter(directory));
         assertTrue(java.nio.file.Files.isRegularFile(file.getParent().resolve("scripts/MyChange.java")));
+    }
+
+    @Test void oldStarterIsRenamedWithoutLosingLocalScriptsOrData() throws Exception {
+        Path old = directory.resolve("arsenal-soup");
+        java.nio.file.Files.createDirectories(old.resolve("scripts"));
+        java.nio.file.Files.createDirectories(old.resolve("data"));
+        java.nio.file.Files.writeString(old.resolve("scripts/MyChange.java"), "class MyChange {}\n");
+        java.nio.file.Files.writeString(old.resolve("data/ads.json"), "{}\n");
+        var project = new FlowProject();
+        project.name = "Bot unificado";
+        FlowStore.write(old.resolve("bot.json"), project);
+
+        Path renamed = ProjectWorkspace.migrateStarter(directory);
+
+        assertEquals("meu-primeiro-projeto", renamed.getParent().getFileName().toString());
+        assertEquals("meu-primeiro-projeto", FlowStore.read(renamed).name);
+        assertTrue(java.nio.file.Files.exists(renamed.getParent().resolve("scripts/MyChange.java")));
+        assertTrue(java.nio.file.Files.exists(renamed.getParent().resolve("data/ads.json")));
+        assertFalse(java.nio.file.Files.exists(old));
     }
 
     @Test void projectScriptsAndVariablesAreSeparateFromTheEditor() throws Exception {
