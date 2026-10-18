@@ -17,9 +17,12 @@ public final class FlowRouter {
                 case "COMMAND" -> normalized.equals(flow.pattern)
                         || normalized.startsWith(flow.pattern + " ")
                         || normalized.startsWith(flow.pattern + "@");
-                case "TEXT", "CALLBACK" -> normalized.equalsIgnoreCase(flow.pattern);
+                case "TEXT", "CALLBACK", "PHOTO" -> normalized.equalsIgnoreCase(flow.pattern)
+                        || flow.pattern.equals("*") || (flow.pattern.endsWith("*")
+                        && normalized.regionMatches(true, 0, flow.pattern, 0, flow.pattern.length() - 1));
                 default -> false;
             };
-        }).findFirst();
+        }).sorted((a, b) -> Boolean.compare(a.pattern.equals("*"), b.pattern.equals("*")))
+                .findFirst();
     }
 }

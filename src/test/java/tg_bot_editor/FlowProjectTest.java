@@ -42,11 +42,19 @@ class FlowProjectTest {
                 "image":{"sizes":{"L":{"url":"https://example.com/photo.png"}}}}}]
                 """);
         Path state = directory.resolve("seen.txt");
-        var pending = G1NewsAction.pending(feed, state);
+        Path projectFile = ProjectWorkspace.copyStarter(directory);
+        var project = new FlowProject();
+        var flow = new FlowProject.Flow("g1", "G1", "/g1", 0, 0);
+        flow.script = "return G1NewsAction.pending(new com.fasterxml.jackson.databind.ObjectMapper().readTree("
+                + new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(feed.toString())
+                + "), java.nio.file.Path.of(\"" + state + "\"));";
+        project.flows.add(flow);
+        var action = ActionCompiler.compileProject(projectFile.getParent(), project).get("g1");
+        @SuppressWarnings("unchecked") var pending = (java.util.List<BotReply>) action.run(new BotContext(1, 1, "", ""));
         assertEquals(1, pending.size());
         assertFalse(java.nio.file.Files.exists(state));
         pending.getFirst().afterSend().run();
-        assertTrue(G1NewsAction.pending(feed, state).isEmpty());
+        assertTrue(((java.util.List<?>) action.run(new BotContext(1, 1, "", ""))).isEmpty());
     }
 
     @Test void romCatalogProducesPhotoAndDownloadButton() throws Exception {
@@ -59,17 +67,53 @@ class FlowProjectTest {
         java.nio.file.Files.writeString(directory.resolve("consoles.json"), """
                 [{"id":"gba","nome":"GBA"}]
                 """);
-        var reply = RomPostAction.fromCatalog(directory);
+        Path projectFile = ProjectWorkspace.copyStarter(directory.resolve("starter"));
+        var project = new FlowProject();
+        var flow = new FlowProject.Flow("rom", "ROM", "/rom", 0, 0);
+        flow.script = "return RomPostAction.fromCatalog(java.nio.file.Path.of(\"" + directory + "\"));";
+        project.flows.add(flow);
+        var reply = (BotReply) ActionCompiler.compileProject(projectFile.getParent(), project)
+                .get("rom").run(new BotContext(1, 1, "", ""));
         assertEquals(cover.toString(), reply.photoRef());
         assertTrue(reply.text().contains("&lt;novo&gt;"));
         assertEquals(2, reply.buttons().size());
     }
 
     @Test void bundledProjectCompilesEveryAction() throws Exception {
-        try (var input = getClass().getResourceAsStream("/templates/arsenal-soup.json")) {
-            var project = FlowStore.read(input);
-            FlowValidator.validate(project);
-            for (var flow : project.flows) assertNotNull(ActionCompiler.compile(flow.script));
-        }
+        Path file = ProjectWorkspace.copyStarter(directory);
+        var project = FlowStore.read(file);
+        FlowValidator.validate(project);
+        assertEquals(project.flows.size(), ActionCompiler.compileProject(file.getParent(), project).size());
+    }
+
+    @Test void projectScriptsAndVariablesAreSeparateFromTheEditor() throws Exception {
+        Path file = ProjectWorkspace.create(directory, "Meu bot");
+        Path script = ProjectWorkspace.createScript(file.getParent(), "MeuNovoScript");
+        assertTrue(java.nio.file.Files.readString(script).contains("class MeuNovoScript"));
+        ProjectEnvironment.write(file.getParent(), "MEU_TOKEN=TESTE\nMEU_TOKEN2=TESTEABC\n");
+        ProjectEnvironment.activate(file.getParent());
+        assertEquals("TESTEABC", ProjectEnvironment.get("MEU_TOKEN2"));
+        assertFalse(java.nio.file.Files.readString(file).contains("TESTEABC"));
+        var recent = new RecentProjects(directory.resolve("settings/recent.properties"));
+        recent.remember(file);
+        assertEquals(file, recent.list().getFirst());
+    }
+
+    @Test void genshinAdsWizardPersistsAnAdInsideTheProject() throws Exception {
+        Path file = ProjectWorkspace.copyStarter(directory);
+        ProjectEnvironment.activate(file.getParent());
+        var project = FlowStore.read(file);
+        var actions = ActionCompiler.compileProject(file.getParent(), project);
+        assertTrue(actions.get("ads-new").run(new BotContext(1, 42, "/novo", "tester")).toString().contains("foto"));
+        assertTrue(actions.get("ads-photo").run(new BotContext(1, 42, "", "tester", "photo-file-id"))
+                .toString().contains("título"));
+        actions.get("ads-text").run(new BotContext(1, 42, "Anúncio teste", "tester"));
+        actions.get("ads-text").run(new BotContext(1, 42, "5", "tester"));
+        actions.get("ads-text").run(new BotContext(1, 42, "Site | https://example.com", "tester"));
+        assertTrue(actions.get("ads-save").run(new BotContext(1, 42, "/save", "tester"))
+                .toString().contains("salvo"));
+        assertTrue(java.nio.file.Files.isRegularFile(file.getParent().resolve("data/genshin-ads.json")));
+        assertEquals(1, ((java.util.List<?>) actions.get("ads-list")
+                .run(new BotContext(1, 42, "/listar", "tester"))).size());
     }
 }

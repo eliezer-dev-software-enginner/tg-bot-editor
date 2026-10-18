@@ -1,4 +1,4 @@
-package tg_bot_editor;
+import tg_bot_editor.*;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,13 +16,13 @@ public final class RomPostAction {
     private RomPostAction() { }
 
     public static BotReply run() throws Exception {
-        String configured = System.getenv("TG_BOT_ROMS_DATA_DIR");
+        String configured = ProjectEnvironment.get("TG_BOT_ROMS_DATA_DIR");
         if (configured == null || configured.isBlank())
             throw new IllegalStateException("Defina TG_BOT_ROMS_DATA_DIR para o catálogo post-roms-bot/jsons");
         return fromCatalog(Path.of(configured));
     }
 
-    static BotReply fromCatalog(Path dataDirectory) throws Exception {
+    public static BotReply fromCatalog(Path dataDirectory) throws Exception {
         Path directory = dataDirectory.toAbsolutePath().normalize();
         JsonNode roms = JSON.readTree(directory.resolve("roms.json").toFile());
         JsonNode consoles = JSON.readTree(directory.resolve("consoles.json").toFile());

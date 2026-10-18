@@ -26,6 +26,6 @@ tasks.register<JavaExec>("runBot") {
     description = "Run all saved flows through one Telegram bot token"
     classpath = sourceSets.main.get().runtimeClasspath
     mainClass.set("tg_bot_editor.BotRunner")
-    args(providers.gradleProperty("botProject").orElse("examples/arsenal-soup.json").get())
+    args(providers.gradleProperty("botProject").orElse("examples/arsenal-soup/bot.json").get())
 }
 tasks.withType<JavaCompile>().configureEach { options.encoding = "UTF-8" }

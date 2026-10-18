@@ -1,4 +1,4 @@
-package tg_bot_editor;
+import tg_bot_editor.*;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,7 +27,7 @@ public final class G1NewsAction {
     public static List<BotReply> run() throws Exception {
         Path state = stateFile();
         seedLegacyHistory(state);
-        String configured = System.getenv("TG_BOT_G1_FEED_URL");
+        String configured = ProjectEnvironment.get("TG_BOT_G1_FEED_URL");
         String url = configured == null || configured.isBlank() ? DEFAULT_FEED : configured;
         var request = HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(20)).GET().build();
         var response = HTTP.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
@@ -35,7 +35,7 @@ public final class G1NewsAction {
         return pending(JSON.readTree(response.body()), state);
     }
 
-    static List<BotReply> pending(JsonNode feed, Path state) throws Exception {
+    public static List<BotReply> pending(JsonNode feed, Path state) throws Exception {
         var seen = Files.exists(state) ? new HashSet<>(Files.readAllLines(state)) : new HashSet<String>();
         var pending = new ArrayList<BotReply>();
         for (JsonNode item : feed) {
@@ -68,10 +68,9 @@ public final class G1NewsAction {
     }
 
     private static Path stateFile() {
-        String xdg = System.getenv("XDG_DATA_HOME");
-        Path base = xdg == null || xdg.isBlank()
-                ? Path.of(System.getProperty("user.home"), ".local", "share") : Path.of(xdg);
-        return base.resolve("tg-bot-editor").resolve("g1-seen.txt");
+        Path directory = ProjectEnvironment.directory();
+        if (directory == null) throw new IllegalStateException("Abra um projeto antes de executar o script G1.");
+        return directory.resolve("data").resolve("g1-seen.txt");
     }
 
     private static String truncate(String value, int codePoints) {

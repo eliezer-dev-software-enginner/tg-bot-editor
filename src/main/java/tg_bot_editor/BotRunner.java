@@ -11,7 +11,6 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Path;
 import java.time.Duration;
 import java.time.LocalTime;
 import java.time.ZonedDateTime;
@@ -29,18 +28,20 @@ public final class BotRunner {
     private final Map<String, BotAction> actions = new HashMap<>();
     private long offset;
 
-    private BotRunner(String token, FlowProject project) throws Exception {
+    private BotRunner(String token, Path projectDirectory, FlowProject project) throws Exception {
         this.token = token;
         this.project = project;
         FlowValidator.validate(project);
-        for (var flow : project.flows) actions.put(flow.id, ActionCompiler.compile(flow.script));
+        actions.putAll(ActionCompiler.compileProject(projectDirectory, project));
     }
 
     public static void main(String[] args) throws Exception {
         if (args.length != 1) throw new IllegalArgumentException("Uso: BotRunner <arquivo-do-projeto.json>");
-        String token = System.getenv("TG_BOT_TOKEN");
+        Path projectFile = Path.of(args[0]).toAbsolutePath().normalize();
+        ProjectEnvironment.activate(projectFile.getParent());
+        String token = ProjectEnvironment.get("TG_BOT_TOKEN");
         if (token == null || token.isBlank()) throw new IllegalStateException("Defina TG_BOT_TOKEN fora do projeto");
-        var runner = new BotRunner(token, FlowStore.read(Path.of(args[0])));
+        var runner = new BotRunner(token, projectFile.getParent(), FlowStore.read(projectFile));
         runner.startSchedules();
         runner.poll();
     }
@@ -50,17 +51,20 @@ public final class BotRunner {
         var timer = Executors.newSingleThreadScheduledExecutor();
         for (var flow : project.flows) {
             if (!scheduled(flow.trigger)) continue;
-            String target = System.getenv(flow.targetChatEnv);
-            if (target == null || target.isBlank())
-                throw new IllegalStateException("Defina " + flow.targetChatEnv + " para " + flow.title);
-            long chat;
-            try { chat = Long.parseLong(target); }
-            catch (NumberFormatException error) { throw new IllegalArgumentException(flow.targetChatEnv + " deve ser numérico", error); }
+            long chat = 0;
+            if (flow.targetChatEnv != null && !flow.targetChatEnv.isBlank()) {
+                String target = ProjectEnvironment.get(flow.targetChatEnv);
+                if (target == null || target.isBlank())
+                    throw new IllegalStateException("Defina " + flow.targetChatEnv + " para " + flow.title);
+                try { chat = Long.parseLong(target); }
+                catch (NumberFormatException error) { throw new IllegalArgumentException(flow.targetChatEnv + " deve ser numérico", error); }
+            }
+            final long targetChat = chat;
             if ("INTERVAL".equalsIgnoreCase(flow.trigger)) {
                 long minutes = Long.parseLong(flow.pattern);
-                timer.scheduleWithFixedDelay(() -> runScheduled(flow, chat), 0, minutes, TimeUnit.MINUTES);
+                timer.scheduleWithFixedDelay(() -> runScheduled(flow, targetChat), 0, minutes, TimeUnit.MINUTES);
             } else {
-                for (String value : flow.pattern.split(",")) scheduleDaily(timer, flow, chat, LocalTime.parse(value.trim()));
+                for (String value : flow.pattern.split(",")) scheduleDaily(timer, flow, targetChat, LocalTime.parse(value.trim()));
             }
         }
     }
@@ -116,13 +120,18 @@ public final class BotRunner {
         long chat = message.path("chat").path("id").asLong();
         JsonNode sender = callback.isMissingNode() ? message.path("from") : callback.path("from");
         String value = callback.isMissingNode() ? message.path("text").asText("") : callback.path("data").asText("");
-        String kind = callback.isMissingNode() ? (value.startsWith("/") ? "COMMAND" : "TEXT") : "CALLBACK";
+        JsonNode photos = message.path("photo");
+        String photoRef = photos.isArray() && !photos.isEmpty()
+                ? photos.get(photos.size() - 1).path("file_id").asText("") : null;
+        String kind = callback.isMissingNode() ? (photoRef != null ? "PHOTO"
+                : value.startsWith("/") ? "COMMAND" : "TEXT") : "CALLBACK";
         var match = FlowRouter.find(project, kind, value);
         if (match.isEmpty()) {
             answerCallback(callback);
             return;
         }
-        var context = new BotContext(chat, sender.path("id").asLong(), value, sender.path("username").asText(""));
+        var context = new BotContext(chat, sender.path("id").asLong(), value,
+                sender.path("username").asText(""), photoRef);
         Object reply;
         try {
             reply = actions.get(match.get().id).run(context);
@@ -147,6 +156,10 @@ public final class BotRunner {
 
     private void send(long chat, Object value) throws Exception {
         if (value == null) throw new IllegalStateException("A ação retornou null");
+        if (value instanceof BotDelivery delivery) {
+            send(delivery.chatId(), delivery.reply());
+            return;
+        }
         if (value instanceof Iterable<?> batch) {
             for (Object item : batch) send(chat, item);
             return;

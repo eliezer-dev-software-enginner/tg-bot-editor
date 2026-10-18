@@ -19,12 +19,13 @@ public final class FlowValidator {
             if (flow.trigger == null || flow.pattern == null || flow.pattern.isBlank())
                 throw new IllegalArgumentException("Gatilho incompleto: " + flow.title);
             String kind = flow.trigger.toUpperCase(Locale.ROOT);
-            if (!java.util.Set.of("COMMAND", "TEXT", "CALLBACK", "INTERVAL", "DAILY").contains(kind))
+            if (!java.util.Set.of("COMMAND", "TEXT", "CALLBACK", "PHOTO", "INTERVAL", "DAILY").contains(kind))
                 throw new IllegalArgumentException("Gatilho desconhecido: " + flow.trigger);
             if (kind.equals("COMMAND") && !flow.pattern.startsWith("/"))
                 throw new IllegalArgumentException("Comando deve começar com /: " + flow.title);
             if (kind.equals("INTERVAL") || kind.equals("DAILY")) {
-                if (flow.targetChatEnv == null || !flow.targetChatEnv.matches("[A-Z][A-Z0-9_]*"))
+                if (flow.targetChatEnv != null && !flow.targetChatEnv.isBlank()
+                        && !flow.targetChatEnv.matches("[A-Z][A-Z0-9_]*"))
                     throw new IllegalArgumentException("Nome da variável de chat inválido: " + flow.title);
             }
             if (kind.equals("INTERVAL")) {

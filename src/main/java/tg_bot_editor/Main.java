@@ -6,12 +6,12 @@ import megalodonte.base.theme.ThemeManager;
 public final class Main {
     public static void main(String[] args) throws Exception {
         if (java.util.Arrays.asList(args).contains("--self-test")) {
-            try (var template = Main.class.getResourceAsStream("/templates/arsenal-soup.json")) {
-                var project = FlowStore.read(template);
-                FlowValidator.validate(project);
-                for (var flow : project.flows) ActionCompiler.compile(flow.script);
-                System.out.println("SELF-TEST OK: " + project.flows.size() + " flows compiled");
-            }
+            var temporary = java.nio.file.Files.createTempDirectory("tg-bot-self-test-");
+            var file = ProjectWorkspace.copyStarter(temporary);
+            var project = FlowStore.read(file);
+            FlowValidator.validate(project);
+            ActionCompiler.compileProject(file.getParent(), project);
+            System.out.println("SELF-TEST OK: " + project.flows.size() + " flows compiled");
             return;
         }
         ThemeManager.setTheme(new EditorTheme());
