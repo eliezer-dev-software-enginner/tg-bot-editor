@@ -50,6 +50,7 @@ public final class HomeScreen implements ScreenComponent {
             });
         });
         refresh();
+        if (!project.flows.isEmpty()) select(project.flows.getFirst().id);
     }
 
     @Override public Component render() {
@@ -64,6 +65,9 @@ public final class HomeScreen implements ScreenComponent {
         var inspector = new Container(new ContainerProps().paddingAll(16).spacingOf(10).width(330)).children(
                 new Text("Propriedades", new TextProps().fontSize(20)),
                 new Text("Título"), new Input(title, field("Nome da ação")),
+                new Text("Script Java · edite e retorne texto ou BotReply"),
+                new TextAreaInput(script, field("return \"Olá!\";").height(260)),
+                new Button("Aplicar script e propriedades").onClick(this::apply),
                 new Text("Tipo de gatilho"), new Text(trigger),
                 new Row(new RowProps().spacingOf(6)).children(
                         new Button("Comando").onClick(() -> chooseTrigger("COMMAND")),
@@ -75,9 +79,6 @@ public final class HomeScreen implements ScreenComponent {
                 new Text("Padrão · comando, minutos ou HH:mm"), new Input(pattern, field("/start")),
                 new Text("Variável de ambiente do canal agendado"),
                 new Input(targetChatEnv, field("TG_BOT_TARGET_CHAT")),
-                new Text("Ação Java · retorne texto ou BotReply"),
-                new TextAreaInput(script, field("return \"Olá!\";").height(200)),
-                new Button("Aplicar no canvas").onClick(this::apply),
                 new Text("Teste local (sem Telegram)"),
                 new Input(sample, field("/start")),
                 new Button("Executar teste").onClick(this::test),
@@ -94,6 +95,10 @@ public final class HomeScreen implements ScreenComponent {
     }
 
     private void select(String id) {
+        if (selected != null && !selected.id.equals(id)) {
+            copyFieldsToSelected();
+            refresh();
+        }
         selected = project.flows.stream().filter(flow -> flow.id.equals(id)).findFirst().orElse(null);
         if (selected == null) return;
         title.set(selected.title);
@@ -122,14 +127,18 @@ public final class HomeScreen implements ScreenComponent {
         if (pattern.get().isBlank() || script.get().isBlank()) {
             status.set("Informe o gatilho e o script Java."); return false;
         }
+        copyFieldsToSelected();
+        refresh();
+        status.set("Fluxo atualizado. Salve o projeto para persistir.");
+        return true;
+    }
+
+    private void copyFieldsToSelected() {
         selected.title = title.get().trim();
         selected.pattern = pattern.get().trim();
         selected.trigger = trigger.get();
         selected.targetChatEnv = targetChatEnv.get().trim();
         selected.script = script.get();
-        refresh();
-        status.set("Fluxo atualizado. Salve o projeto para persistir.");
-        return true;
     }
 
     private void remove() {
