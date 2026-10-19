@@ -22,7 +22,12 @@ public final class FlowRouter {
                         && normalized.regionMatches(true, 0, flow.pattern, 0, flow.pattern.length() - 1));
                 default -> false;
             };
-        }).sorted((a, b) -> Boolean.compare(a.pattern.equals("*"), b.pattern.equals("*")))
+        }).sorted((a, b) -> {
+            boolean aWildcard = a.pattern.endsWith("*");
+            boolean bWildcard = b.pattern.endsWith("*");
+            if (aWildcard != bWildcard) return Boolean.compare(aWildcard, bWildcard);
+            return Integer.compare(b.pattern.length(), a.pattern.length());
+        })
                 .findFirst();
     }
 }

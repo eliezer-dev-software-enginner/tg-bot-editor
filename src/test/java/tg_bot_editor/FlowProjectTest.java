@@ -36,6 +36,20 @@ class FlowProjectTest {
         assertThrows(IllegalArgumentException.class, () -> FlowValidator.validate(project));
     }
 
+    @Test void routesExactAndLongerPrefixesBeforeGeneralWildcard() {
+        var project = new FlowProject();
+        project.flows.add(new FlowProject.Flow("all", "Todos", "*", 0, 0));
+        project.flows.add(new FlowProject.Flow("ads", "Anúncios", "ads:*", 0, 0));
+        project.flows.add(new FlowProject.Flow("edit", "Editar", "ads:edit:*", 0, 0));
+        project.flows.add(new FlowProject.Flow("specific", "Específico", "ads:edit:42", 0, 0));
+        project.flows.forEach(flow -> flow.trigger = "CALLBACK");
+
+        assertEquals("specific", FlowRouter.find(project, "CALLBACK", "ads:edit:42").orElseThrow().id);
+        assertEquals("edit", FlowRouter.find(project, "CALLBACK", "ads:edit:43").orElseThrow().id);
+        assertEquals("ads", FlowRouter.find(project, "CALLBACK", "ads:delete:42").orElseThrow().id);
+        assertEquals("all", FlowRouter.find(project, "CALLBACK", "other").orElseThrow().id);
+    }
+
     @Test void dailyScheduleDoesNotFireEarlyInTheLastSecond() {
         var before = java.time.ZonedDateTime.parse("2026-10-19T08:59:59.750-03:00[America/Sao_Paulo]");
         assertEquals(250_000_000L, BotRunner.delayUntilDailyNanos(before, java.time.LocalTime.of(9, 0)));
