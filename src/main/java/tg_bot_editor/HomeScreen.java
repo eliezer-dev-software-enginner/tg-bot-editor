@@ -21,6 +21,7 @@ public final class HomeScreen implements ScreenComponent {
     private final State<String> projectLabel = State.of("Nenhum projeto aberto");
     private final State<String> status = State.of("Crie ou abra um projeto para começar.");
     private final State<String> title = State.of("");
+    private final State<String> description = State.of("");
     private final State<String> pattern = State.of("");
     private final State<String> trigger = State.of("COMMAND");
     private final State<String> targetChatEnv = State.of("TG_BOT_TARGET_CHAT");
@@ -65,7 +66,8 @@ public final class HomeScreen implements ScreenComponent {
                         new Button("Abrir projeto").onClick(this::openProject),
                         new Button("Fechar projeto").onClick(this::closeProject),
                         new Button("Abrir pasta do projeto").onClick(this::openFolder),
-                        new Button("Salvar projeto").onClick(this::save)),
+                        new Button("Salvar projeto").onClick(this::save),
+                        new Button("Exportar comandos").onClick(this::exportCommands)),
                 new Row(new RowProps().spacingOf(7)).children(
                         new Select<String>(new SelectProps().minWidth(230).maxWidth(230))
                                 .items(recentPaths).value(recentChoice),
@@ -78,6 +80,7 @@ public final class HomeScreen implements ScreenComponent {
         var inspector = new Container(new ContainerProps().paddingAll(16).spacingOf(10).width(330)).children(
                 new Text("Propriedades", new TextProps().fontSize(20)),
                 new Text("Título"), new Input(title, field("Nome da ação")),
+                new Text("Descrição do comando"), new Input(description, field("O que este comando faz")),
                 new Text("Script Java · retorne texto ou BotReply"), new JavaCodeEditor(script, 230),
                 new Row(new RowProps().spacingOf(6)).children(
                         new Button("Aplicar").onClick(this::apply),
@@ -127,7 +130,8 @@ public final class HomeScreen implements ScreenComponent {
         if (selected != null && !selected.id.equals(id)) { copyFieldsToSelected(); refresh(); }
         selected = project.flows.stream().filter(flow -> flow.id.equals(id)).findFirst().orElse(null);
         if (selected == null) return;
-        title.set(selected.title); pattern.set(selected.pattern); trigger.set(selected.trigger);
+        title.set(selected.title); description.set(selected.description == null ? "" : selected.description);
+        pattern.set(selected.pattern); trigger.set(selected.trigger);
         targetChatEnv.set(selected.targetChatEnv == null ? "TG_BOT_TARGET_CHAT" : selected.targetChatEnv);
         script.set(selected.script); canvas.select(id); status.set("Editando " + selected.title);
     }
@@ -151,14 +155,15 @@ public final class HomeScreen implements ScreenComponent {
         status.set("Fluxo atualizado. Salve o projeto para persistir."); return true;
     }
     private void copyFieldsToSelected() {
-        selected.title = title.get().trim(); selected.pattern = pattern.get().trim();
+        selected.title = title.get().trim(); selected.description = description.get().trim();
+        selected.pattern = pattern.get().trim();
         selected.trigger = trigger.get(); selected.targetChatEnv = targetChatEnv.get().trim();
         selected.script = script.get();
     }
     private void remove() {
         if (selected == null) { status.set("Selecione um comando para excluir."); return; }
         project.flows.remove(selected); selected = null;
-        title.set(""); pattern.set(""); script.set(""); trigger.set("COMMAND");
+        title.set(""); description.set(""); pattern.set(""); script.set(""); trigger.set("COMMAND");
         targetChatEnv.set("TG_BOT_TARGET_CHAT"); refresh(); canvas.select(null);
         if (!project.flows.isEmpty()) select(project.flows.getFirst().id);
         status.set("Comando excluído. Salve o projeto para persistir.");
@@ -173,6 +178,14 @@ public final class HomeScreen implements ScreenComponent {
             FlowStore.write(file, project); ProjectEnvironment.write(file.getParent(), environment.get());
             recent.remember(file); refreshRecents(); status.set("Projeto salvo: " + file);
         } catch (Exception error) { status.set("Falha ao salvar: " + error.getMessage()); }
+    }
+    private void exportCommands() {
+        if (file == null) { status.set("Crie ou abra um projeto primeiro."); return; }
+        try {
+            if (selected != null) copyFieldsToSelected();
+            Path exported = CommandExporter.export(project, file.getParent());
+            status.set("Comandos exportados: " + exported);
+        } catch (Exception error) { status.set("Falha ao exportar comandos: " + error.getMessage()); }
     }
     private void test() {
         if (file == null || selected == null) { status.set("Selecione uma ação em um projeto aberto."); return; }
@@ -208,7 +221,7 @@ public final class HomeScreen implements ScreenComponent {
         projectLabel.set("Projeto aberto: " + file.getParent().getFileName());
         canvas.resetView(); refresh(); canvas.select(null);
         if (!project.flows.isEmpty()) select(project.flows.getFirst().id);
-        else { title.set(""); pattern.set(""); script.set(""); }
+        else { title.set(""); description.set(""); pattern.set(""); script.set(""); }
         recent.remember(file); refreshRecents(); status.set("Pasta: " + file.getParent());
     }
     private void openProject() {
@@ -229,7 +242,7 @@ public final class HomeScreen implements ScreenComponent {
         try { persistDraft(); }
         catch (Exception error) { status.set("Não foi possível fechar sem salvar o rascunho: " + error.getMessage()); return; }
         file = null; selected = null; project = new FlowProject();
-        projectLabel.set("Nenhum projeto aberto"); title.set(""); pattern.set("");
+        projectLabel.set("Nenhum projeto aberto"); title.set(""); description.set(""); pattern.set("");
         script.set(""); environment.set(""); canvas.resetView(); refresh(); canvas.select(null);
         status.set("Projeto fechado. O último rascunho foi salvo.");
     }

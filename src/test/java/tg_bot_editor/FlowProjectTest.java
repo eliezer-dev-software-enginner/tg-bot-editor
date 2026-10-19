@@ -86,6 +86,18 @@ class FlowProjectTest {
         assertEquals(project.flows.size(), ActionCompiler.compileProject(file.getParent(), project).size());
     }
 
+    @Test void exportsOnlyAvailableCommandsWithDescriptions() throws Exception {
+        Path file = ProjectWorkspace.copyStarter(directory);
+        var project = FlowStore.read(file);
+        Path output = CommandExporter.export(project, file.getParent());
+        String commands = java.nio.file.Files.readString(output);
+        assertTrue(commands.contains("/start — Mostra uma mensagem de boas-vindas"));
+        assertTrue(commands.contains("/addchat — Adiciona um canal de destino"));
+        assertFalse(commands.contains("Publicar notícias do G1"));
+        assertFalse(commands.contains("ads:*"));
+        assertEquals(9, commands.lines().filter(line -> line.startsWith("/")).count());
+    }
+
     @Test void firstLaunchInstallsAnEditableProjectOnlyOnce() throws Exception {
         Path file = ProjectWorkspace.ensureStarter(directory);
         assertEquals("meu-primeiro-projeto", file.getParent().getFileName().toString());

@@ -19,7 +19,8 @@
       "pattern": "/start",
       "script": "return \"Olá! Este bot reúne notícias, ROMs e anúncios. Use /ads para administrar anúncios.\";",
       "x": 48,
-      "y": 194
+      "y": 194,
+      "description": "Mostra uma mensagem de boas-vindas e indica como usar o bot."
     },
     {
       "id": "daily-roms",
@@ -38,7 +39,8 @@
       "pattern": "/ads",
       "script": "return GenshinAdsAction.run(context);",
       "x": 48,
-      "y": 335
+      "y": 335,
+      "description": "Abre o menu de gerenciamento de anúncios."
     },
     {
       "id": "ads-new",
@@ -47,7 +49,8 @@
       "pattern": "/novo",
       "script": "return GenshinAdsAction.run(context);",
       "x": 378,
-      "y": 335
+      "y": 335,
+      "description": "Inicia o cadastro de um novo anúncio."
     },
     {
       "id": "ads-save",
@@ -56,7 +59,8 @@
       "pattern": "/save",
       "script": "return GenshinAdsAction.run(context);",
       "x": 708,
-      "y": 335
+      "y": 335,
+      "description": "Salva o anúncio em edição."
     },
     {
       "id": "ads-list",
@@ -65,7 +69,8 @@
       "pattern": "/listar",
       "script": "return GenshinAdsAction.run(context);",
       "x": 48,
-      "y": 465
+      "y": 465,
+      "description": "Lista os anúncios cadastrados."
     },
     {
       "id": "ads-publish",
@@ -74,7 +79,8 @@
       "pattern": "/publicar",
       "script": "return GenshinAdsAction.run(context);",
       "x": 378,
-      "y": 465
+      "y": 465,
+      "description": "Publica um anúncio nos canais configurados."
     },
     {
       "id": "ads-config",
@@ -83,7 +89,8 @@
       "pattern": "/config",
       "script": "return GenshinAdsAction.run(context);",
       "x": 708,
-      "y": 465
+      "y": 465,
+      "description": "Mostra a configuração de anúncios e canais."
     },
     {
       "id": "ads-addchat",
@@ -92,7 +99,8 @@
       "pattern": "/addchat",
       "script": "return GenshinAdsAction.run(context);",
       "x": 48,
-      "y": 595
+      "y": 595,
+      "description": "Adiciona um canal de destino pelo ID informado."
     },
     {
       "id": "ads-removechat",
@@ -101,7 +109,8 @@
       "pattern": "/removechat",
       "script": "return GenshinAdsAction.run(context);",
       "x": 378,
-      "y": 595
+      "y": 595,
+      "description": "Remove um canal de destino pelo ID informado."
     },
     {
       "id": "ads-callback",

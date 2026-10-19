@@ -12,6 +12,7 @@ public final class FlowProject {
     public static final class Flow {
         public String id;
         public String title;
+        public String description = "";
         public String trigger = "COMMAND";
         public String pattern = "/start";
         public String script = "return \"Olá!\";";
