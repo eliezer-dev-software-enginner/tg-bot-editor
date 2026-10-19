@@ -151,10 +151,14 @@ class FlowProjectTest {
 
     @Test void projectScriptsAndVariablesAreSeparateFromTheEditor() throws Exception {
         Path file = ProjectWorkspace.create(directory, "Meu bot");
-        assertTrue(java.nio.file.Files.isRegularFile(file.getParent().resolve("pom.xml")));
+        assertTrue(java.nio.file.Files.isRegularFile(file.getParent().resolve("gradlew")));
+        assertTrue(java.nio.file.Files.isExecutable(file.getParent().resolve("gradlew")));
+        assertTrue(java.nio.file.Files.isRegularFile(file.getParent().resolve("build.gradle.kts")));
+        assertTrue(java.nio.file.Files.isRegularFile(file.getParent().resolve("gradle/wrapper/gradle-wrapper.jar")));
+        assertFalse(java.nio.file.Files.exists(file.getParent().resolve("pom.xml")));
         assertTrue(java.nio.file.Files.isRegularFile(file.getParent().resolve("README.md")));
         assertTrue(java.nio.file.Files.isRegularFile(file.getParent().resolve("runtime/src/main/java/tg_bot_editor/BotRunner.java")));
-        assertTrue(java.nio.file.Files.readString(file.getParent().resolve(".gitignore")).contains("/target/"));
+        assertTrue(java.nio.file.Files.readString(file.getParent().resolve(".gitignore")).contains("/build/"));
         BotRunner.main(new String[]{"--check", file.toString()});
         Path script = ProjectWorkspace.createScript(file.getParent(), "MeuNovoScript");
         assertTrue(java.nio.file.Files.readString(script).contains("class MeuNovoScript"));
@@ -165,6 +169,20 @@ class FlowProjectTest {
         var recent = new RecentProjects(directory.resolve("settings/recent.properties"));
         recent.remember(file);
         assertEquals(file, recent.list().getFirst());
+    }
+
+    @Test void legacyProjectReceivesGradleWithoutReplacingItsFiles() throws Exception {
+        Path projectDirectory = directory.resolve("legacy");
+        java.nio.file.Files.createDirectories(projectDirectory);
+        java.nio.file.Files.writeString(projectDirectory.resolve("pom.xml"), "custom Maven build");
+        java.nio.file.Files.writeString(projectDirectory.resolve("scripts-note.txt"), "keep me");
+
+        ProjectWorkspace.initializeLegacyScripts(projectDirectory, new FlowProject());
+
+        assertTrue(java.nio.file.Files.isExecutable(projectDirectory.resolve("gradlew")));
+        assertTrue(java.nio.file.Files.isRegularFile(projectDirectory.resolve("build.gradle.kts")));
+        assertEquals("custom Maven build", java.nio.file.Files.readString(projectDirectory.resolve("pom.xml")));
+        assertEquals("keep me", java.nio.file.Files.readString(projectDirectory.resolve("scripts-note.txt")));
     }
 
     @Test void genshinAdsWizardPersistsAnAdInsideTheProject() throws Exception {

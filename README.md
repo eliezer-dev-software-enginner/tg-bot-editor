@@ -11,31 +11,31 @@ The desktop editor requires a JDK 25 installation with `javac`. Its Gradle build
 ./gradlew run
 ```
 
-The generated bot projects have a separate Maven build and target Java 21; see below. The editor has a graphical interface, so `run` requires a desktop environment.
+The generated bot projects have a separate Gradle Wrapper build and target Java 21; see below. The editor has a graphical interface, so `run` requires a desktop environment.
 
 ## Projects and scripts
 
 The editor and bot projects are separate. **Novo projeto** creates a portable,
 independently buildable folder (by default under `~/Documents/TG-bot Editor/projects/`):
 
-On first launch, the editor installs and opens an editable `meu-primeiro-projeto` starter at `~/Documents/TG-bot Editor/projects/meu-primeiro-projeto/`. Its 15 G1, ROM, and Genshin Ads flows and three Java script files are copied from the package. An earlier starter stored as `projects/arsenal-soup/` is renamed in place so its scripts and local data remain intact. Later launches reopen the most recent project; existing project files are not overwritten.
+On first launch, the editor installs and opens an editable `meu-primeiro-projeto` starter at `~/Documents/TG-bot Editor/projects/meu-primeiro-projeto/`. Its 15 G1, ROM, and Genshin Ads flows and three Java script files are copied from the package. An earlier starter stored as `projects/arsenal-soup/` is renamed in place so its scripts and local data remain intact. Later launches reopen the most recent project; existing project files are not overwritten. When an older project is opened, the editor adds missing Gradle Wrapper files without overwriting its existing build or scripts.
 
 ```text
 Meu bot/
 ├── bot.json          # visual flows and Java action bodies
 ├── scripts/          # editable Java classes such as MeuNovoScript.java
 ├── runtime/          # standalone headless runner and bot API source
-├── pom.xml           # Maven build; produces target/tg-bot-project.jar
+├── gradlew, build.gradle.kts  # Gradle Wrapper; produces build/libs/<project>.jar
 ├── README.md         # build and Termux instructions
 ├── .env.example      # local configuration template without secrets
 ├── .env              # local variable values; never commit
-├── .gitignore        # excludes .env, data/ and target/
+├── .gitignore        # excludes .env, data/ and build/
 └── data/             # generated runtime state; never commit
 ```
 
-Every new project includes the runner sources and Maven build. In that project's
-directory, run `mvn clean package` followed by
-`java -jar target/tg-bot-project.jar --check bot.json` to validate it without a
+Every new project includes the runner sources and Gradle Wrapper. In that project's
+directory, run `./gradlew clean build` followed by
+`java -jar build/libs/<project>.jar --check bot.json` to validate it without a
 Telegram token. Fill an ignored `.env` and omit `--check` to start the bot.
 The editor packages these runner sources from its own code so generated projects
 do not depend on the editor installation. The included project README documents

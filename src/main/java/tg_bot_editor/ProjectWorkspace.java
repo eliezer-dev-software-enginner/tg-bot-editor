@@ -30,9 +30,9 @@ public final class ProjectWorkspace {
         var project = new FlowProject();
         project.name = trimmed;
         FlowStore.write(directory.resolve("bot.json"), project);
-        Files.writeString(directory.resolve(".gitignore"), ".env\n/data/\n/target/\n/.idea/\n");
+        Files.writeString(directory.resolve(".gitignore"), ".env\n/data/\n/build/\n/target/\n/.gradle/\n/.idea/\n");
         Files.writeString(directory.resolve(".env.example"), "# Copy to .env and set your Telegram bot token locally.\nTG_BOT_TOKEN=\n");
-        copyTemplate("/templates/project-build/pom.xml", directory.resolve("pom.xml"));
+        ensureGradleBuild(directory);
         copyTemplate("/templates/project-build/README.md", directory.resolve("README.md"));
         Path runtime = directory.resolve("runtime/src/main/java/tg_bot_editor");
         Files.createDirectories(runtime);
@@ -47,6 +47,18 @@ public final class ProjectWorkspace {
             if (input == null) throw new IOException("Arquivo de projeto ausente no editor: " + resource);
             Files.copy(input, destination, StandardCopyOption.REPLACE_EXISTING);
         }
+    }
+
+    private static void ensureGradleBuild(Path directory) throws IOException {
+        for (String relative : List.of("build.gradle.kts", "settings.gradle.kts", "gradlew", "gradlew.bat",
+                "gradle/wrapper/gradle-wrapper.jar", "gradle/wrapper/gradle-wrapper.properties")) {
+            Path target = directory.resolve(relative);
+            if (!Files.exists(target)) {
+                Files.createDirectories(target.getParent());
+                copyTemplate("/templates/project-build/" + relative, target);
+            }
+        }
+        directory.resolve("gradlew").toFile().setExecutable(true);
     }
 
     public static Path createScript(Path projectDirectory, String className) throws IOException {
@@ -65,6 +77,7 @@ public final class ProjectWorkspace {
     }
 
     public static void initializeLegacyScripts(Path directory, FlowProject project) throws IOException {
+        ensureGradleBuild(directory);
         Path scripts = directory.resolve("scripts");
         Files.createDirectories(scripts);
         for (String name : new String[]{"G1NewsAction", "RomPostAction", "GenshinAdsAction"}) {
