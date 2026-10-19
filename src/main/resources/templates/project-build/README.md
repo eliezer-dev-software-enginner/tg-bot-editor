@@ -25,6 +25,9 @@ java -jar target/tg-bot-project.jar bot.json
 O arquivo `.env`, a pasta `data/` e o build `target/` são locais e ignorados
 pelo Git. Variáveis do processo têm prioridade sobre as de `.env`. Use apenas
 uma instância por token para evitar disputas no long polling.
+O bot precisa ter permissão de publicar nos canais configurados. O runner
+mostra a descrição de erros da API do Telegram e encerra o polling quando
+recebe um HTTP 4xx permanente, evitando tentativas repetidas sem fim.
 
 ## Termux
 

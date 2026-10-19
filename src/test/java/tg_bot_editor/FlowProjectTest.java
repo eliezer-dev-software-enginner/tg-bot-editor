@@ -36,6 +36,25 @@ class FlowProjectTest {
         assertThrows(IllegalArgumentException.class, () -> FlowValidator.validate(project));
     }
 
+    @Test void dailyScheduleDoesNotFireEarlyInTheLastSecond() {
+        var before = java.time.ZonedDateTime.parse("2026-10-19T08:59:59.750-03:00[America/Sao_Paulo]");
+        assertEquals(250_000_000L, BotRunner.delayUntilDailyNanos(before, java.time.LocalTime.of(9, 0)));
+        assertEquals(java.time.Duration.ofDays(1).toNanos(),
+                BotRunner.delayUntilDailyNanos(before.plusNanos(250_000_000L), java.time.LocalTime.of(9, 0)));
+    }
+
+    @Test void permanentTelegramErrorsExposeReasonAndStopPolling() {
+        var error = assertThrows(java.io.IOException.class, () -> BotRunner.parseTelegramResponse(
+                400, "getUpdates", "{\"ok\":false,\"description\":\"Bad Request: invalid offset TOKEN123\"}",
+                "TOKEN123"));
+        assertTrue(error.getMessage().contains("getUpdates HTTP 400: Bad Request: invalid offset"));
+        assertFalse(error.getMessage().contains("TOKEN123"));
+        assertTrue(BotRunner.shouldStopPolling(400));
+        assertTrue(BotRunner.shouldStopPolling(409));
+        assertFalse(BotRunner.shouldStopPolling(429));
+        assertFalse(BotRunner.shouldStopPolling(500));
+    }
+
     @Test void g1FeedRecordsOnlySuccessfullyDeliveredArticles() throws Exception {
         var feed = new com.fasterxml.jackson.databind.ObjectMapper().readTree("""
                 [{"content":{"title":"Notícia","summary":"Resumo","url":"https://example.com/1",

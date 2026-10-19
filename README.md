@@ -2,6 +2,17 @@
 
 A native Megalodonte desktop application for visually defining Telegram bot routes. One runner and one Telegram identity can execute command, text, photo, callback and scheduled flows. The canvas, project controls, Java code editor and inputs are Megalodonte components; no WebView is used.
 
+## Build and launch
+
+The desktop editor requires a JDK 25 installation with `javac`. Its Gradle build resolves `megalodonte-components`, `megalodonte-base` and `megalodonte-theme` version `1.0.0-beta` from Maven Local or Maven Central. These artifacts are not included in this repository. From the repository root:
+
+```bash
+./gradlew test
+./gradlew run
+```
+
+The generated bot projects have a separate Maven build and target Java 21; see below. The editor has a graphical interface, so `run` requires a desktop environment.
+
 ## Projects and scripts
 
 The editor and bot projects are separate. **Novo projeto** creates a portable,
@@ -46,22 +57,25 @@ Drag empty canvas space with the primary mouse button to pan the graph without b
 The **Variáveis de ambiente do projeto** multiline input edits the project's `.env`, one `NAME=value` per line. For example:
 
 ```dotenv
-TG_BOT_TOKEN=your-existing-arsenal-soup-bot-token
+TG_BOT_TOKEN=your-bot-token
 TG_BOT_G1_CHAT=-1000000000000
 TG_BOT_ROMS_CHAT=-1000000000000
 TG_BOT_ROMS_DATA_DIR=/absolute/path/to/post-roms-bot/jsons
-TG_BOT_ADS_DATA_DIR=/home/eliezer/Desktop/dev/dev/java-world/genshin-ads/ads_data
+TG_BOT_ADS_DATA_DIR=/absolute/path/to/ads_data
 ```
 
-Process environment variables override `.env` values. The **Canal agendado · nome da variável** field on a scheduled G1 or ROM route chooses which variable holds that route's destination chat. Tokens and chat IDs do not go into `bot.json`; the generated `.gitignore` excludes `.env`. The default runner uses the existing `arsenal-soup` bot identity. Do not run it alongside an old publisher using the same token, because long polling would conflict and scheduled posts could be duplicated.
+Process environment variables override `.env` values. The **Canal agendado · nome da variável** field on a scheduled G1 or ROM route chooses which variable holds that route's destination chat. Tokens and chat IDs do not go into `bot.json`; the generated `.gitignore` excludes `.env`. The runner uses the bot identity supplied through `TG_BOT_TOKEN`. Do not run it alongside another publisher using the same token, because long polling would conflict and scheduled posts could be duplicated.
 
 ```bash
-./gradlew test
-./gradlew run
 ./gradlew runBot -PbotProject=examples/meu-primeiro-projeto/bot.json
 ```
 
-The example project is [examples/meu-primeiro-projeto](examples/meu-primeiro-projeto). Copy `.env.example` to `.env` and set local values before starting its runner. The editor itself does not start the runner.
+The example project is [examples/meu-primeiro-projeto](examples/meu-primeiro-projeto). Copy `.env.example` to `.env` and set local values before starting its runner. `runBot` uses the editor's Gradle classpath; it does not create a standalone project JAR. The editor itself does not start the runner.
+The runner schedules daily flows at their exact time; subsecond rounding cannot
+trigger repeated ROM posts immediately before a scheduled hour. Permanent
+Telegram HTTP 4xx polling errors include the API description and stop the runner
+instead of retrying every few seconds. Scheduled channels must grant the bot
+permission to publish messages.
 
 ## Migrated example flows
 
@@ -84,6 +98,8 @@ interval, avoiding an immediate burst of scheduled posts. Stop the old publisher
 before using the new runner against the same channels.
 
 ## Packaging
+
+The command below requires Python 3 and the separate `megalodonte-packaging` Python library. Install that library in your Python environment or point `MEGALODONTE_PACKAGING_HOME` to its source checkout; the library is not included here.
 
 ```bash
 python3 scripts/package.py build appimage

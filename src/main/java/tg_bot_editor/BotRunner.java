@@ -17,6 +17,7 @@ import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /** One long-polling process and one token for every enabled flow. */
@@ -26,6 +27,7 @@ public final class BotRunner {
     private final String token;
     private final FlowProject project;
     private final Map<String, BotAction> actions = new HashMap<>();
+    private ScheduledExecutorService schedules;
     private long offset;
 
     private BotRunner(String token, Path projectDirectory, FlowProject project) throws Exception {
@@ -51,13 +53,17 @@ public final class BotRunner {
         String token = ProjectEnvironment.get("TG_BOT_TOKEN");
         if (token == null || token.isBlank()) throw new IllegalStateException("Defina TG_BOT_TOKEN fora do projeto");
         var runner = new BotRunner(token, projectFile.getParent(), project);
-        runner.startSchedules();
-        runner.poll();
+        try {
+            runner.startSchedules();
+            runner.poll();
+        } finally {
+            if (runner.schedules != null) runner.schedules.shutdownNow();
+        }
     }
 
     private void startSchedules() {
         if (project.flows.stream().noneMatch(flow -> scheduled(flow.trigger))) return;
-        var timer = Executors.newSingleThreadScheduledExecutor();
+        schedules = Executors.newSingleThreadScheduledExecutor();
         for (var flow : project.flows) {
             if (!scheduled(flow.trigger)) continue;
             long chat = 0;
@@ -71,9 +77,9 @@ public final class BotRunner {
             final long targetChat = chat;
             if ("INTERVAL".equalsIgnoreCase(flow.trigger)) {
                 long minutes = Long.parseLong(flow.pattern);
-                timer.scheduleWithFixedDelay(() -> runScheduled(flow, targetChat), 0, minutes, TimeUnit.MINUTES);
+                schedules.scheduleWithFixedDelay(() -> runScheduled(flow, targetChat), 0, minutes, TimeUnit.MINUTES);
             } else {
-                for (String value : flow.pattern.split(",")) scheduleDaily(timer, flow, targetChat, LocalTime.parse(value.trim()));
+                for (String value : flow.pattern.split(",")) scheduleDaily(schedules, flow, targetChat, LocalTime.parse(value.trim()));
             }
         }
     }
@@ -82,16 +88,23 @@ public final class BotRunner {
         return "INTERVAL".equalsIgnoreCase(trigger) || "DAILY".equalsIgnoreCase(trigger);
     }
 
+    static boolean shouldStopPolling(int status) {
+        return status >= 400 && status < 500 && status != 429;
+    }
+
     private void scheduleDaily(java.util.concurrent.ScheduledExecutorService timer,
                                FlowProject.Flow flow, long chat, LocalTime time) {
-        var now = ZonedDateTime.now();
-        var next = now.toLocalDate().atTime(time).atZone(now.getZone());
-        if (!next.isAfter(now)) next = next.plusDays(1);
-        long delay = Math.max(0, Duration.between(now, next).toSeconds());
+        long delay = delayUntilDailyNanos(ZonedDateTime.now(), time);
         timer.schedule(() -> {
             try { runScheduled(flow, chat); }
-            finally { scheduleDaily(timer, flow, chat, time); }
-        }, delay, TimeUnit.SECONDS);
+            finally { if (!timer.isShutdown()) scheduleDaily(timer, flow, chat, time); }
+        }, delay, TimeUnit.NANOSECONDS);
+    }
+
+    static long delayUntilDailyNanos(ZonedDateTime now, LocalTime time) {
+        var next = now.toLocalDate().atTime(time).atZone(now.getZone());
+        if (!next.isAfter(now)) next = next.plusDays(1);
+        return Duration.between(now, next).toNanos();
     }
 
     private void runScheduled(FlowProject.Flow flow, long chat) {
@@ -115,6 +128,10 @@ public final class BotRunner {
                 }
             } catch (InterruptedException stopped) {
                 Thread.currentThread().interrupt();
+            } catch (TelegramApiException error) {
+                System.err.println("Falha na API do Telegram: " + safeMessage(error));
+                if (shouldStopPolling(error.status)) return;
+                Thread.sleep(3_000);
             } catch (Exception error) {
                 System.err.println("Falha ao receber atualizações: " + safeMessage(error));
                 Thread.sleep(3_000);
@@ -248,8 +265,27 @@ public final class BotRunner {
                 .header("Content-Type", contentType)
                 .POST(body).build();
         var response = http.send(request, HttpResponse.BodyHandlers.ofString());
-        if (response.statusCode() != 200) throw new IllegalStateException("Telegram HTTP " + response.statusCode());
-        return JSON.readTree(response.body());
+        return parseTelegramResponse(response.statusCode(), method, response.body(), token);
+    }
+
+    static JsonNode parseTelegramResponse(int status, String method, String body, String token) throws Exception {
+        JsonNode result;
+        try { result = JSON.readTree(body); }
+        catch (Exception malformed) { result = null; }
+        if (status != 200 || result == null || !result.path("ok").asBoolean()) {
+            String description = result == null ? "resposta sem descrição"
+                    : result.path("description").asText("resposta sem descrição");
+            throw new TelegramApiException(status, method, description.replace(token, "[token redacted]"));
+        }
+        return result;
+    }
+
+    private static final class TelegramApiException extends java.io.IOException {
+        final int status;
+        TelegramApiException(int status, String method, String description) {
+            super("Telegram " + method + " HTTP " + status + ": " + description);
+            this.status = status;
+        }
     }
 
     private String safeMessage(Exception error) {
