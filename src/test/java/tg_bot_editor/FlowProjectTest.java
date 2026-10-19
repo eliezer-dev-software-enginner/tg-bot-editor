@@ -207,14 +207,23 @@ class FlowProjectTest {
         assertTrue(actions.get("ads-new").run(new BotContext(1, 42, "/novo", "tester")).toString().contains("foto"));
         assertTrue(actions.get("ads-photo").run(new BotContext(1, 42, "", "tester", "photo-file-id"))
                 .toString().contains("título"));
-        actions.get("ads-text").run(new BotContext(1, 42, "Anúncio teste", "tester"));
+        actions.get("ads-text").run(new BotContext(1, 42, "<b>Anúncio teste</b>", "tester"));
         actions.get("ads-text").run(new BotContext(1, 42, "5", "tester"));
         actions.get("ads-text").run(new BotContext(1, 42, "Site | https://example.com", "tester"));
         assertTrue(actions.get("ads-save").run(new BotContext(1, 42, "/save", "tester"))
                 .toString().contains("salvo"));
         assertTrue(java.nio.file.Files.isRegularFile(file.getParent().resolve("data/genshin-ads.json")));
-        assertEquals(1, ((java.util.List<?>) actions.get("ads-list")
-                .run(new BotContext(1, 42, "/listar", "tester"))).size());
+        @SuppressWarnings("unchecked") var listed = (java.util.List<BotReply>) actions.get("ads-list")
+                .run(new BotContext(1, 42, "/listar", "tester"));
+        assertEquals(1, listed.size());
+        assertTrue(listed.getFirst().html());
+        assertTrue(listed.getFirst().text().contains("<b>Anúncio teste</b>"));
+        actions.get("ads-addchat").run(new BotContext(1, 42, "/addchat -100123", "tester"));
+        @SuppressWarnings("unchecked") var published = (java.util.List<BotDelivery>) actions.get("ads-publish")
+                .run(new BotContext(1, 42, "/publicar", "tester"));
+        assertEquals(-100123, published.getFirst().chatId());
+        assertTrue(published.getFirst().reply().html());
+        assertTrue(published.getFirst().reply().text().contains("<b>Anúncio teste</b>"));
     }
 
     @Test void importsLegacyAdsFromConfiguredDirectoryWithoutChangingOriginalFiles() throws Exception {

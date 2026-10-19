@@ -97,7 +97,7 @@ public final class GenshinAdsAction {
         var replies = new ArrayList<BotReply>();
         for (Ad ad : read().ads) {
             if (ad.owner != user) continue;
-            replies.add(BotReply.photo(ad.photo, ad.title + "\nIntervalo: " + ad.interval + " min")
+            replies.add(BotReply.photo(ad.photo, ad.title + "\nIntervalo: " + ad.interval + " min").asHtml()
                     .withButtons(List.of(BotButton.callback("Editar", "ads:edit:" + ad.id),
                             BotButton.callback("Excluir", "ads:delete:" + ad.id),
                             BotButton.callback("Publicar agora", "ads:publish:" + ad.id))));
@@ -167,7 +167,7 @@ public final class GenshinAdsAction {
 
     private static void addDeliveries(List<BotDelivery> output, Ad ad, List<Long> chats, boolean acknowledge) {
         for (int i = 0; i < chats.size(); i++) {
-            BotReply reply = BotReply.photo(ad.photo, ad.title).withButtons(ad.buttons);
+            BotReply reply = BotReply.photo(ad.photo, ad.title).asHtml().withButtons(ad.buttons);
             if (acknowledge && i == chats.size() - 1) reply = reply.afterSend(() -> markSent(ad.id));
             output.add(new BotDelivery(chats.get(i), reply));
         }
