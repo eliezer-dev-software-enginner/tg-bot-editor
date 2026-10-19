@@ -50,6 +50,7 @@ TG_BOT_TOKEN=your-existing-arsenal-soup-bot-token
 TG_BOT_G1_CHAT=-1000000000000
 TG_BOT_ROMS_CHAT=-1000000000000
 TG_BOT_ROMS_DATA_DIR=/absolute/path/to/post-roms-bot/jsons
+TG_BOT_ADS_DATA_DIR=/home/eliezer/Desktop/dev/dev/java-world/genshin-ads/ads_data
 ```
 
 Process environment variables override `.env` values. The **Canal agendado · nome da variável** field on a scheduled G1 or ROM route chooses which variable holds that route's destination chat. Tokens and chat IDs do not go into `bot.json`; the generated `.gitignore` excludes `.env`. The default runner uses the existing `arsenal-soup` bot identity. Do not run it alongside an old publisher using the same token, because long polling would conflict and scheduled posts could be duplicated.
@@ -68,10 +69,19 @@ The example project is [examples/meu-primeiro-projeto](examples/meu-primeiro-pro
 | --- | --- |
 | `arsenal-soup` | G1 feed every three hours, with per-article acknowledgement after Telegram confirms delivery. |
 | `post-roms-bot` | ROM publication at 09:00, 15:00 and 21:00 using its external JSON catalog, local covers and inline links. |
-| `genshin-ads` | `/ads`, `/novo`, `/save`, `/listar`, `/publicar`, `/config`, `/addchat`, `/removechat`, photo/text wizard, edit/delete/publish callbacks, and a one-minute scheduler for saved ad intervals. Ads and channel IDs are stored in ignored project `data/`. Existing `genshin-ads` data is not imported automatically. |
+| `genshin-ads` | `/ads`, `/novo`, `/save`, `/listar`, `/publicar`, `/config`, `/addchat`, `/removechat`, photo/text wizard, edit/delete/publish callbacks, and a one-minute scheduler for saved ad intervals. Set `TG_BOT_ADS_DATA_DIR` to an absolute folder such as the existing `genshin-ads/ads_data`; otherwise state stays in the ignored project `data/`. |
 | `promove-grupo-bot-ads` | Not yet migrated; its payment and admin features still need a separate project script/flow port. |
 
-The new ads flow accepts Telegram photo file IDs for the unified bot identity. Old photo IDs from a different bot identity cannot be reused. Configure target channels with `/addchat <id>` after cutover. The example's `GenshinAdsAction` is project source, so you can change it without rebuilding the editor.
+The new ads flow accepts Telegram photo file IDs for the unified bot identity.
+Old photo IDs from another bot identity cannot be reused, but imported ads use
+their local image files instead. The example's `GenshinAdsAction` is project
+source, so you can change it without rebuilding the editor.
+When `TG_BOT_ADS_DATA_DIR` points to a folder with legacy `ads.json`,
+`configs.json` and `images/`, the first read imports the ads and channel IDs
+into `genshin-ads.json` in that folder. The original files are preserved; local
+images are referenced by absolute path. Imported ads start a fresh publishing
+interval, avoiding an immediate burst of scheduled posts. Stop the old publisher
+before using the new runner against the same channels.
 
 ## Packaging
 

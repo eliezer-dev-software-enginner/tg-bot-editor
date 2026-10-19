@@ -104,6 +104,8 @@ class FlowProjectTest {
         assertEquals("meu-primeiro-projeto", FlowStore.read(file).name);
         assertEquals(15, FlowStore.read(file).flows.size());
         assertTrue(java.nio.file.Files.isRegularFile(file.getParent().resolve("scripts/GenshinAdsAction.java")));
+        assertTrue(java.nio.file.Files.readString(file.getParent().resolve(".env.example"))
+                .contains("TG_BOT_ADS_DATA_DIR="));
         java.nio.file.Files.writeString(file.getParent().resolve("scripts/MyChange.java"), "class MyChange {}\n");
         assertEquals(file, ProjectWorkspace.ensureStarter(directory));
         assertTrue(java.nio.file.Files.isRegularFile(file.getParent().resolve("scripts/MyChange.java")));
@@ -162,5 +164,31 @@ class FlowProjectTest {
         assertTrue(java.nio.file.Files.isRegularFile(file.getParent().resolve("data/genshin-ads.json")));
         assertEquals(1, ((java.util.List<?>) actions.get("ads-list")
                 .run(new BotContext(1, 42, "/listar", "tester"))).size());
+    }
+
+    @Test void importsLegacyAdsFromConfiguredDirectoryWithoutChangingOriginalFiles() throws Exception {
+        Path projectFile = ProjectWorkspace.copyStarter(directory.resolve("project"));
+        Path adsDirectory = directory.resolve("legacy-ads");
+        java.nio.file.Files.createDirectories(adsDirectory.resolve("images"));
+        java.nio.file.Files.write(adsDirectory.resolve("images/cover.jpg"), new byte[]{1, 2, 3});
+        String ads = """
+                [{"id":"ad-1","ownerUserId":42,"title":"Anúncio antigo","image":"cover.jpg",
+                  "buttons":[{"title":"Abrir","url":"https://example.com"}],"interval":60}]
+                """;
+        String configs = "[{\"userId\":42,\"targetChatIds\":[-100123]}]";
+        java.nio.file.Files.writeString(adsDirectory.resolve("ads.json"), ads);
+        java.nio.file.Files.writeString(adsDirectory.resolve("configs.json"), configs);
+        ProjectEnvironment.useDraft(projectFile.getParent(), "TG_BOT_ADS_DATA_DIR=" + adsDirectory);
+        var project = FlowStore.read(projectFile);
+        var actions = ActionCompiler.compileProject(projectFile.getParent(), project);
+        assertEquals(1, ((java.util.List<?>) actions.get("ads-list")
+                .run(new BotContext(1, 42, "/listar", "tester"))).size());
+        String imported = java.nio.file.Files.readString(adsDirectory.resolve("genshin-ads.json"));
+        assertTrue(imported.contains(adsDirectory.resolve("images/cover.jpg").toString()));
+        assertTrue(imported.contains("-100123"));
+        assertTrue(((java.util.List<?>) actions.get("ads-tick")
+                .run(new BotContext(0, 0, "", "scheduler"))).isEmpty());
+        assertEquals(ads, java.nio.file.Files.readString(adsDirectory.resolve("ads.json")));
+        assertEquals(configs, java.nio.file.Files.readString(adsDirectory.resolve("configs.json")));
     }
 }

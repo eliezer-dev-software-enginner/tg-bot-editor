@@ -188,11 +188,50 @@ public final class GenshinAdsAction {
     private static Path dataFile() {
         Path directory = ProjectEnvironment.directory();
         if (directory == null) throw new IllegalStateException("Abra um projeto antes de executar anúncios.");
-        return directory.resolve("data").resolve("genshin-ads.json");
+        String configured = ProjectEnvironment.get("TG_BOT_ADS_DATA_DIR");
+        if (configured == null || configured.isBlank()) return directory.resolve("data/genshin-ads.json");
+        Path dataDirectory = Path.of(configured).normalize();
+        if (!dataDirectory.isAbsolute())
+            throw new IllegalArgumentException("TG_BOT_ADS_DATA_DIR deve ser um caminho absoluto.");
+        return dataDirectory.resolve("genshin-ads.json");
     }
     private static Data read() throws Exception {
         Path file = dataFile();
-        return Files.isRegularFile(file) ? JSON.readValue(file.toFile(), Data.class) : new Data();
+        if (Files.isRegularFile(file)) return JSON.readValue(file.toFile(), Data.class);
+        Path directory = file.getParent();
+        Path legacyAds = directory.resolve("ads.json");
+        Path legacyConfigs = directory.resolve("configs.json");
+        if (!Files.isRegularFile(legacyAds) && !Files.isRegularFile(legacyConfigs)) return new Data();
+        Data imported = importLegacy(directory, legacyAds, legacyConfigs);
+        write(imported);
+        return imported;
+    }
+    private static Data importLegacy(Path directory, Path adsFile, Path configsFile) throws Exception {
+        Data imported = new Data();
+        if (Files.isRegularFile(adsFile)) {
+            for (var item : JSON.readTree(adsFile.toFile())) {
+                Ad ad = new Ad();
+                ad.id = item.path("id").asText();
+                ad.owner = item.path("ownerUserId").asLong();
+                ad.title = item.path("title").asText();
+                String image = item.path("image").asText("");
+                ad.photo = image.isBlank() ? "" : directory.resolve("images").resolve(image).normalize().toString();
+                ad.interval = item.path("interval").asLong();
+                // Start a fresh interval after import instead of publishing every old ad at once.
+                ad.lastSent = Instant.now().toEpochMilli();
+                for (var button : item.path("buttons"))
+                    ad.buttons.add(BotButton.link(button.path("title").asText(), button.path("url").asText()));
+                imported.ads.add(ad);
+            }
+        }
+        if (Files.isRegularFile(configsFile)) {
+            for (var config : JSON.readTree(configsFile.toFile())) {
+                var chats = new ArrayList<Long>();
+                for (var chat : config.path("targetChatIds")) chats.add(chat.asLong());
+                imported.chats.put(Long.toString(config.path("userId").asLong()), chats);
+            }
+        }
+        return imported;
     }
     private static void write(Data data) throws Exception {
         Path file = dataFile(); Files.createDirectories(file.getParent());

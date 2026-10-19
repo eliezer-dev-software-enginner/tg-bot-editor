@@ -81,6 +81,14 @@ public final class ProjectWorkspace {
         if (!rules.lines().anyMatch(line -> line.trim().equals(".env"))) rules += "\n.env\n";
         if (!rules.lines().anyMatch(line -> line.trim().equals("/data/"))) rules += "/data/\n";
         Files.writeString(ignore, rules);
+        if (project.flows.stream().anyMatch(flow -> flow.script != null && flow.script.contains("GenshinAdsAction."))) {
+            Path example = directory.resolve(".env.example");
+            String settings = Files.exists(example) ? Files.readString(example)
+                    : "# Copy to .env and fill locally.\nTG_BOT_TOKEN=\n";
+            if (settings.lines().noneMatch(line -> line.startsWith("TG_BOT_ADS_DATA_DIR=")))
+                Files.writeString(example, settings + (settings.endsWith("\n") ? "" : "\n")
+                        + "TG_BOT_ADS_DATA_DIR=\n");
+        }
     }
 
     /** Add the missing ads flows to the earlier bundled starter without replacing user edits. */
@@ -109,6 +117,7 @@ public final class ProjectWorkspace {
             FlowStore.write(projectFile, FlowStore.read(input));
         }
         initializeLegacyScripts(directory, FlowStore.read(projectFile));
+        copyTemplate("/templates/meu-primeiro-projeto/.env.example", directory.resolve(".env.example"));
         return projectFile;
     }
 
