@@ -22,6 +22,8 @@ public final class HomeScreen implements ScreenComponent {
     private final State<String> recentChoice = State.of(null);
     private final State<String> projectLabel = State.of("Nenhum projeto aberto");
     private final State<String> status = State.of("Crie ou abra um projeto para começar.");
+    private final State<String> runLabel = State.of("▶ Executar");
+    private final State<String> stopLabel = State.of("■ Parado");
     private final State<String> title = State.of("");
     private final State<String> description = State.of("");
     private final State<String> pattern = State.of("");
@@ -73,8 +75,8 @@ public final class HomeScreen implements ScreenComponent {
                         new Button("Fechar projeto").onClick(this::closeProject),
                         new Button("Abrir pasta do projeto").onClick(this::openFolder),
                         new Button("Salvar projeto").onClick(this::save),
-                        new Button("▶ Executar", new ButtonProps().success()).onClick(this::startBot),
-                        new Button("■ Parar", new ButtonProps().danger()).onClick(this::stopBot),
+                        new Button(runLabel, new ButtonProps().success()).onClick(this::startBot),
+                        new Button(stopLabel, new ButtonProps().danger()).onClick(this::stopBot),
                         new Button("Exportar comandos").onClick(this::exportCommands)),
                 new Row(new RowProps().spacingOf(7)).children(
                         new Select<String>(new SelectProps().minWidth(230).maxWidth(230))
@@ -208,10 +210,14 @@ public final class HomeScreen implements ScreenComponent {
                     .redirectOutput(ProcessBuilder.Redirect.appendTo(log.toFile()))
                     .start();
             botProcess = process;
+            runLabel.set("▶ Executando");
+            stopLabel.set("■ Parar");
             status.set("Bot em execução. Saída: " + log);
             process.onExit().thenAccept(exited -> Platform.runLater(() -> {
                 if (botProcess == exited) {
                     botProcess = null;
+                    runLabel.set("▶ Executar");
+                    stopLabel.set("■ Parado");
                     status.set("Bot encerrado (código " + exited.exitValue() + "). Saída: " + log);
                 }
             }));
@@ -219,8 +225,13 @@ public final class HomeScreen implements ScreenComponent {
     }
     private void stopBot() {
         Process running = botProcess;
-        if (running == null || !running.isAlive()) { status.set("Nenhum bot em execução."); return; }
+        if (running == null || !running.isAlive()) {
+            stopLabel.set("■ Parado");
+            status.set("Nenhum bot em execução.");
+            return;
+        }
         running.destroy();
+        stopLabel.set("■ Parando");
         status.set("Parando o bot...");
     }
     private void exportCommands() {
@@ -307,6 +318,8 @@ public final class HomeScreen implements ScreenComponent {
             }
         }
         botProcess = null;
+        runLabel.set("▶ Executar");
+        stopLabel.set("■ Parado");
     }
     private void persistDraft() throws Exception {
         if (file == null) return;
