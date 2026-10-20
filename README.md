@@ -75,7 +75,9 @@ The example project is [examples/meu-primeiro-projeto](examples/meu-primeiro-pro
 The runner schedules daily flows at their exact time; subsecond rounding cannot
 trigger repeated ROM posts immediately before a scheduled hour. Permanent
 Telegram HTTP 4xx polling errors include the API description and stop the runner
-instead of retrying every few seconds. Scheduled channels must grant the bot
+instead of retrying every few seconds. An HTTP error while delivering a reply
+is logged with its destination and the failed update is skipped; it does not
+stop long polling. Scheduled channels must grant the bot
 permission to publish messages.
 
 ## Migrated example flows

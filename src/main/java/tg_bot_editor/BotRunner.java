@@ -123,8 +123,16 @@ public final class BotRunner {
                 JsonNode response = call("getUpdates", "offset=" + offset + "&timeout=30", 40);
                 if (!response.path("ok").asBoolean()) throw new IllegalStateException("Telegram recusou getUpdates");
                 for (var update : response.path("result")) {
-                    dispatch(update);
-                    offset = Math.max(offset, update.path("update_id").asLong() + 1);
+                    try {
+                        dispatch(update);
+                    } catch (InterruptedException stopped) {
+                        throw stopped;
+                    } catch (Exception error) {
+                        System.err.println("Falha ao processar atualização " + update.path("update_id").asLong()
+                                + ": " + safeMessage(error));
+                    } finally {
+                        offset = Math.max(offset, update.path("update_id").asLong() + 1);
+                    }
                 }
             } catch (InterruptedException stopped) {
                 Thread.currentThread().interrupt();
@@ -199,27 +207,32 @@ public final class BotRunner {
         String markup = replyMarkup(reply);
         String options = threadOption(threadId) + (reply.html() ? "&parse_mode=HTML" : "")
                 + (markup.isEmpty() ? "" : "&reply_markup=" + URLEncoder.encode(markup, StandardCharsets.UTF_8));
-        if (reply.photoRef() != null && !reply.photoRef().isBlank()) {
-            Path local = reply.photoRef().startsWith("/") ? Path.of(reply.photoRef()) : null;
-            JsonNode result;
-            if (local != null && !Files.isRegularFile(local))
-                throw new IllegalStateException("Arquivo da foto não encontrado: " + local);
-            if (local != null) {
-                result = sendLocalPhoto(chat, threadId, reply, local, markup);
+        try {
+            if (reply.photoRef() != null && !reply.photoRef().isBlank()) {
+                Path local = reply.photoRef().startsWith("/") ? Path.of(reply.photoRef()) : null;
+                JsonNode result;
+                if (local != null && !Files.isRegularFile(local))
+                    throw new IllegalStateException("Arquivo da foto não encontrado: " + local);
+                if (local != null) {
+                    result = sendLocalPhoto(chat, threadId, reply, local, markup);
+                } else {
+                    String data = "chat_id=" + chat + "&photo=" + URLEncoder.encode(reply.photoRef(), StandardCharsets.UTF_8)
+                            + "&caption=" + URLEncoder.encode(reply.text() == null ? "" : reply.text(), StandardCharsets.UTF_8)
+                            + options;
+                    result = call("sendPhoto", data, 40);
+                }
+                if (!result.path("ok").asBoolean())
+                    throw new IllegalStateException("Telegram recusou sendPhoto");
+            } else if (reply.text() != null && !reply.text().isBlank()) {
+                String data = "chat_id=" + chat + "&text=" + URLEncoder.encode(reply.text(), StandardCharsets.UTF_8) + options;
+                if (!call("sendMessage", data, 20).path("ok").asBoolean())
+                    throw new IllegalStateException("Telegram recusou sendMessage");
             } else {
-                String data = "chat_id=" + chat + "&photo=" + URLEncoder.encode(reply.photoRef(), StandardCharsets.UTF_8)
-                        + "&caption=" + URLEncoder.encode(reply.text() == null ? "" : reply.text(), StandardCharsets.UTF_8)
-                        + options;
-                result = call("sendPhoto", data, 40);
+                throw new IllegalStateException("A ação retornou uma resposta vazia");
             }
-            if (!result.path("ok").asBoolean())
-                throw new IllegalStateException("Telegram recusou sendPhoto");
-        } else if (reply.text() != null && !reply.text().isBlank()) {
-            String data = "chat_id=" + chat + "&text=" + URLEncoder.encode(reply.text(), StandardCharsets.UTF_8) + options;
-            if (!call("sendMessage", data, 20).path("ok").asBoolean())
-                throw new IllegalStateException("Telegram recusou sendMessage");
-        } else {
-            throw new IllegalStateException("A ação retornou uma resposta vazia");
+        } catch (TelegramApiException error) {
+            throw new java.io.IOException("Entrega para chat " + chat
+                    + (threadId == null ? "" : ", tópico " + threadId) + " falhou: " + error.getMessage(), error);
         }
         if (reply.afterSend() != null) reply.afterSend().run();
     }
