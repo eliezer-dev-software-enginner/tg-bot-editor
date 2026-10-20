@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalTime;
 import java.time.ZonedDateTime;
 import java.util.HashMap;
@@ -27,6 +28,7 @@ public final class BotRunner {
     private final String token;
     private final FlowProject project;
     private final Map<String, BotAction> actions = new HashMap<>();
+    private final Map<String, Instant> lastStartupDelivery = new HashMap<>();
     private ScheduledExecutorService schedules;
     private long offset;
 
@@ -79,6 +81,7 @@ public final class BotRunner {
                 long minutes = Long.parseLong(flow.pattern);
                 schedules.scheduleWithFixedDelay(() -> runScheduled(flow, targetChat), 0, minutes, TimeUnit.MINUTES);
             } else {
+                if (flow.runOnStart) schedules.execute(() -> runScheduled(flow, targetChat, true));
                 for (String value : flow.pattern.split(",")) scheduleDaily(schedules, flow, targetChat, LocalTime.parse(value.trim()));
             }
         }
@@ -96,7 +99,11 @@ public final class BotRunner {
                                FlowProject.Flow flow, long chat, LocalTime time) {
         long delay = delayUntilDailyNanos(ZonedDateTime.now(), time);
         timer.schedule(() -> {
-            try { runScheduled(flow, chat); }
+            try {
+                Instant startup = lastStartupDelivery.get(flow.id);
+                if (!shouldSkipDailyAfterStartup(startup, Instant.now()))
+                    runScheduled(flow, chat);
+            }
             finally { if (!timer.isShutdown()) scheduleDaily(timer, flow, chat, time); }
         }, delay, TimeUnit.NANOSECONDS);
     }
@@ -107,10 +114,21 @@ public final class BotRunner {
         return Duration.between(now, next).toNanos();
     }
 
+    static boolean shouldSkipDailyAfterStartup(Instant startup, Instant now) {
+        return startup != null && !now.isBefore(startup)
+                && Duration.between(startup, now).compareTo(Duration.ofMinutes(30)) < 0;
+    }
+
     private void runScheduled(FlowProject.Flow flow, long chat) {
+        runScheduled(flow, chat, false);
+    }
+
+    private void runScheduled(FlowProject.Flow flow, long chat, boolean startup) {
         try {
             Object reply = actions.get(flow.id).run(new BotContext(chat, 0, "", "scheduler"));
             send(chat, reply);
+            if (startup && !(reply instanceof java.util.Collection<?> batch && batch.isEmpty()))
+                lastStartupDelivery.put(flow.id, Instant.now());
         } catch (Exception error) {
             System.err.println("Ação agendada falhou: " + flow.title + ": " + safeMessage(error));
         }

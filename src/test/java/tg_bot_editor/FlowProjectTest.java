@@ -72,6 +72,21 @@ class FlowProjectTest {
                 BotRunner.delayUntilDailyNanos(before.plusNanos(250_000_000L), java.time.LocalTime.of(9, 0)));
     }
 
+    @Test void startupPublicationKeepsDailyScheduleWithoutImmediateDuplicate() throws Exception {
+        var project = new FlowProject();
+        var roms = new FlowProject.Flow("daily-roms", "ROMs", "09:00,15:00,21:00", 0, 0);
+        roms.trigger = "DAILY";
+        roms.runOnStart = true;
+        project.flows.add(roms);
+        Path saved = directory.resolve("bot.json");
+        FlowStore.write(saved, project);
+        assertTrue(FlowStore.read(saved).flows.get(0).runOnStart);
+        var start = java.time.Instant.parse("2026-10-20T11:59:00Z");
+        assertFalse(BotRunner.shouldSkipDailyAfterStartup(null, start));
+        assertTrue(BotRunner.shouldSkipDailyAfterStartup(start, start.plusSeconds(29 * 60)));
+        assertFalse(BotRunner.shouldSkipDailyAfterStartup(start, start.plusSeconds(30 * 60)));
+    }
+
     @Test void permanentTelegramErrorsExposeReasonAndStopPolling() {
         var error = assertThrows(java.io.IOException.class, () -> BotRunner.parseTelegramResponse(
                 400, "getUpdates", "{\"ok\":false,\"description\":\"Bad Request: invalid offset TOKEN123\"}",

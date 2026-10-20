@@ -17,6 +17,7 @@ public final class FlowProject {
         public String pattern = "/start";
         public String script = "return \"Olá!\";";
         public String targetChatEnv = "TG_BOT_TARGET_CHAT";
+        public boolean runOnStart;
         public double x = 80;
         public double y = 80;
 
