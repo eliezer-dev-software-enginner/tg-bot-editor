@@ -1,5 +1,6 @@
 package tg_bot_editor;
 
+import javafx.application.Platform;
 import megalodonte.base.components.Component;
 import megalodonte.base.components.ScreenComponent;
 import megalodonte.base.state.State;
@@ -12,6 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 /** The editor stores project paths; scripts and settings belong to each project. */
 public final class HomeScreen implements ScreenComponent {
@@ -38,8 +40,13 @@ public final class HomeScreen implements ScreenComponent {
     private Path file;
     private FlowProject project = new FlowProject();
     private FlowProject.Flow selected;
+    private volatile Process botProcess;
 
     public HomeScreen() {
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            Process running = botProcess;
+            if (running != null && running.isAlive()) running.destroy();
+        }, "tg-bot-editor-stop-runner"));
         canvas.onSelect(this::select).onMove(move -> {
             project.flows.stream().filter(flow -> flow.id.equals(move.id())).findFirst().ifPresent(flow -> {
                 flow.x = move.x(); flow.y = move.y(); refresh();
@@ -67,6 +74,8 @@ public final class HomeScreen implements ScreenComponent {
                         new Button("Fechar projeto").onClick(this::closeProject),
                         new Button("Abrir pasta do projeto").onClick(this::openFolder),
                         new Button("Salvar projeto").onClick(this::save),
+                        new Button("Executar").onClick(this::startBot),
+                        new Button("Parar").onClick(this::stopBot),
                         new Button("Exportar comandos").onClick(this::exportCommands)),
                 new Row(new RowProps().spacingOf(7)).children(
                         new Select<String>(new SelectProps().minWidth(230).maxWidth(230))
@@ -168,16 +177,54 @@ public final class HomeScreen implements ScreenComponent {
         if (!project.flows.isEmpty()) select(project.flows.getFirst().id);
         status.set("Comando excluído. Salve o projeto para persistir.");
     }
-    private void save() {
-        if (file == null) { status.set("Nenhum projeto aberto."); return; }
+    private void save() { saveProject(); }
+    private boolean saveProject() {
+        if (file == null) { status.set("Nenhum projeto aberto."); return false; }
         try {
-            if (selected != null && !updateSelected()) return;
+            if (selected != null && !updateSelected()) return false;
             FlowValidator.validate(project);
             ProjectEnvironment.useDraft(file.getParent(), environment.get());
             ActionCompiler.compileProject(file.getParent(), project);
             FlowStore.write(file, project); ProjectEnvironment.write(file.getParent(), environment.get());
             recent.remember(file); refreshRecents(); status.set("Projeto salvo: " + file);
-        } catch (Exception error) { status.set("Falha ao salvar: " + error.getMessage()); }
+            return true;
+        } catch (Exception error) { status.set("Falha ao salvar: " + error.getMessage()); return false; }
+    }
+    private void startBot() {
+        if (botProcess != null && botProcess.isAlive()) {
+            status.set("O bot já está em execução. Use Parar antes de iniciá-lo novamente.");
+            return;
+        }
+        if (!saveProject()) return;
+        if (ProjectEnvironment.get("TG_BOT_TOKEN") == null
+                || ProjectEnvironment.get("TG_BOT_TOKEN").isBlank()) {
+            status.set("Defina TG_BOT_TOKEN nas variáveis do projeto antes de executar.");
+            return;
+        }
+        try {
+            Path log = file.getParent().resolve("data").resolve("bot-runner.log");
+            Files.createDirectories(log.getParent());
+            String java = Path.of(System.getProperty("java.home"), "bin", "java").toString();
+            Process process = new ProcessBuilder(java, "-cp", System.getProperty("java.class.path"),
+                    BotRunner.class.getName(), file.toString())
+                    .redirectErrorStream(true)
+                    .redirectOutput(ProcessBuilder.Redirect.appendTo(log.toFile()))
+                    .start();
+            botProcess = process;
+            status.set("Bot em execução. Saída: " + log);
+            process.onExit().thenAccept(exited -> Platform.runLater(() -> {
+                if (botProcess == exited) {
+                    botProcess = null;
+                    status.set("Bot encerrado (código " + exited.exitValue() + "). Saída: " + log);
+                }
+            }));
+        } catch (Exception error) { status.set("Não foi possível executar o bot: " + error.getMessage()); }
+    }
+    private void stopBot() {
+        Process running = botProcess;
+        if (running == null || !running.isAlive()) { status.set("Nenhum bot em execução."); return; }
+        running.destroy();
+        status.set("Parando o bot...");
     }
     private void exportCommands() {
         if (file == null) { status.set("Crie ou abra um projeto primeiro."); return; }
@@ -213,6 +260,7 @@ public final class HomeScreen implements ScreenComponent {
         if (!absolute.getFileName().toString().equals("bot.json"))
             throw new IllegalArgumentException("Selecione o arquivo bot.json de um projeto.");
         var loaded = FlowStore.read(absolute);
+        stopRunningBot();
         if (ProjectWorkspace.mergeStarterAds(loaded)) FlowStore.write(absolute, loaded);
         ProjectWorkspace.initializeLegacyScripts(absolute.getParent(), loaded);
         ProjectEnvironment.activate(absolute.getParent());
@@ -241,10 +289,27 @@ public final class HomeScreen implements ScreenComponent {
         if (file == null) { status.set("Nenhum projeto aberto."); return; }
         try { persistDraft(); }
         catch (Exception error) { status.set("Não foi possível fechar sem salvar o rascunho: " + error.getMessage()); return; }
+        stopRunningBot();
         file = null; selected = null; project = new FlowProject();
         projectLabel.set("Nenhum projeto aberto"); title.set(""); description.set(""); pattern.set("");
         script.set(""); environment.set(""); canvas.resetView(); refresh(); canvas.select(null);
         status.set("Projeto fechado. O último rascunho foi salvo.");
+    }
+    private void stopRunningBot() {
+        Process running = botProcess;
+        if (running != null && running.isAlive()) {
+            running.destroy();
+            try {
+                if (!running.waitFor(3, TimeUnit.SECONDS)) {
+                    running.destroyForcibly();
+                    running.waitFor();
+                }
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                running.destroyForcibly();
+            }
+        }
+        botProcess = null;
     }
     private void persistDraft() throws Exception {
         if (file == null) return;

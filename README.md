@@ -46,6 +46,7 @@ The flow body is a short Java expression or block, such as `return MeuNovoScript
 **Abrir projeto** selects a `bot.json`; **Fechar projeto** preserves the current draft and clears the canvas; **Abrir recente** uses a list of the ten most recent paths. The path list is stored separately at `~/.config/tg-bot-editor/recent-projects.properties` (or under `XDG_CONFIG_HOME`). Existing `~/Documents/TG-bot Editor/bot.json` projects are recognized and receive missing external scripts. When an older bundled G1/ROM starter is opened, the missing ads routes are merged without replacing existing flows.
 
 Click a card to edit its trigger and Java body. **Excluir** in Properties removes the selected command; **Salvar projeto** persists the change. Switching cards retains edits in memory. The Java editor provides syntax colors, line numbers and indentation. **Executar teste** runs the selected action locally; use it only for project code you trust, since project scripts run with your user permissions.
+**Executar** saves and validates the open project, then starts its Telegram runner in a separate Java process. Set `TG_BOT_TOKEN` in the project's ignored `.env` first. **Parar** stops that process; closing or switching projects also stops it. The editor shows the runner's state and appends its output to `data/bot-runner.log` in the project folder. Restart the bot after changing a script or flow. Do not start the same project from a terminal at the same time.
 **Exportar comandos** writes a UTF-8 `comandos.txt` beside `bot.json`, listing
 only `COMMAND` triggers with their editable descriptions. When an older flow
 has no description, its title is used. Scheduled, text, photo and callback
@@ -70,7 +71,7 @@ Process environment variables override `.env` values. The **Canal agendado · no
 ./gradlew runBot -PbotProject=examples/meu-primeiro-projeto/bot.json
 ```
 
-The example project is [examples/meu-primeiro-projeto](examples/meu-primeiro-projeto). Copy `.env.example` to `.env` and set local values before starting its runner. `runBot` uses the editor's Gradle classpath; it does not create a standalone project JAR. The editor itself does not start the runner.
+The example project is [examples/meu-primeiro-projeto](examples/meu-primeiro-projeto). Copy `.env.example` to `.env` and set local values before starting its runner. `runBot` uses the editor's Gradle classpath; it does not create a standalone project JAR. The editor's **Executar** button starts the saved project directly.
 The runner schedules daily flows at their exact time; subsecond rounding cannot
 trigger repeated ROM posts immediately before a scheduled hour. Permanent
 Telegram HTTP 4xx polling errors include the API description and stop the runner
