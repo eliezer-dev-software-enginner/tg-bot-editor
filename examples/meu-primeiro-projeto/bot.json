@@ -80,7 +80,7 @@
       "script": "return GenshinAdsAction.run(context);",
       "x": 378,
       "y": 465,
-      "description": "Publica um anúncio nos canais configurados."
+      "description": "Publica um anúncio nos grupos, tópicos e canais configurados."
     },
     {
       "id": "ads-config",
@@ -93,6 +93,16 @@
       "description": "Mostra a configuração de anúncios e canais."
     },
     {
+      "id": "ads-topic",
+      "title": "Anúncios: identificar tópico",
+      "trigger": "COMMAND",
+      "pattern": "/topic",
+      "script": "return GenshinAdsAction.run(context);",
+      "x": 1038,
+      "y": 465,
+      "description": "Mostra os IDs do grupo e do tópico atual para configurar um destino."
+    },
+    {
       "id": "ads-addchat",
       "title": "Anúncios: adicionar canal",
       "trigger": "COMMAND",
@@ -100,7 +110,7 @@
       "script": "return GenshinAdsAction.run(context);",
       "x": 48,
       "y": 595,
-      "description": "Adiciona um canal de destino pelo ID informado."
+      "description": "Adiciona um grupo ou canal, opcionalmente dentro de um tópico."
     },
     {
       "id": "ads-removechat",
@@ -110,7 +120,7 @@
       "script": "return GenshinAdsAction.run(context);",
       "x": 378,
       "y": 595,
-      "description": "Remove um canal de destino pelo ID informado."
+      "description": "Remove um grupo, canal ou tópico de destino."
     },
     {
       "id": "ads-callback",

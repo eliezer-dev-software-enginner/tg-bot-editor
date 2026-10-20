@@ -157,7 +157,8 @@ public final class BotRunner {
             return;
         }
         var context = new BotContext(chat, sender.path("id").asLong(), value,
-                sender.path("username").asText(""), photoRef);
+                sender.path("username").asText(""), photoRef,
+                message.hasNonNull("message_thread_id") ? message.path("message_thread_id").asInt() : null);
         Object reply;
         try {
             reply = actions.get(match.get().id).run(context);
@@ -166,7 +167,7 @@ public final class BotRunner {
             answerCallback(callback);
             return;
         }
-        send(chat, reply);
+        send(chat, context.threadId(), reply);
         answerCallback(callback);
     }
 
@@ -181,18 +182,22 @@ public final class BotRunner {
     }
 
     private void send(long chat, Object value) throws Exception {
+        send(chat, null, value);
+    }
+
+    private void send(long chat, Integer threadId, Object value) throws Exception {
         if (value == null) throw new IllegalStateException("A ação retornou null");
         if (value instanceof BotDelivery delivery) {
-            send(delivery.chatId(), delivery.reply());
+            send(delivery.chatId(), delivery.threadId(), delivery.reply());
             return;
         }
         if (value instanceof Iterable<?> batch) {
-            for (Object item : batch) send(chat, item);
+            for (Object item : batch) send(chat, threadId, item);
             return;
         }
         BotReply reply = value instanceof BotReply rich ? rich : BotReply.text(value.toString());
         String markup = replyMarkup(reply);
-        String options = (reply.html() ? "&parse_mode=HTML" : "")
+        String options = threadOption(threadId) + (reply.html() ? "&parse_mode=HTML" : "")
                 + (markup.isEmpty() ? "" : "&reply_markup=" + URLEncoder.encode(markup, StandardCharsets.UTF_8));
         if (reply.photoRef() != null && !reply.photoRef().isBlank()) {
             Path local = reply.photoRef().startsWith("/") ? Path.of(reply.photoRef()) : null;
@@ -200,7 +205,7 @@ public final class BotRunner {
             if (local != null && !Files.isRegularFile(local))
                 throw new IllegalStateException("Arquivo da foto não encontrado: " + local);
             if (local != null) {
-                result = sendLocalPhoto(chat, reply, local, markup);
+                result = sendLocalPhoto(chat, threadId, reply, local, markup);
             } else {
                 String data = "chat_id=" + chat + "&photo=" + URLEncoder.encode(reply.photoRef(), StandardCharsets.UTF_8)
                         + "&caption=" + URLEncoder.encode(reply.text() == null ? "" : reply.text(), StandardCharsets.UTF_8)
@@ -232,10 +237,20 @@ public final class BotRunner {
         return JSON.createObjectNode().set("inline_keyboard", keyboard).toString();
     }
 
-    private JsonNode sendLocalPhoto(long chat, BotReply reply, Path file, String markup) throws Exception {
+    static String threadOption(Integer threadId) {
+        if (threadId == null) return "";
+        if (threadId <= 0) throw new IllegalArgumentException("ID do tópico deve ser positivo");
+        return "&message_thread_id=" + threadId;
+    }
+
+    private JsonNode sendLocalPhoto(long chat, Integer threadId, BotReply reply, Path file, String markup) throws Exception {
         String boundary = "tg-bot-" + java.util.UUID.randomUUID();
         var output = new java.io.ByteArrayOutputStream();
         writePart(output, boundary, "chat_id", Long.toString(chat));
+        if (threadId != null) {
+            threadOption(threadId);
+            writePart(output, boundary, "message_thread_id", Integer.toString(threadId));
+        }
         writePart(output, boundary, "caption", reply.text() == null ? "" : reply.text());
         if (reply.html()) writePart(output, boundary, "parse_mode", "HTML");
         if (!markup.isEmpty()) writePart(output, boundary, "reply_markup", markup);

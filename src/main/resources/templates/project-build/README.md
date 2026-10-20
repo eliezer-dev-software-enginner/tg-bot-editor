@@ -50,3 +50,9 @@ java -jar build/libs/*.jar bot.json
 
 O wrapper baixa o Gradle na primeira execução. Use `./gradlew --version` para
 verificar o JDK. O alvo do projeto é Java 21; o JDK 25 o compila e executa.
+
+## Anúncios em tópicos
+
+Adicione o bot ao grupo, envie `/topic` dentro do tópico desejado e cadastre
+os IDs retornados com `/addchat <grupo> <tópico>`. Use `/config` para revisar
+os destinos. `/addchat <grupo>` continua publicando no grupo inteiro.

@@ -18,7 +18,7 @@ The generated bot projects have a separate Gradle Wrapper build and target Java 
 The editor and bot projects are separate. **Novo projeto** creates a portable,
 independently buildable folder (by default under `~/Documents/TG-bot Editor/projects/`):
 
-On first launch, the editor installs and opens an editable `meu-primeiro-projeto` starter at `~/Documents/TG-bot Editor/projects/meu-primeiro-projeto/`. Its 15 G1, ROM, and Genshin Ads flows and three Java script files are copied from the package. An earlier starter stored as `projects/arsenal-soup/` is renamed in place so its scripts and local data remain intact. Later launches reopen the most recent project; existing project files are not overwritten. When an older project is opened, the editor adds missing Gradle Wrapper files without overwriting its existing build or scripts.
+On first launch, the editor installs and opens an editable `meu-primeiro-projeto` starter at `~/Documents/TG-bot Editor/projects/meu-primeiro-projeto/`. Its 16 G1, ROM, and Genshin Ads flows and three Java script files are copied from the package. An earlier starter stored as `projects/arsenal-soup/` is renamed in place so its scripts and local data remain intact. Later launches reopen the most recent project; existing project files are not overwritten. When an older project is opened, the editor adds missing Gradle Wrapper files without overwriting its existing build or scripts.
 
 ```text
 Meu bot/
@@ -96,6 +96,11 @@ into `genshin-ads.json` in that folder. The original files are preserved; local
 images are referenced by absolute path. Imported ads start a fresh publishing
 interval, avoiding an immediate burst of scheduled posts. Stop the old publisher
 before using the new runner against the same channels.
+
+Ad destinations may be a whole group/channel or a specific forum topic. Send
+`/topic` inside a topic to obtain its `chat_id` and `message_thread_id`, then
+register it with `/addchat <group-id> <topic-id>`. Existing channel IDs keep
+working. The standalone runner sends `message_thread_id` for topic deliveries.
 
 ## Packaging
 

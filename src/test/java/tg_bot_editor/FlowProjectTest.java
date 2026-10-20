@@ -125,17 +125,18 @@ class FlowProjectTest {
         Path output = CommandExporter.export(project, file.getParent());
         String commands = java.nio.file.Files.readString(output);
         assertTrue(commands.contains("/start — Mostra uma mensagem de boas-vindas"));
-        assertTrue(commands.contains("/addchat — Adiciona um canal de destino"));
+        assertTrue(commands.contains("/addchat — Adiciona um grupo ou canal"));
         assertFalse(commands.contains("Publicar notícias do G1"));
         assertFalse(commands.contains("ads:*"));
-        assertEquals(9, commands.lines().filter(line -> line.startsWith("/")).count());
+        assertTrue(commands.contains("/topic — Mostra os IDs do grupo e do tópico atual"));
+        assertEquals(10, commands.lines().filter(line -> line.startsWith("/")).count());
     }
 
     @Test void firstLaunchInstallsAnEditableProjectOnlyOnce() throws Exception {
         Path file = ProjectWorkspace.ensureStarter(directory);
         assertEquals("meu-primeiro-projeto", file.getParent().getFileName().toString());
         assertEquals("meu-primeiro-projeto", FlowStore.read(file).name);
-        assertEquals(15, FlowStore.read(file).flows.size());
+        assertEquals(16, FlowStore.read(file).flows.size());
         assertTrue(java.nio.file.Files.isRegularFile(file.getParent().resolve("scripts/GenshinAdsAction.java")));
         assertTrue(java.nio.file.Files.readString(file.getParent().resolve(".env.example"))
                 .contains("TG_BOT_ADS_DATA_DIR="));
@@ -195,6 +196,7 @@ class FlowProjectTest {
 
         assertTrue(java.nio.file.Files.isExecutable(projectDirectory.resolve("gradlew")));
         assertTrue(java.nio.file.Files.isRegularFile(projectDirectory.resolve("build.gradle.kts")));
+        assertTrue(java.nio.file.Files.isRegularFile(projectDirectory.resolve("runtime/src/main/java/tg_bot_editor/BotRunner.java")));
         assertEquals("custom Maven build", java.nio.file.Files.readString(projectDirectory.resolve("pom.xml")));
         assertEquals("keep me", java.nio.file.Files.readString(projectDirectory.resolve("scripts-note.txt")));
     }
@@ -218,12 +220,20 @@ class FlowProjectTest {
         assertEquals(1, listed.size());
         assertTrue(listed.getFirst().html());
         assertTrue(listed.getFirst().text().contains("<b>Anúncio teste</b>"));
-        actions.get("ads-addchat").run(new BotContext(1, 42, "/addchat -100123", "tester"));
+        assertTrue(actions.get("ads-topic").run(new BotContext(-100123, 42, "/topic", "tester", null, 37))
+                .toString().contains("/addchat -100123 37"));
+        actions.get("ads-addchat").run(new BotContext(1, 42, "/addchat -100123 37", "tester"));
         @SuppressWarnings("unchecked") var published = (java.util.List<BotDelivery>) actions.get("ads-publish")
                 .run(new BotContext(1, 42, "/publicar", "tester"));
         assertEquals(-100123, published.getFirst().chatId());
+        assertEquals(37, published.getFirst().threadId());
         assertTrue(published.getFirst().reply().html());
         assertTrue(published.getFirst().reply().text().contains("<b>Anúncio teste</b>"));
+        assertTrue(actions.get("ads-config").run(new BotContext(1, 42, "/config", "tester"))
+                .toString().contains("-100123 (tópico 37)"));
+        assertEquals("&message_thread_id=37", BotRunner.threadOption(37));
+        assertEquals("", BotRunner.threadOption(null));
+        assertThrows(IllegalArgumentException.class, () -> BotRunner.threadOption(0));
     }
 
     @Test void importsLegacyAdsFromConfiguredDirectoryWithoutChangingOriginalFiles() throws Exception {
@@ -246,6 +256,10 @@ class FlowProjectTest {
         String imported = java.nio.file.Files.readString(adsDirectory.resolve("genshin-ads.json"));
         assertTrue(imported.contains(adsDirectory.resolve("images/cover.jpg").toString()));
         assertTrue(imported.contains("-100123"));
+        @SuppressWarnings("unchecked") var legacyDelivery = (java.util.List<BotDelivery>) actions.get("ads-publish")
+                .run(new BotContext(1, 42, "/publicar", "tester"));
+        assertEquals(-100123, legacyDelivery.getFirst().chatId());
+        assertNull(legacyDelivery.getFirst().threadId());
         assertTrue(((java.util.List<?>) actions.get("ads-tick")
                 .run(new BotContext(0, 0, "", "scheduler"))).isEmpty());
         assertEquals(ads, java.nio.file.Files.readString(adsDirectory.resolve("ads.json")));

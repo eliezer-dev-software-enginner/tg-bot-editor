@@ -34,11 +34,7 @@ public final class ProjectWorkspace {
         Files.writeString(directory.resolve(".env.example"), "# Copy to .env and set your Telegram bot token locally.\nTG_BOT_TOKEN=\n");
         ensureGradleBuild(directory);
         copyTemplate("/templates/project-build/README.md", directory.resolve("README.md"));
-        Path runtime = directory.resolve("runtime/src/main/java/tg_bot_editor");
-        Files.createDirectories(runtime);
-        for (String source : RUNTIME_SOURCES)
-            copyTemplate("/templates/project-runtime/tg_bot_editor/" + source + ".java",
-                    runtime.resolve(source + ".java"));
+        ensureRuntimeSources(directory);
         return directory.resolve("bot.json");
     }
 
@@ -61,6 +57,16 @@ public final class ProjectWorkspace {
         directory.resolve("gradlew").toFile().setExecutable(true);
     }
 
+    private static void ensureRuntimeSources(Path directory) throws IOException {
+        Path runtime = directory.resolve("runtime/src/main/java/tg_bot_editor");
+        Files.createDirectories(runtime);
+        for (String source : RUNTIME_SOURCES) {
+            Path target = runtime.resolve(source + ".java");
+            if (!Files.exists(target))
+                copyTemplate("/templates/project-runtime/tg_bot_editor/" + source + ".java", target);
+        }
+    }
+
     public static Path createScript(Path projectDirectory, String className) throws IOException {
         String name = className == null ? "" : className.trim();
         if (!name.matches("[A-Za-z_$][A-Za-z0-9_$]*") || !Character.isUpperCase(name.charAt(0)))
@@ -78,6 +84,7 @@ public final class ProjectWorkspace {
 
     public static void initializeLegacyScripts(Path directory, FlowProject project) throws IOException {
         ensureGradleBuild(directory);
+        ensureRuntimeSources(directory);
         Path scripts = directory.resolve("scripts");
         Files.createDirectories(scripts);
         for (String name : new String[]{"G1NewsAction", "RomPostAction", "GenshinAdsAction"}) {

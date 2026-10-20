@@ -29,9 +29,10 @@ public final class GenshinAdsAction {
         if (text.equals("/save")) return saveDraft(user);
         if (text.equals("/listar")) return list(user);
         if (text.equals("/config")) return config(user);
+        if (text.equals("/topic")) return topic(context);
         if (text.startsWith("/addchat ")) return changeChat(user, text.substring(9).trim(), true);
         if (text.startsWith("/removechat ")) return changeChat(user, text.substring(12).trim(), false);
-        if (text.equals("/publicar")) return publishNext(user, context.chatId());
+        if (text.equals("/publicar")) return publishNext(user, context.chatId(), context.threadId());
         Draft draft = DRAFTS.get(user);
         if (draft == null) return "Use /ads para ver os comandos de anúncios.";
         if (context.photoRef() != null) {
@@ -69,14 +70,14 @@ public final class GenshinAdsAction {
         var deliveries = new ArrayList<BotDelivery>();
         for (Ad ad : data.ads) {
             if (ad.interval < 1 || now - ad.lastSent < ad.interval * 60_000L) continue;
-            List<Long> chats = data.chats.getOrDefault(Long.toString(ad.owner), List.of());
-            addDeliveries(deliveries, ad, chats, true);
+            addDeliveries(deliveries, ad, destinations(data, ad.owner), true);
         }
         return deliveries;
     }
 
     private static Object menu() {
-        return "📣 Anúncios: /novo, /listar, /publicar, /config, /addchat <id>, /removechat <id>.";
+        return "📣 Anúncios: /novo, /listar, /publicar, /config, /topic, "
+                + "/addchat <grupo> [tópico], /removechat <grupo> [tópico].";
     }
 
     private static synchronized Object saveDraft(long user) throws Exception {
@@ -106,31 +107,53 @@ public final class GenshinAdsAction {
     }
 
     private static synchronized Object config(long user) throws Exception {
-        return "Canais: " + read().chats.getOrDefault(Long.toString(user), List.of())
-                + "\nUse /addchat <id> e /removechat <id>.";
+        return "Destinos: " + destinations(read(), user)
+                + "\nUse /topic dentro do tópico para obter os IDs; depois /addchat <grupo> <tópico>.";
+    }
+
+    private static Object topic(BotContext context) {
+        if (context.threadId() == null)
+            return "Este chat não informou um tópico. ID do chat: " + context.chatId();
+        return "ID do grupo: " + context.chatId() + "\nID do tópico: " + context.threadId()
+                + "\nCadastre com /addchat " + context.chatId() + " " + context.threadId();
     }
 
     private static synchronized Object changeChat(long user, String value, boolean add) throws Exception {
-        long chat;
-        try { chat = Long.parseLong(value); }
-        catch (NumberFormatException error) { return "ID inválido. Use o número do canal."; }
+        String[] parts = value.split("\\s+");
+        if (parts.length < 1 || parts.length > 2)
+            return "Use /addchat <grupo> [tópico] ou /removechat <grupo> [tópico].";
+        long chat; Integer thread = null;
+        try {
+            chat = Long.parseLong(parts[0]);
+            if (parts.length == 2) {
+                thread = Integer.parseInt(parts[1]);
+                if (thread <= 0) throw new NumberFormatException();
+            }
+        } catch (NumberFormatException error) {
+            return "IDs inválidos. Informe o ID numérico do grupo e, opcionalmente, o ID positivo do tópico.";
+        }
         Data data = read();
-        var chats = new ArrayList<>(data.chats.getOrDefault(Long.toString(user), List.of()));
-        if (add && !chats.contains(chat)) chats.add(chat);
-        if (!add) chats.remove(chat);
-        data.chats.put(Long.toString(user), chats); write(data);
-        return add ? "✅ Canal adicionado." : "✅ Canal removido.";
+        var targets = new ArrayList<>(destinations(data, user));
+        Destination destination = new Destination(chat, thread);
+        if (add && !targets.contains(destination)) targets.add(destination);
+        if (!add) {
+            if (thread == null) targets.removeIf(target -> target.chatId() == chat);
+            else targets.remove(destination);
+        }
+        data.destinations.put(Long.toString(user), targets);
+        write(data);
+        return add ? "✅ Destino adicionado: " + destination : "✅ Destino removido: " + destination;
     }
 
-    private static synchronized Object publishNext(long user, long origin) throws Exception {
+    private static synchronized Object publishNext(long user, long origin, Integer originThread) throws Exception {
         Data data = read();
-        List<Long> chats = data.chats.getOrDefault(Long.toString(user), List.of());
-        if (chats.isEmpty()) return "Cadastre um canal com /addchat <id>.";
+        List<Destination> targets = destinations(data, user);
+        if (targets.isEmpty()) return "Cadastre um destino com /addchat <grupo> [tópico].";
         Ad selected = data.ads.stream().filter(ad -> ad.owner == user).findFirst().orElse(null);
         if (selected == null) return "Nenhum anúncio salvo.";
         var deliveries = new ArrayList<BotDelivery>();
-        addDeliveries(deliveries, selected, chats, true);
-        deliveries.add(new BotDelivery(origin, BotReply.text("📤 Publicação enviada aos canais.")));
+        addDeliveries(deliveries, selected, targets, true);
+        deliveries.add(new BotDelivery(origin, originThread, BotReply.text("📤 Publicação enviada aos destinos.")));
         return deliveries;
     }
 
@@ -155,21 +178,28 @@ public final class GenshinAdsAction {
             return "🗑️ Anúncio excluído.";
         }
         if (action.equals("publish")) {
-            List<Long> chats = data.chats.getOrDefault(Long.toString(context.userId()), List.of());
-            if (chats.isEmpty()) return "Cadastre um canal com /addchat <id>.";
+            List<Destination> targets = destinations(data, context.userId());
+            if (targets.isEmpty()) return "Cadastre um destino com /addchat <grupo> [tópico].";
             var deliveries = new ArrayList<BotDelivery>();
-            addDeliveries(deliveries, ad, chats, true);
-            deliveries.add(new BotDelivery(context.chatId(), BotReply.text("📤 Anúncio publicado.")));
+            addDeliveries(deliveries, ad, targets, true);
+            deliveries.add(new BotDelivery(context.chatId(), context.threadId(), BotReply.text("📤 Anúncio publicado.")));
             return deliveries;
         }
         return menu();
     }
 
-    private static void addDeliveries(List<BotDelivery> output, Ad ad, List<Long> chats, boolean acknowledge) {
-        for (int i = 0; i < chats.size(); i++) {
+    private static List<Destination> destinations(Data data, long user) {
+        String owner = Long.toString(user);
+        if (data.destinations.containsKey(owner)) return data.destinations.get(owner);
+        return data.chats.getOrDefault(owner, List.of()).stream().map(chat -> new Destination(chat, null)).toList();
+    }
+
+    private static void addDeliveries(List<BotDelivery> output, Ad ad, List<Destination> targets, boolean acknowledge) {
+        for (int i = 0; i < targets.size(); i++) {
             BotReply reply = BotReply.photo(ad.photo, ad.title).asHtml().withButtons(ad.buttons);
-            if (acknowledge && i == chats.size() - 1) reply = reply.afterSend(() -> markSent(ad.id));
-            output.add(new BotDelivery(chats.get(i), reply));
+            if (acknowledge && i == targets.size() - 1) reply = reply.afterSend(() -> markSent(ad.id));
+            Destination target = targets.get(i);
+            output.add(new BotDelivery(target.chatId(), target.threadId(), reply));
         }
     }
 
@@ -254,6 +284,12 @@ public final class GenshinAdsAction {
     public static final class Data {
         public List<Ad> ads = new ArrayList<>();
         public Map<String, List<Long>> chats = new java.util.HashMap<>();
+        public Map<String, List<Destination>> destinations = new java.util.HashMap<>();
+    }
+    public record Destination(long chatId, Integer threadId) {
+        @Override public String toString() {
+            return chatId + (threadId == null ? "" : " (tópico " + threadId + ")");
+        }
     }
     public static final class Ad {
         public String id, title, photo;
