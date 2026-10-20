@@ -26,7 +26,6 @@ public final class HomeScreen implements ScreenComponent {
     private final State<String> description = State.of("");
     private final State<String> pattern = State.of("");
     private final State<String> trigger = State.of("COMMAND");
-    private final State<String> targetChatEnv = State.of("TG_BOT_TARGET_CHAT");
     private final State<String> script = State.of("");
     private final State<String> environment = State.of("");
     private final State<String> sample = State.of("/start");
@@ -105,7 +104,6 @@ public final class HomeScreen implements ScreenComponent {
                         new Button("Intervalo").onClick(() -> chooseTrigger("INTERVAL")),
                         new Button("Horários diários").onClick(() -> chooseTrigger("DAILY"))),
                 new Text("Padrão · comando, texto, minutos ou HH:mm"), new Input(pattern, field("/start")),
-                new Text("Canal agendado · nome da variável"), new Input(targetChatEnv, field("TG_BOT_TARGET_CHAT")),
                 new Text("Variáveis de ambiente do projeto"),
                 new TextAreaInput(environment, field("NOME=valor\nOUTRA=valor").height(135).width(300)),
                 new Text("Apenas local: .env não entra no Git."),
@@ -141,7 +139,6 @@ public final class HomeScreen implements ScreenComponent {
         if (selected == null) return;
         title.set(selected.title); description.set(selected.description == null ? "" : selected.description);
         pattern.set(selected.pattern); trigger.set(selected.trigger);
-        targetChatEnv.set(selected.targetChatEnv == null ? "TG_BOT_TARGET_CHAT" : selected.targetChatEnv);
         script.set(selected.script); canvas.select(id); status.set("Editando " + selected.title);
     }
 
@@ -166,14 +163,14 @@ public final class HomeScreen implements ScreenComponent {
     private void copyFieldsToSelected() {
         selected.title = title.get().trim(); selected.description = description.get().trim();
         selected.pattern = pattern.get().trim();
-        selected.trigger = trigger.get(); selected.targetChatEnv = targetChatEnv.get().trim();
+        selected.trigger = trigger.get();
         selected.script = script.get();
     }
     private void remove() {
         if (selected == null) { status.set("Selecione um comando para excluir."); return; }
         project.flows.remove(selected); selected = null;
         title.set(""); description.set(""); pattern.set(""); script.set(""); trigger.set("COMMAND");
-        targetChatEnv.set("TG_BOT_TARGET_CHAT"); refresh(); canvas.select(null);
+        refresh(); canvas.select(null);
         if (!project.flows.isEmpty()) select(project.flows.getFirst().id);
         status.set("Comando excluído. Salve o projeto para persistir.");
     }

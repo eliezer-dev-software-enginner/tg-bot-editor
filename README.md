@@ -65,7 +65,7 @@ TG_BOT_ROMS_DATA_DIR=/absolute/path/to/post-roms-bot/jsons
 TG_BOT_ADS_DATA_DIR=/absolute/path/to/ads_data
 ```
 
-Process environment variables override `.env` values. The **Canal agendado · nome da variável** field on a scheduled G1 or ROM route chooses which variable holds that route's destination chat. Tokens and chat IDs do not go into `bot.json`; the generated `.gitignore` excludes `.env`. The runner uses the bot identity supplied through `TG_BOT_TOKEN`. Do not run it alongside another publisher using the same token, because long polling would conflict and scheduled posts could be duplicated.
+Process environment variables override `.env` values. Set the scheduled destinations directly in the project variables: the starter's G1 and ROM routes use `TG_BOT_G1_CHAT` and `TG_BOT_ROMS_CHAT`, while new scheduled routes use `TG_BOT_TARGET_CHAT` by default. Existing routes retain their saved variable names. Tokens and chat IDs do not go into `bot.json`; the generated `.gitignore` excludes `.env`. The runner uses the bot identity supplied through `TG_BOT_TOKEN`. Do not run it alongside another publisher using the same token, because long polling would conflict and scheduled posts could be duplicated.
 
 ```bash
 ./gradlew runBot -PbotProject=examples/meu-primeiro-projeto/bot.json
