@@ -14,7 +14,7 @@ public final class Main {
             System.out.println("SELF-TEST OK: " + project.flows.size() + " flows compiled");
             return;
         }
-        ThemeManager.setTheme(new EditorTheme());
+        ThemeManager.setTheme(new EditorTheme(ThemePreference.isDark()));
         MegalodonteApp.appName("TG-bot Editor");
         MegalodonteApp.appIcon("/icon.png");
         MegalodonteApp.run(context -> context.useView(new HomeScreen(), 1240, 640));

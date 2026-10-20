@@ -10,6 +10,21 @@ import static org.junit.jupiter.api.Assertions.*;
 class FlowProjectTest {
     @TempDir Path directory;
 
+    @Test void themePreferencePersistsOutsideBotProjects() throws Exception {
+        String previous = System.getProperty("tg.bot.editor.settingsDir");
+        System.setProperty("tg.bot.editor.settingsDir", directory.resolve("settings").toString());
+        try {
+            assertFalse(ThemePreference.isDark());
+            ThemePreference.save(true);
+            assertTrue(ThemePreference.isDark());
+            ThemePreference.save(false);
+            assertFalse(ThemePreference.isDark());
+        } finally {
+            if (previous == null) System.clearProperty("tg.bot.editor.settingsDir");
+            else System.setProperty("tg.bot.editor.settingsDir", previous);
+        }
+    }
+
     @Test void savesAndRoutesMultipleActionsWithoutCredentials() throws Exception {
         var project = new FlowProject();
         project.flows.add(new FlowProject.Flow("start", "Boas-vindas", "/start", 10, 20));
