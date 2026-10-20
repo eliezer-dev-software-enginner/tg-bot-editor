@@ -73,8 +73,8 @@ public final class HomeScreen implements ScreenComponent {
                         new Button("Fechar projeto").onClick(this::closeProject),
                         new Button("Abrir pasta do projeto").onClick(this::openFolder),
                         new Button("Salvar projeto").onClick(this::save),
-                        new Button("Executar").onClick(this::startBot),
-                        new Button("Parar").onClick(this::stopBot),
+                        new Button("▶ Executar", new ButtonProps().success()).onClick(this::startBot),
+                        new Button("■ Parar", new ButtonProps().danger()).onClick(this::stopBot),
                         new Button("Exportar comandos").onClick(this::exportCommands)),
                 new Row(new RowProps().spacingOf(7)).children(
                         new Select<String>(new SelectProps().minWidth(230).maxWidth(230))
