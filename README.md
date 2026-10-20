@@ -102,8 +102,14 @@ before using the new runner against the same channels.
 
 Ad destinations may be a whole group/channel or a specific forum topic. Send
 `/topic` inside a topic to obtain its `chat_id` and `message_thread_id`, then
-register it with `/addchat <group-id> <topic-id>`. Existing channel IDs keep
-working. The standalone runner sends `message_thread_id` for topic deliveries.
+register it with `/addchat <group-id> <topic-id> [name]`, for example
+`/addchat -1001234567890 37 Atualizações`. In `/listar`, choose a saved ad and
+press **Publicar em tópico** to see the registered topics as buttons; selecting
+one publishes only that ad to that topic. **Publicar agora** still sends it to
+all registered destinations. The Bot API cannot list every existing topic in
+a group, so the picker shows only topics registered for that user. Existing
+channel IDs keep working. The standalone runner sends `message_thread_id` for
+topic deliveries.
 
 ## Packaging
 

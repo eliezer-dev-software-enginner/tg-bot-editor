@@ -101,31 +101,32 @@ public final class GenshinAdsAction {
             replies.add(BotReply.photo(ad.photo, ad.title + "\nIntervalo: " + ad.interval + " min").asHtml()
                     .withButtons(List.of(BotButton.callback("Editar", "ads:edit:" + ad.id),
                             BotButton.callback("Excluir", "ads:delete:" + ad.id),
-                            BotButton.callback("Publicar agora", "ads:publish:" + ad.id))));
+                            BotButton.callback("Publicar agora", "ads:publish:" + ad.id),
+                            BotButton.callback("Publicar em tópico", "ads:topics:" + ad.id))));
         }
         return replies.isEmpty() ? "Você não tem anúncios. Use /novo." : replies;
     }
 
     private static synchronized Object config(long user) throws Exception {
         return "Destinos: " + destinations(read(), user)
-                + "\nUse /topic dentro do tópico para obter os IDs; depois /addchat <grupo> <tópico>.";
+                + "\nUse /topic dentro do tópico para obter os IDs; depois /addchat <grupo> <tópico> [nome].";
     }
 
     private static Object topic(BotContext context) {
         if (context.threadId() == null)
             return "Este chat não informou um tópico. ID do chat: " + context.chatId();
         return "ID do grupo: " + context.chatId() + "\nID do tópico: " + context.threadId()
-                + "\nCadastre com /addchat " + context.chatId() + " " + context.threadId();
+                + "\nCadastre com /addchat " + context.chatId() + " " + context.threadId() + " Nome do tópico";
     }
 
     private static synchronized Object changeChat(long user, String value, boolean add) throws Exception {
-        String[] parts = value.split("\\s+");
-        if (parts.length < 1 || parts.length > 2)
-            return "Use /addchat <grupo> [tópico] ou /removechat <grupo> [tópico].";
+        String[] parts = value.split("\\s+", 3);
+        if (parts.length < 1 || parts.length > (add ? 3 : 2))
+            return "Use /addchat <grupo> [tópico] [nome] ou /removechat <grupo> [tópico].";
         long chat; Integer thread = null;
         try {
             chat = Long.parseLong(parts[0]);
-            if (parts.length == 2) {
+            if (parts.length >= 2) {
                 thread = Integer.parseInt(parts[1]);
                 if (thread <= 0) throw new NumberFormatException();
             }
@@ -134,11 +135,23 @@ public final class GenshinAdsAction {
         }
         Data data = read();
         var targets = new ArrayList<>(destinations(data, user));
-        Destination destination = new Destination(chat, thread);
-        if (add && !targets.contains(destination)) targets.add(destination);
+        String name = parts.length == 3 ? parts[2].trim() : null;
+        if (name != null && name.isBlank()) name = null;
+        Destination destination = new Destination(chat, thread, name);
+        if (add) {
+            Destination previous = findDestination(targets, chat, thread);
+            if (previous != null) {
+                targets.remove(previous);
+                if (name == null) destination = previous;
+            }
+            targets.add(destination);
+        }
         if (!add) {
             if (thread == null) targets.removeIf(target -> target.chatId() == chat);
-            else targets.remove(destination);
+            else {
+                Integer selectedThread = thread;
+                targets.removeIf(target -> target.chatId() == chat && selectedThread.equals(target.threadId()));
+            }
         }
         data.destinations.put(Long.toString(user), targets);
         write(data);
@@ -162,8 +175,37 @@ public final class GenshinAdsAction {
         if (parts.length < 3) return menu();
         String action = parts[1], id = parts[2];
         Data data = read();
+        if (action.equals("send")) {
+            String[] targetParts = id.split(":", 3);
+            if (targetParts.length != 3) return "Destino inválido. Abra /listar novamente.";
+            Ad selected = find(data, targetParts[0], context.userId());
+            if (selected == null) return "Anúncio não encontrado.";
+            long chat; int thread;
+            try {
+                chat = Long.parseLong(targetParts[1], 36);
+                thread = Integer.parseInt(targetParts[2], 36);
+            } catch (NumberFormatException error) { return "Destino inválido. Abra /listar novamente."; }
+            Destination target = findDestination(destinations(data, context.userId()), chat, thread);
+            if (target == null || target.threadId() == null)
+                return "Tópico não cadastrado. Abra /listar novamente.";
+            var deliveries = new ArrayList<BotDelivery>();
+            addDeliveries(deliveries, selected, List.of(target), true);
+            deliveries.add(new BotDelivery(context.chatId(), context.threadId(),
+                    BotReply.text("📤 Anúncio publicado em " + target.label() + ".")));
+            return deliveries;
+        }
         Ad ad = find(data, id, context.userId());
         if (ad == null) return "Anúncio não encontrado.";
+        if (action.equals("topics")) {
+            var buttons = destinations(data, context.userId()).stream()
+                    .filter(destination -> destination.threadId() != null)
+                    .map(destination -> BotButton.callback(destination.label(), "ads:send:" + ad.id + ":"
+                            + Long.toString(destination.chatId(), 36) + ":"
+                            + Integer.toString(destination.threadId(), 36)))
+                    .toList();
+            return buttons.isEmpty() ? "Nenhum tópico cadastrado. Use /topic dentro do tópico e depois /addchat <grupo> <tópico> [nome]."
+                    : BotReply.text("Selecione o tópico para publicar “" + ad.title + "”:").withButtons(buttons);
+        }
         if (action.equals("edit")) {
             Draft draft = new Draft(); draft.editingId = id; draft.photo = ad.photo;
             draft.title = ad.title; draft.interval = ad.interval;
@@ -192,6 +234,11 @@ public final class GenshinAdsAction {
         String owner = Long.toString(user);
         if (data.destinations.containsKey(owner)) return data.destinations.get(owner);
         return data.chats.getOrDefault(owner, List.of()).stream().map(chat -> new Destination(chat, null)).toList();
+    }
+
+    private static Destination findDestination(List<Destination> targets, long chat, Integer thread) {
+        return targets.stream().filter(target -> target.chatId() == chat
+                && java.util.Objects.equals(target.threadId(), thread)).findFirst().orElse(null);
     }
 
     private static void addDeliveries(List<BotDelivery> output, Ad ad, List<Destination> targets, boolean acknowledge) {
@@ -286,9 +333,15 @@ public final class GenshinAdsAction {
         public Map<String, List<Long>> chats = new java.util.HashMap<>();
         public Map<String, List<Destination>> destinations = new java.util.HashMap<>();
     }
-    public record Destination(long chatId, Integer threadId) {
+    public record Destination(long chatId, Integer threadId, String name) {
+        public Destination(long chatId, Integer threadId) { this(chatId, threadId, null); }
+        public String label() {
+            return name == null || name.isBlank() ? "Grupo " + chatId + " · tópico " + threadId
+                    : name + " · tópico " + threadId;
+        }
         @Override public String toString() {
-            return chatId + (threadId == null ? "" : " (tópico " + threadId + ")");
+            return chatId + (threadId == null ? "" : " (tópico " + threadId + ")")
+                    + (name == null || name.isBlank() ? "" : " — " + name);
         }
     }
     public static final class Ad {

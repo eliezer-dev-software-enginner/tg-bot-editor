@@ -54,5 +54,8 @@ verificar o JDK. O alvo do projeto é Java 21; o JDK 25 o compila e executa.
 ## Anúncios em tópicos
 
 Adicione o bot ao grupo, envie `/topic` dentro do tópico desejado e cadastre
-os IDs retornados com `/addchat <grupo> <tópico>`. Use `/config` para revisar
-os destinos. `/addchat <grupo>` continua publicando no grupo inteiro.
+os IDs retornados com `/addchat <grupo> <tópico> [nome]`. Use `/config` para
+revisar os destinos. Em `/listar`, o botão **Publicar em tópico** mostra os
+tópicos cadastrados e publica somente o anúncio selecionado no tópico escolhido.
+O Bot API não lista automaticamente todos os tópicos existentes.
+`/addchat <grupo>` continua cadastrando o grupo inteiro.

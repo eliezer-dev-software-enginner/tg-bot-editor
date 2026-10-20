@@ -220,9 +220,24 @@ class FlowProjectTest {
         assertEquals(1, listed.size());
         assertTrue(listed.getFirst().html());
         assertTrue(listed.getFirst().text().contains("<b>Anúncio teste</b>"));
+        String chooseTopic = listed.getFirst().buttons().get(3).callbackData();
+        assertEquals("Publicar em tópico", listed.getFirst().buttons().get(3).text());
         assertTrue(actions.get("ads-topic").run(new BotContext(-100123, 42, "/topic", "tester", null, 37))
                 .toString().contains("/addchat -100123 37"));
-        actions.get("ads-addchat").run(new BotContext(1, 42, "/addchat -100123 37", "tester"));
+        actions.get("ads-addchat").run(new BotContext(1, 42, "/addchat -100123 37 Atualizações", "tester"));
+        actions.get("ads-addchat").run(new BotContext(1, 42, "/addchat -100999 52 Outro tópico", "tester"));
+        var topicMenu = (BotReply) actions.get("ads-callback")
+                .run(new BotContext(1, 42, chooseTopic, "tester"));
+        assertEquals(2, topicMenu.buttons().size());
+        assertTrue(topicMenu.buttons().getFirst().text().contains("Atualizações"));
+        String selectedTopic = topicMenu.buttons().getFirst().callbackData();
+        assertTrue(selectedTopic.getBytes(java.nio.charset.StandardCharsets.UTF_8).length <= 64);
+        @SuppressWarnings("unchecked") var targeted = (java.util.List<BotDelivery>) actions.get("ads-callback")
+                .run(new BotContext(1, 42, selectedTopic, "tester"));
+        assertEquals(2, targeted.size());
+        assertEquals(-100123, targeted.getFirst().chatId());
+        assertEquals(37, targeted.getFirst().threadId());
+        assertEquals(1, targeted.getLast().chatId());
         @SuppressWarnings("unchecked") var published = (java.util.List<BotDelivery>) actions.get("ads-publish")
                 .run(new BotContext(1, 42, "/publicar", "tester"));
         assertEquals(-100123, published.getFirst().chatId());
@@ -230,10 +245,23 @@ class FlowProjectTest {
         assertTrue(published.getFirst().reply().html());
         assertTrue(published.getFirst().reply().text().contains("<b>Anúncio teste</b>"));
         assertTrue(actions.get("ads-config").run(new BotContext(1, 42, "/config", "tester"))
-                .toString().contains("-100123 (tópico 37)"));
+                .toString().contains("-100123 (tópico 37) — Atualizações"));
         assertEquals("&message_thread_id=37", BotRunner.threadOption(37));
         assertEquals("", BotRunner.threadOption(null));
         assertThrows(IllegalArgumentException.class, () -> BotRunner.threadOption(0));
+    }
+
+    @Test void previouslyRegisteredTopicsWithoutNamesRemainAvailable() throws Exception {
+        Path file = ProjectWorkspace.copyStarter(directory);
+        ProjectEnvironment.activate(file.getParent());
+        Path state = file.getParent().resolve("data/genshin-ads.json");
+        java.nio.file.Files.createDirectories(state.getParent());
+        java.nio.file.Files.writeString(state, """
+                {"ads":[],"chats":{},"destinations":{"42":[{"chatId":-100123,"threadId":37}]}}
+                """);
+        var actions = ActionCompiler.compileProject(file.getParent(), FlowStore.read(file));
+        assertTrue(actions.get("ads-config").run(new BotContext(1, 42, "/config", "tester"))
+                .toString().contains("-100123 (tópico 37)"));
     }
 
     @Test void importsLegacyAdsFromConfiguredDirectoryWithoutChangingOriginalFiles() throws Exception {
