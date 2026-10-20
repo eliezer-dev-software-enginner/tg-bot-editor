@@ -4,14 +4,14 @@ A native Megalodonte desktop application for visually defining Telegram bot rout
 
 ## Build and launch
 
-The desktop editor requires a JDK 25 installation with `javac`. Its Gradle build resolves `megalodonte-components`, `megalodonte-base` and `megalodonte-theme` version `1.0.0-beta` from Maven Local or Maven Central. These artifacts are not included in this repository. From the repository root:
+The desktop editor requires a JDK 25 installation with `javac`. Its Gradle build resolves `megalodonte-components`, `megalodonte-base` and `megalodonte-theme` version `1.0.0-beta` from Maven Local or Maven Central. These artifacts are not included in this repository. By default, `settings.gradle.kts` includes sibling source checkouts at `../../framework/libraries/megalodonte-components` and `../../framework/libraries/megalodonte-theme`. Outside that workspace, disable those included builds with `-PuseLocalSources=false`; the three artifacts must then be available in one of the configured Maven repositories. From the repository root:
 
 ```bash
-./gradlew test
-./gradlew run
+./gradlew -PuseLocalSources=false test
+./gradlew -PuseLocalSources=false run
 ```
 
-The generated bot projects have a separate Gradle Wrapper build and target Java 21; see below. The editor has a graphical interface, so `run` requires a desktop environment.
+The generated bot projects have a separate Gradle Wrapper build that uses a JDK 25 toolchain to compile for Java 21; see below. The editor has a graphical interface, so `run` requires a desktop environment.
 
 ## Projects and scripts
 
@@ -68,7 +68,7 @@ TG_BOT_ADS_DATA_DIR=/absolute/path/to/ads_data
 Process environment variables override `.env` values. Set the scheduled destinations directly in the project variables: the starter's G1 and ROM routes use `TG_BOT_G1_CHAT` and `TG_BOT_ROMS_CHAT`, while new scheduled routes use `TG_BOT_TARGET_CHAT` by default. Existing routes retain their saved variable names. Tokens and chat IDs do not go into `bot.json`; the generated `.gitignore` excludes `.env`. The runner uses the bot identity supplied through `TG_BOT_TOKEN`. Do not run it alongside another publisher using the same token, because long polling would conflict and scheduled posts could be duplicated.
 
 ```bash
-./gradlew runBot -PbotProject=examples/meu-primeiro-projeto/bot.json
+./gradlew -PuseLocalSources=false runBot -PbotProject=examples/meu-primeiro-projeto/bot.json
 ```
 
 The example project is [examples/meu-primeiro-projeto](examples/meu-primeiro-projeto). Copy `.env.example` to `.env` and set local values before starting its runner. `runBot` uses the editor's Gradle classpath; it does not create a standalone project JAR. The editor's **Executar** button starts the saved project directly.
@@ -120,3 +120,7 @@ python3 scripts/package.py build appimage
 ```
 
 The shared `megalodonte-packaging` workflow builds AppImage, DEB and MSI when manually dispatched or when a `v*` tag is pushed. The packaged runtime includes Java compiler modules so project scripts can compile at run time.
+
+## License
+
+No license file is present in this repository. The licensing terms need confirmation from the project owner.
