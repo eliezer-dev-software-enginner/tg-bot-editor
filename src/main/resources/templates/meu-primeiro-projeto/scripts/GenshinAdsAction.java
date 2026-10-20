@@ -114,7 +114,9 @@ public final class GenshinAdsAction {
 
     private static Object topic(BotContext context) {
         if (context.threadId() == null)
-            return "Este chat não informou um tópico. ID do chat: " + context.chatId();
+            return "O Telegram não informou um ID de tópico nesta mensagem. ID do grupo: " + context.chatId()
+                    + "\nPara publicar na área geral, cadastre /addchat " + context.chatId()
+                    + ". Para publicar em outro tópico, abra-o e envie /topic dentro dele.";
         return "ID do grupo: " + context.chatId() + "\nID do tópico: " + context.threadId()
                 + "\nCadastre com /addchat " + context.chatId() + " " + context.threadId() + " Nome do tópico";
     }

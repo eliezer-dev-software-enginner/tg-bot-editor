@@ -239,6 +239,8 @@ class FlowProjectTest {
         assertEquals("Publicar em tópico", listed.getFirst().buttons().get(3).text());
         assertTrue(actions.get("ads-topic").run(new BotContext(-100123, 42, "/topic", "tester", null, 37))
                 .toString().contains("/addchat -100123 37"));
+        assertTrue(actions.get("ads-topic").run(new BotContext(-100123, 42, "/topic", "tester"))
+                .toString().contains("/addchat -100123"));
         actions.get("ads-addchat").run(new BotContext(1, 42, "/addchat -100123 37 Atualizações", "tester"));
         actions.get("ads-addchat").run(new BotContext(1, 42, "/addchat -100999 52 Outro tópico", "tester"));
         var topicMenu = (BotReply) actions.get("ads-callback")
