@@ -87,7 +87,7 @@ public final class ProjectWorkspace {
         ensureRuntimeSources(directory);
         Path scripts = directory.resolve("scripts");
         Files.createDirectories(scripts);
-        for (String name : new String[]{"G1NewsAction", "RomPostAction", "GenshinAdsAction"}) {
+        for (String name : new String[]{"G1NewsAction", "GenshinAdsAction"}) {
             if (project.flows.stream().noneMatch(flow -> flow.script != null && flow.script.contains(name + "."))) continue;
             Path target = scripts.resolve(name + ".java");
             if (Files.exists(target)) continue;
@@ -113,8 +113,7 @@ public final class ProjectWorkspace {
 
     /** Add the missing ads flows to the earlier bundled starter without replacing user edits. */
     public static boolean mergeStarterAds(FlowProject project) throws IOException {
-        if (!project.flows.stream().anyMatch(flow -> "g1-news".equals(flow.id))
-                || !project.flows.stream().anyMatch(flow -> "daily-roms".equals(flow.id))) return false;
+        if (!project.flows.stream().anyMatch(flow -> "g1-news".equals(flow.id))) return false;
         boolean changed = false;
         try (InputStream input = ProjectWorkspace.class.getResourceAsStream("/templates/meu-primeiro-projeto/bot.json")) {
             if (input == null) throw new IOException("Missing starter project");

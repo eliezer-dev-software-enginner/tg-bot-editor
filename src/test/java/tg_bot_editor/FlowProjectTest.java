@@ -74,10 +74,10 @@ class FlowProjectTest {
 
     @Test void startupPublicationKeepsDailyScheduleWithoutImmediateDuplicate() throws Exception {
         var project = new FlowProject();
-        var roms = new FlowProject.Flow("daily-roms", "ROMs", "09:00,15:00,21:00", 0, 0);
-        roms.trigger = "DAILY";
-        roms.runOnStart = true;
-        project.flows.add(roms);
+        var news = new FlowProject.Flow("g1-news", "Notícias", "09:00,15:00,21:00", 0, 0);
+        news.trigger = "DAILY";
+        news.runOnStart = true;
+        project.flows.add(news);
         Path saved = directory.resolve("bot.json");
         FlowStore.write(saved, project);
         assertTrue(FlowStore.read(saved).flows.get(0).runOnStart);
@@ -120,28 +120,6 @@ class FlowProjectTest {
         assertTrue(((java.util.List<?>) action.run(new BotContext(1, 1, "", ""))).isEmpty());
     }
 
-    @Test void romCatalogProducesPhotoAndDownloadButton() throws Exception {
-        Path cover = directory.resolve("cover.jpg");
-        java.nio.file.Files.write(cover, new byte[]{1, 2, 3});
-        java.nio.file.Files.writeString(directory.resolve("roms.json"), """
-                [{"id":"r1","consoleId":"gba","nome":"Teste","descricao":"Jogo <novo>",
-                "capaLocalPath":"cover.jpg","linkMonetizado":"https://example.com/download"}]
-                """);
-        java.nio.file.Files.writeString(directory.resolve("consoles.json"), """
-                [{"id":"gba","nome":"GBA"}]
-                """);
-        Path projectFile = ProjectWorkspace.copyStarter(directory.resolve("starter"));
-        var project = new FlowProject();
-        var flow = new FlowProject.Flow("rom", "ROM", "/rom", 0, 0);
-        flow.script = "return RomPostAction.fromCatalog(java.nio.file.Path.of(\"" + directory + "\"));";
-        project.flows.add(flow);
-        var reply = (BotReply) ActionCompiler.compileProject(projectFile.getParent(), project)
-                .get("rom").run(new BotContext(1, 1, "", ""));
-        assertEquals(cover.toString(), reply.photoRef());
-        assertTrue(reply.text().contains("&lt;novo&gt;"));
-        assertEquals(2, reply.buttons().size());
-    }
-
     @Test void bundledProjectCompilesEveryAction() throws Exception {
         Path file = ProjectWorkspace.copyStarter(directory);
         var project = FlowStore.read(file);
@@ -166,7 +144,7 @@ class FlowProjectTest {
         Path file = ProjectWorkspace.ensureStarter(directory);
         assertEquals("meu-primeiro-projeto", file.getParent().getFileName().toString());
         assertEquals("meu-primeiro-projeto", FlowStore.read(file).name);
-        assertEquals(16, FlowStore.read(file).flows.size());
+        assertEquals(15, FlowStore.read(file).flows.size());
         assertTrue(java.nio.file.Files.isRegularFile(file.getParent().resolve("scripts/GenshinAdsAction.java")));
         assertTrue(java.nio.file.Files.readString(file.getParent().resolve(".env.example"))
                 .contains("TG_BOT_ADS_DATA_DIR="));

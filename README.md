@@ -18,7 +18,7 @@ The generated bot projects have a separate Gradle Wrapper build that uses a JDK 
 The editor and bot projects are separate. **Novo projeto** creates a portable,
 independently buildable folder (by default under `~/Documents/TG-bot Editor/projects/`):
 
-On first launch, the editor installs and opens an editable `meu-primeiro-projeto` starter at `~/Documents/TG-bot Editor/projects/meu-primeiro-projeto/`. Its 16 G1, ROM, and Genshin Ads flows and three Java script files are copied from the package. An earlier starter stored as `projects/arsenal-soup/` is renamed in place so its scripts and local data remain intact. Later launches reopen the most recent project; existing project files are not overwritten. When an older project is opened, the editor adds missing Gradle Wrapper files without overwriting its existing build or scripts.
+On first launch, the editor installs and opens an editable `meu-primeiro-projeto` starter at `~/Documents/TG-bot Editor/projects/meu-primeiro-projeto/`. Its 15 G1 and Genshin Ads flows and two Java script files are copied from the package. An earlier starter stored as `projects/arsenal-soup/` is renamed in place so its scripts and local data remain intact. Later launches reopen the most recent project; existing project files are not overwritten. When an older project is opened, the editor adds missing Gradle Wrapper files without overwriting its existing build or scripts.
 
 ```text
 Meu bot/
@@ -41,9 +41,9 @@ The editor packages these runner sources from its own code so generated projects
 do not depend on the editor installation. The included project README documents
 cloning and running with OpenJDK 25 on Termux.
 
-The flow body is a short Java expression or block, such as `return MeuNovoScript.run();`. **+ Script** asks for a Java class name and creates a compilable `scripts/MeuNovoScript.java`. **Abrir pasta do projeto** opens this folder for IntelliJ, VS Code or a file manager. Edit these classes externally, then use **Salvar projeto** to compile every script and action together. Flow bodies and project Java files are loaded by a project class loader; the example-specific `G1NewsAction`, `RomPostAction` and `GenshinAdsAction` are not built into the editor application.
+The flow body is a short Java expression or block, such as `return MeuNovoScript.run();`. **+ Script** asks for a Java class name and creates a compilable `scripts/MeuNovoScript.java`. **Abrir pasta do projeto** opens this folder for IntelliJ, VS Code or a file manager. Edit these classes externally, then use **Salvar projeto** to compile every script and action together. Flow bodies and project Java files are loaded by a project class loader; the example-specific `G1NewsAction` and `GenshinAdsAction` are not built into the editor application.
 
-**Abrir projeto** selects a `bot.json`; **Fechar projeto** preserves the current draft and clears the canvas. The editor reopens the most recent project on startup; its path list is stored separately at `~/.config/tg-bot-editor/recent-projects.properties` (or under `XDG_CONFIG_HOME`). Existing `~/Documents/TG-bot Editor/bot.json` projects are recognized and receive missing external scripts. When an older bundled G1/ROM starter is opened, the missing ads routes are merged without replacing existing flows. **Tema claro/escuro** switches the palette immediately and saves the choice in the same local settings directory.
+**Abrir projeto** selects a `bot.json`; **Fechar projeto** preserves the current draft and clears the canvas. The editor reopens the most recent project on startup; its path list is stored separately at `~/.config/tg-bot-editor/recent-projects.properties` (or under `XDG_CONFIG_HOME`). Existing `~/Documents/TG-bot Editor/bot.json` projects are recognized and receive missing external scripts. When an older bundled G1 starter is opened, the missing ads routes are merged without replacing existing flows. **Tema claro/escuro** switches the palette immediately and saves the choice in the same local settings directory.
 
 Click a card to edit its trigger and Java body. **Excluir** in Properties removes the selected command; **Salvar projeto** persists the change. Switching cards retains edits in memory. The Java editor provides syntax colors, line numbers and indentation. **Executar teste** runs the selected action locally; use it only for project code you trust, since project scripts run with your user permissions.
 **Executar** saves and validates the open project, then starts its Telegram runner in a separate Java process. Set `TG_BOT_TOKEN` in the project's ignored `.env` first. **Parar** stops that process; closing or switching projects also stops it. The editor shows the runner's state and appends its output to `data/bot-runner.log` in the project folder. Restart the bot after changing a script or flow. Do not start the same project from a terminal at the same time.
@@ -60,12 +60,10 @@ The **Variáveis de ambiente do projeto** multiline input edits the project's `.
 ```dotenv
 TG_BOT_TOKEN=your-bot-token
 TG_BOT_G1_CHAT=-1000000000000
-TG_BOT_ROMS_CHAT=-1000000000000
-TG_BOT_ROMS_DATA_DIR=/absolute/path/to/post-roms-bot/jsons
 TG_BOT_ADS_DATA_DIR=/absolute/path/to/ads_data
 ```
 
-Process environment variables override `.env` values. Set the scheduled destinations directly in the project variables: the starter's G1 and ROM routes use `TG_BOT_G1_CHAT` and `TG_BOT_ROMS_CHAT`, while new scheduled routes use `TG_BOT_TARGET_CHAT` by default. Existing routes retain their saved variable names. Tokens and chat IDs do not go into `bot.json`; the generated `.gitignore` excludes `.env`. The runner uses the bot identity supplied through `TG_BOT_TOKEN`. Do not run it alongside another publisher using the same token, because long polling would conflict and scheduled posts could be duplicated.
+Process environment variables override `.env` values. Set the scheduled destinations directly in the project variables: the starter's G1 route uses `TG_BOT_G1_CHAT`, while new scheduled routes use `TG_BOT_TARGET_CHAT` by default. Existing routes retain their saved variable names. Tokens and chat IDs do not go into `bot.json`; the generated `.gitignore` excludes `.env`. The runner uses the bot identity supplied through `TG_BOT_TOKEN`. Do not run it alongside another publisher using the same token, because long polling would conflict and scheduled posts could be duplicated.
 
 ```bash
 ./gradlew -PuseLocalSources=false runBot -PbotProject=examples/meu-primeiro-projeto/bot.json
@@ -73,7 +71,7 @@ Process environment variables override `.env` values. Set the scheduled destinat
 
 The example project is [examples/meu-primeiro-projeto](examples/meu-primeiro-projeto). Copy `.env.example` to `.env` and set local values before starting its runner. `runBot` uses the editor's Gradle classpath; it does not create a standalone project JAR. The editor's **Executar** button starts the saved project directly.
 The runner schedules daily flows at their exact time; subsecond rounding cannot
-trigger repeated ROM posts immediately before a scheduled hour. Permanent
+trigger repeated posts immediately before a scheduled hour. Permanent
 Telegram HTTP 4xx polling errors include the API description and stop the runner
 instead of retrying every few seconds. An HTTP error while delivering a reply
 is logged with its destination and the failed update is skipped; it does not
@@ -85,7 +83,6 @@ permission to publish messages.
 | Source bot | Project flows |
 | --- | --- |
 | `arsenal-soup` | G1 feed every three hours, with per-article acknowledgement after Telegram confirms delivery. |
-| `post-roms-bot` | ROM publication at 09:00, 15:00 and 21:00 using its external JSON catalog, local covers and inline links. |
 | `genshin-ads` | `/ads`, `/novo`, `/save`, `/listar`, `/publicar`, `/config`, `/addchat`, `/removechat`, photo/text wizard, edit/delete/publish callbacks, and a one-minute scheduler for saved ad intervals. Set `TG_BOT_ADS_DATA_DIR` to an absolute folder such as the existing `genshin-ads/ads_data`; otherwise state stays in the ignored project `data/`. |
 | `promove-grupo-bot-ads` | Not yet migrated; its payment and admin features still need a separate project script/flow port. |
 

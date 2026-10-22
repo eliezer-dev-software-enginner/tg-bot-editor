@@ -17,20 +17,10 @@
       "title": "Boas-vindas",
       "trigger": "COMMAND",
       "pattern": "/start",
-      "script": "return \"Olá! Este bot reúne notícias, ROMs e anúncios. Use /ads para administrar anúncios.\";",
+      "script": "return \"Olá! Este bot reúne notícias e anúncios. Use /ads para administrar anúncios.\";",
       "x": 48,
       "y": 194,
       "description": "Mostra uma mensagem de boas-vindas e indica como usar o bot."
-    },
-    {
-      "id": "daily-roms",
-      "title": "Publicar ROM do catálogo",
-      "trigger": "DAILY",
-      "pattern": "09:00,15:00,21:00",
-      "targetChatEnv": "TG_BOT_ROMS_CHAT",
-      "script": "return RomPostAction.run();",
-      "x": 380,
-      "y": 54
     },
     {
       "id": "ads-menu",
