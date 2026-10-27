@@ -27,16 +27,21 @@ public final class BotRunner {
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
     private final String token;
     private final FlowProject project;
+    private final ActionBindings bindings;
+    private final long adminId;
     private final Map<String, BotAction> actions = new HashMap<>();
     private final Map<String, Instant> lastStartupDelivery = new HashMap<>();
     private ScheduledExecutorService schedules;
     private long offset;
 
-    private BotRunner(String token, Path projectDirectory, FlowProject project) throws Exception {
+    BotRunner(String token, Path projectDirectory, FlowProject project) throws Exception {
         this.token = token;
         this.project = project;
         FlowValidator.validate(project);
         actions.putAll(ActionCompiler.compileProject(projectDirectory, project));
+        bindings = new ActionBindings(projectDirectory);
+        String configuredAdmin = ProjectEnvironment.get("TG_BOT_ADMIN_ID");
+        adminId = configuredAdmin == null || configuredAdmin.isBlank() ? 0 : Long.parseLong(configuredAdmin);
     }
 
     public static void main(String[] args) throws Exception {
@@ -71,10 +76,10 @@ public final class BotRunner {
             long chat = 0;
             if (flow.targetChatEnv != null && !flow.targetChatEnv.isBlank()) {
                 String target = ProjectEnvironment.get(flow.targetChatEnv);
-                if (target == null || target.isBlank())
-                    throw new IllegalStateException("Defina " + flow.targetChatEnv + " para " + flow.title);
-                try { chat = Long.parseLong(target); }
-                catch (NumberFormatException error) { throw new IllegalArgumentException(flow.targetChatEnv + " deve ser numérico", error); }
+                if (target != null && !target.isBlank()) {
+                    try { chat = Long.parseLong(target); }
+                    catch (NumberFormatException error) { throw new IllegalArgumentException(flow.targetChatEnv + " deve ser numérico", error); }
+                }
             }
             final long targetChat = chat;
             if ("INTERVAL".equalsIgnoreCase(flow.trigger)) {
@@ -125,10 +130,21 @@ public final class BotRunner {
 
     private void runScheduled(FlowProject.Flow flow, long chat, boolean startup) {
         try {
-            Object reply = actions.get(flow.id).run(new BotContext(chat, 0, "", "scheduler"));
-            send(chat, reply);
-            if (startup && !(reply instanceof java.util.Collection<?> batch && batch.isEmpty()))
-                lastStartupDelivery.put(flow.id, Instant.now());
+            var destinations = bindings.destinations(flow.id);
+            if (destinations.isEmpty() && chat != 0)
+                destinations = java.util.List.of(new ActionBindings.Destination(chat, null));
+            boolean delivered = false;
+            for (var destination : destinations) {
+                try {
+                    Object reply = actions.get(flow.id).run(new BotContext(destination.chatId(), 0, "", "scheduler",
+                            null, destination.threadId()));
+                    send(destination.chatId(), destination.threadId(), reply);
+                    delivered |= !(reply instanceof java.util.Collection<?> batch && batch.isEmpty());
+                } catch (Exception error) {
+                    System.err.println("Ação agendada falhou em " + destination.chatId() + ": " + safeMessage(error));
+                }
+            }
+            if (startup && delivered) lastStartupDelivery.put(flow.id, Instant.now());
         } catch (Exception error) {
             System.err.println("Ação agendada falhou: " + flow.title + ": " + safeMessage(error));
         }
@@ -177,14 +193,15 @@ public final class BotRunner {
                 ? photos.get(photos.size() - 1).path("file_id").asText("") : null;
         String kind = callback.isMissingNode() ? (photoRef != null ? "PHOTO"
                 : value.startsWith("/") ? "COMMAND" : "TEXT") : "CALLBACK";
+        Integer threadId = message.hasNonNull("message_thread_id") ? message.path("message_thread_id").asInt() : null;
+        var context = new BotContext(chat, sender.path("id").asLong(), value,
+                sender.path("username").asText(""), photoRef, threadId);
+        if ("COMMAND".equals(kind) && handleActionCommand(context)) return;
         var match = FlowRouter.find(project, kind, value);
         if (match.isEmpty()) {
             answerCallback(callback);
             return;
         }
-        var context = new BotContext(chat, sender.path("id").asLong(), value,
-                sender.path("username").asText(""), photoRef,
-                message.hasNonNull("message_thread_id") ? message.path("message_thread_id").asInt() : null);
         Object reply;
         try {
             reply = actions.get(match.get().id).run(context);
@@ -195,6 +212,57 @@ public final class BotRunner {
         }
         send(chat, context.threadId(), reply);
         answerCallback(callback);
+    }
+
+    private boolean handleActionCommand(BotContext context) throws Exception {
+        String[] parts = context.text().trim().split("\\s+", 2);
+        String command = parts[0].split("@", 2)[0].toLowerCase(java.util.Locale.ROOT);
+        if (command.equals("/whoami")) {
+            send(context.chatId(), context.threadId(), "Seu ID: " + context.userId());
+            return true;
+        }
+        if (!java.util.Set.of("/actions", "/bindings", "/bindaction", "/unbindaction", "/runaction")
+                .contains(command)) return false;
+        String argument = parts.length == 2 ? parts[1].trim() : "";
+        String response;
+        if (adminId == 0) response = "Configure TG_BOT_ADMIN_ID no .env do projeto para administrar actions.";
+        else if (context.userId() != adminId) response = "Apenas o administrador pode administrar actions.";
+        else {
+            try { response = actionCommand(command, argument, context); }
+            catch (Exception error) {
+                System.err.println("Falha no comando de action: " + safeMessage(error));
+                response = "Falha ao executar action: " + safeMessage(error);
+            }
+        }
+        send(context.chatId(), context.threadId(), response);
+        return true;
+    }
+
+    String actionCommand(String command, String argument, BotContext context) throws Exception {
+        var destination = new ActionBindings.Destination(context.chatId(), context.threadId());
+        if (command.equals("/actions")) {
+            StringBuilder list = new StringBuilder("Actions disponíveis:\n");
+            for (var flow : project.flows)
+                list.append(flow.id).append(" — ").append(flow.title).append(" (")
+                        .append(flow.trigger).append(")\n");
+            return list.toString();
+        }
+        if (command.equals("/bindings")) {
+            var ids = bindings.at(destination);
+            return ids.isEmpty() ? "Nenhuma action vinculada aqui. Use /bindaction <id>."
+                    : "Actions vinculadas aqui:\n" + String.join("\n", ids);
+        }
+        var flow = project.flows.stream().filter(item -> item.id.equals(argument)).findFirst();
+        if (argument.isEmpty() || flow.isEmpty()) return "Informe um ID válido. Use /actions para listar.";
+        if (command.equals("/bindaction"))
+            return bindings.add(argument, destination) ? "Action " + argument + " vinculada a este destino."
+                    : "Action " + argument + " já está vinculada aqui.";
+        if (command.equals("/unbindaction"))
+            return bindings.remove(argument, destination) ? "Vínculo de " + argument + " removido."
+                    : "Action " + argument + " não estava vinculada aqui.";
+        Object reply = actions.get(argument).run(context);
+        send(context.chatId(), context.threadId(), reply);
+        return "Action " + argument + " executada.";
     }
 
     private void answerCallback(JsonNode callback) {

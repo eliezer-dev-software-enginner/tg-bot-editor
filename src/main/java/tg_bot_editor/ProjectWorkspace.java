@@ -12,7 +12,7 @@ public final class ProjectWorkspace {
     public static final String STARTER_NAME = "meu-primeiro-projeto";
     private static final List<String> RUNTIME_SOURCES = List.of(
             "ActionCompiler", "BotAction", "BotButton", "BotContext", "BotDelivery", "BotReply",
-            "BotRunner", "FlowProject", "FlowRouter", "FlowStore", "FlowValidator", "ProjectEnvironment");
+            "BotRunner", "ActionBindings", "FlowProject", "FlowRouter", "FlowStore", "FlowValidator", "ProjectEnvironment");
     private ProjectWorkspace() { }
 
     public static Path defaultProjectsDirectory() {
@@ -31,7 +31,7 @@ public final class ProjectWorkspace {
         project.name = trimmed;
         FlowStore.write(directory.resolve("bot.json"), project);
         Files.writeString(directory.resolve(".gitignore"), ".env\n/data/\n/build/\n/target/\n/.gradle/\n/.idea/\n");
-        Files.writeString(directory.resolve(".env.example"), "# Copy to .env and set your Telegram bot token locally.\nTG_BOT_TOKEN=\n");
+        Files.writeString(directory.resolve(".env.example"), "# Copy to .env and set your Telegram bot token locally.\nTG_BOT_TOKEN=\nTG_BOT_ADMIN_ID=\n");
         ensureGradleBuild(directory);
         copyTemplate("/templates/project-build/README.md", directory.resolve("README.md"));
         ensureRuntimeSources(directory);
@@ -62,7 +62,7 @@ public final class ProjectWorkspace {
         Files.createDirectories(runtime);
         for (String source : RUNTIME_SOURCES) {
             Path target = runtime.resolve(source + ".java");
-            if (!Files.exists(target))
+            if (!Files.exists(target) || source.equals("BotRunner") || source.equals("ActionBindings"))
                 copyTemplate("/templates/project-runtime/tg_bot_editor/" + source + ".java", target);
         }
     }
@@ -101,14 +101,16 @@ public final class ProjectWorkspace {
         if (!rules.lines().anyMatch(line -> line.trim().equals(".env"))) rules += "\n.env\n";
         if (!rules.lines().anyMatch(line -> line.trim().equals("/data/"))) rules += "/data/\n";
         Files.writeString(ignore, rules);
+        Path example = directory.resolve(".env.example");
+        String settings = Files.exists(example) ? Files.readString(example)
+                : "# Copy to .env and fill locally.\nTG_BOT_TOKEN=\n";
+        if (settings.lines().noneMatch(line -> line.startsWith("TG_BOT_ADMIN_ID=")))
+            settings += (settings.endsWith("\n") ? "" : "\n") + "TG_BOT_ADMIN_ID=\n";
         if (project.flows.stream().anyMatch(flow -> flow.script != null && flow.script.contains("GenshinAdsAction."))) {
-            Path example = directory.resolve(".env.example");
-            String settings = Files.exists(example) ? Files.readString(example)
-                    : "# Copy to .env and fill locally.\nTG_BOT_TOKEN=\n";
             if (settings.lines().noneMatch(line -> line.startsWith("TG_BOT_ADS_DATA_DIR=")))
-                Files.writeString(example, settings + (settings.endsWith("\n") ? "" : "\n")
-                        + "TG_BOT_ADS_DATA_DIR=\n");
+                settings += (settings.endsWith("\n") ? "" : "\n") + "TG_BOT_ADS_DATA_DIR=\n";
         }
+        Files.writeString(example, settings);
     }
 
     /** Add the missing ads flows to the earlier bundled starter without replacing user edits. */

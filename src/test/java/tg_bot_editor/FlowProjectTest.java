@@ -10,6 +10,34 @@ import static org.junit.jupiter.api.Assertions.*;
 class FlowProjectTest {
     @TempDir Path directory;
 
+    @Test void listsAndBindsActionsToGroupsAndTopicsWithoutEditingJava() throws Exception {
+        var project = new FlowProject();
+        var first = new FlowProject.Flow("news", "Notícias", "60", 0, 0);
+        first.trigger = "INTERVAL";
+        var second = new FlowProject.Flow("summary", "Resumo", "09:00", 0, 0);
+        second.trigger = "DAILY";
+        project.flows.add(first);
+        project.flows.add(second);
+        java.nio.file.Files.createDirectories(directory.resolve("scripts"));
+        ProjectEnvironment.activate(directory);
+        var runner = new BotRunner("test-token", directory, project);
+        var topic = new BotContext(-100123, 42, "", "tester", null, 37);
+        var group = new BotContext(-100123, 42, "", "tester");
+        assertTrue(runner.actionCommand("/actions", "", topic).contains("news — Notícias (INTERVAL)"));
+        assertTrue(runner.actionCommand("/bindaction", "news", topic).contains("vinculada"));
+        assertTrue(runner.actionCommand("/bindaction", "summary", topic).contains("vinculada"));
+        assertTrue(runner.actionCommand("/bindaction", "news", topic).contains("já está"));
+        assertTrue(runner.actionCommand("/bindaction", "news", group).contains("vinculada"));
+        assertTrue(runner.actionCommand("/bindings", "", topic).contains("news\nsummary"));
+        assertEquals(java.util.List.of(new ActionBindings.Destination(-100123, 37),
+                new ActionBindings.Destination(-100123, null)),
+                new ActionBindings(directory).destinations("news"));
+        assertTrue(runner.actionCommand("/unbindaction", "news", topic).contains("removido"));
+        assertEquals(java.util.List.of(new ActionBindings.Destination(-100123, null)),
+                new ActionBindings(directory).destinations("news"));
+        assertTrue(runner.actionCommand("/bindaction", "missing", topic).contains("ID válido"));
+    }
+
     @Test void themePreferencePersistsOutsideBotProjects() throws Exception {
         String previous = System.getProperty("tg.bot.editor.settingsDir");
         System.setProperty("tg.bot.editor.settingsDir", directory.resolve("settings").toString());

@@ -29,6 +29,18 @@ O bot precisa ter permissão de publicar nos canais configurados. O runner
 mostra a descrição de erros da API do Telegram e encerra o polling quando
 recebe um HTTP 4xx permanente, evitando tentativas repetidas sem fim.
 
+## Actions em grupos e tópicos
+
+Envie `/whoami` ao bot, copie seu ID para `TG_BOT_ADMIN_ID` no `.env` e reinicie
+o runner. No grupo ou tópico desejado, `/actions` lista as actions do projeto,
+`/bindaction <id>` vincula uma delas, `/bindings` mostra os vínculos atuais,
+`/unbindaction <id>` remove um vínculo e `/runaction <id>` executa a action ali
+imediatamente. É possível vincular várias actions ao mesmo destino e uma action
+a vários destinos. Os vínculos são salvos em `data/action-bindings.json` e
+passam a valer sem reiniciar. Actions agendadas publicam em todos os destinos
+vinculados; sem vínculos, usam o destino antigo de `targetChatEnv`. Só o usuário
+configurado como administrador pode usar esses comandos, exceto `/whoami`.
+
 ## Termux
 
 Com o Git e o OpenJDK 25 já configurados, clone o repositório na pasta privada

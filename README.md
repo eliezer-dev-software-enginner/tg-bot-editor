@@ -47,6 +47,20 @@ The flow body is a short Java expression or block, such as `return MeuNovoScript
 
 Click a card to edit its trigger and Java body. **Excluir** in Properties removes the selected command; **Salvar projeto** persists the change. Switching cards retains edits in memory. The Java editor provides syntax colors, line numbers and indentation. **Executar teste** runs the selected action locally; use it only for project code you trust, since project scripts run with your user permissions.
 **Executar** saves and validates the open project, then starts its Telegram runner in a separate Java process. Set `TG_BOT_TOKEN` in the project's ignored `.env` first. **Parar** stops that process; closing or switching projects also stops it. The editor shows the runner's state and appends its output to `data/bot-runner.log` in the project folder. Restart the bot after changing a script or flow. Do not start the same project from a terminal at the same time.
+
+## Actions em grupos e tópicos
+
+No chat com o bot, use `/whoami` para descobrir seu ID numérico e configure `TG_BOT_ADMIN_ID` no `.env` do projeto. Reinicie o runner. Apenas esse usuário pode listar, vincular e executar actions. Dentro de um grupo ou tópico, use:
+
+| Comando | Resultado |
+| --- | --- |
+| `/actions` | Lista IDs, nomes e gatilhos das actions do projeto. |
+| `/bindaction <id>` | Vincula a action ao grupo ou tópico atual. Repita para vincular várias actions ou use o comando em outro destino. |
+| `/bindings` | Mostra as actions vinculadas ao destino atual. |
+| `/unbindaction <id>` | Remove o vínculo apenas do destino atual. |
+| `/runaction <id>` | Executa a action imediatamente no grupo ou tópico atual. |
+
+Os vínculos ficam em `data/action-bindings.json`, fora do Git, e passam a valer sem reiniciar o bot. Para gatilhos `INTERVAL` e `DAILY`, cada execução usa todos os destinos vinculados, incluindo o `message_thread_id` do tópico. Se não houver vínculos, continua valendo o destino configurado em `targetChatEnv`. Uma action agendada sem destino apenas aguarda um vínculo. Comandos normais do projeto continuam seguindo seus gatilhos existentes; o vínculo configura os destinos de ações agendadas e o `/runaction` permite testar qualquer action sob demanda. O bot precisa estar no grupo e ter permissão para publicar ali.
 **Exportar comandos** writes a UTF-8 `comandos.txt` beside `bot.json`, listing
 only `COMMAND` triggers with their editable descriptions. When an older flow
 has no description, its title is used. Scheduled, text, photo and callback
