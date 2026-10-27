@@ -241,6 +241,9 @@ class FlowProjectTest {
         assertTrue(java.nio.file.Files.isRegularFile(file.getParent().resolve("gradlew")));
         assertTrue(java.nio.file.Files.isExecutable(file.getParent().resolve("gradlew")));
         assertTrue(java.nio.file.Files.isRegularFile(file.getParent().resolve("build.gradle.kts")));
+        String generatedBuild = java.nio.file.Files.readString(file.getParent().resolve("build.gradle.kts"));
+        assertTrue(generatedBuild.contains("options.release.set(21)"));
+        assertFalse(generatedBuild.contains("JavaLanguageVersion.of(25)"));
         assertTrue(java.nio.file.Files.isRegularFile(file.getParent().resolve("gradle/wrapper/gradle-wrapper.jar")));
         assertFalse(java.nio.file.Files.exists(file.getParent().resolve("pom.xml")));
         assertTrue(java.nio.file.Files.isRegularFile(file.getParent().resolve("README.md")));
@@ -271,6 +274,20 @@ class FlowProjectTest {
         assertTrue(java.nio.file.Files.isRegularFile(projectDirectory.resolve("runtime/src/main/java/tg_bot_editor/BotRunner.java")));
         assertEquals("custom Maven build", java.nio.file.Files.readString(projectDirectory.resolve("pom.xml")));
         assertEquals("keep me", java.nio.file.Files.readString(projectDirectory.resolve("scripts-note.txt")));
+    }
+
+    @Test void existingBotProjectDropsOnlyObsoleteJdk25Toolchain() throws Exception {
+        Path file = ProjectWorkspace.create(directory, "old-bot");
+        Path build = file.getParent().resolve("build.gradle.kts");
+        String current = java.nio.file.Files.readString(build);
+        java.nio.file.Files.writeString(build, current.replace("dependencies {",
+                "java { toolchain { languageVersion.set(JavaLanguageVersion.of(25)) } }\n\n"
+                        + "// Personalização preservada\ndependencies {"));
+        ProjectWorkspace.initializeLegacyScripts(file.getParent(), FlowStore.read(file));
+        String migrated = java.nio.file.Files.readString(build);
+        assertFalse(migrated.contains("JavaLanguageVersion.of(25)"));
+        assertTrue(migrated.contains("// Personalização preservada"));
+        assertTrue(migrated.contains("options.release.set(21)"));
     }
 
     @Test void genshinAdsWizardPersistsAnAdInsideTheProject() throws Exception {

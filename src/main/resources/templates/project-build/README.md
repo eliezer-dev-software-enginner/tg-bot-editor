@@ -7,7 +7,7 @@ JavaFX é necessário para executar o bot.
 
 ## Build e execução
 
-Use OpenJDK 25 com `javac` e o Gradle Wrapper incluído. Na pasta do projeto:
+Use OpenJDK 21 ou superior com `javac` e o Gradle Wrapper incluído. Na pasta do projeto:
 
 ```sh
 ./gradlew clean build
@@ -55,7 +55,7 @@ chave; para resolver `@handle` o bot usa a página pública ou, se houver
 
 ## Termux
 
-Com o Git e o OpenJDK 25 já configurados, clone o repositório na pasta privada
+Com o Git e o OpenJDK 21 ou superior já configurados, clone o repositório na pasta privada
 do Termux (`$HOME`), execute o Gradle Wrapper incluído:
 
 ```sh
@@ -73,7 +73,10 @@ java -jar build/libs/*.jar bot.json
 ```
 
 O wrapper baixa o Gradle na primeira execução. Use `./gradlew --version` para
-verificar o JDK. O alvo do projeto é Java 21; o JDK 25 o compila e executa.
+verificar o JDK. O alvo do projeto é Java 21; o Gradle usa o JDK instalado no
+Termux, sem exigir um toolchain 25. Para um projeto criado antes dessa correção,
+remova a linha `java { toolchain { languageVersion.set(JavaLanguageVersion.of(25)) } }`
+do `build.gradle.kts` e execute `./gradlew clean build` novamente.
 
 ## Anúncios em tópicos
 

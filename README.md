@@ -11,7 +11,7 @@ The desktop editor requires a JDK 25 installation with `javac`. Its Gradle build
 ./gradlew -PuseLocalSources=false run
 ```
 
-The generated bot projects have a separate Gradle Wrapper build that uses a JDK 25 toolchain to compile for Java 21; see below. The editor has a graphical interface, so `run` requires a desktop environment.
+The generated bot projects have a separate Gradle Wrapper build that compiles for Java 21 using the JDK running Gradle (version 21 or newer); see below. The editor has a graphical interface, so `run` requires a desktop environment.
 
 ## Projects and scripts
 
@@ -39,7 +39,7 @@ directory, run `./gradlew clean build` followed by
 Telegram token. Fill an ignored `.env` and omit `--check` to start the bot.
 The editor packages these runner sources from its own code so generated projects
 do not depend on the editor installation. The included project README documents
-cloning and running with OpenJDK 25 on Termux.
+cloning and running with OpenJDK 21 or newer on Termux.
 
 The flow body is a short Java expression or block, such as `return MeuNovoScript.run();`. **+ Script** asks for a Java class name and creates a compilable `scripts/MeuNovoScript.java`. **Abrir pasta do projeto** opens this folder for IntelliJ, VS Code or a file manager. Edit these classes externally, then use **Salvar projeto** to compile every script and action together. Flow bodies and project Java files are loaded by a project class loader; the example-specific `G1NewsAction` and `GenshinAdsAction` are not built into the editor application.
 

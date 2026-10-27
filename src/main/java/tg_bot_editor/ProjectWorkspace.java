@@ -54,6 +54,12 @@ public final class ProjectWorkspace {
                 copyTemplate("/templates/project-build/" + relative, target);
             }
         }
+        Path build = directory.resolve("build.gradle.kts");
+        String content = Files.readString(build);
+        String oldToolchain = "java { toolchain { languageVersion.set(JavaLanguageVersion.of(25)) } }";
+        if (content.contains(oldToolchain))
+            Files.writeString(build, content.replace(oldToolchain + "\n\n", "")
+                    .replace(oldToolchain + "\n", ""));
         directory.resolve("gradlew").toFile().setExecutable(true);
     }
 

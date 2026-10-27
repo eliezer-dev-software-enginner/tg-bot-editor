@@ -5,8 +5,6 @@ version = "0.1.0"
 
 repositories { mavenCentral() }
 
-java { toolchain { languageVersion.set(JavaLanguageVersion.of(25)) } }
-
 dependencies {
     implementation("com.fasterxml.jackson.core:jackson-databind:2.17.0")
 }
