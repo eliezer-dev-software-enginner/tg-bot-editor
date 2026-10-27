@@ -63,10 +63,28 @@ public final class BotRunner {
         if (token == null || token.isBlank()) throw new IllegalStateException("Defina TG_BOT_TOKEN fora do projeto");
         var runner = new BotRunner(token, projectFile.getParent(), project);
         try {
+            runner.registerCommands();
             runner.startSchedules();
             runner.poll();
         } finally {
             if (runner.schedules != null) runner.schedules.shutdownNow();
+        }
+    }
+
+    private void registerCommands() {
+        try {
+            var commands = BotCommands.list(project);
+            if (commands.size() > 100) throw new IllegalStateException("O Telegram aceita no máximo 100 comandos; encontrados " + commands.size());
+            var payload = JSON.createArrayNode();
+            for (var command : commands) {
+                var item = payload.addObject();
+                item.put("command", command.name().substring(1));
+                item.put("description", command.description());
+            }
+            call("setMyCommands", "commands=" + URLEncoder.encode(JSON.writeValueAsString(payload), StandardCharsets.UTF_8), 20);
+            System.out.println("Menu do Telegram atualizado: " + commands.size() + " comandos.");
+        } catch (Exception error) {
+            System.err.println("Não foi possível atualizar o menu de comandos do Telegram: " + safeMessage(error));
         }
     }
 

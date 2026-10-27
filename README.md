@@ -67,10 +67,12 @@ Os vínculos ficam em `data/action-bindings.json`, fora do Git, e passam a valer
 O runner inclui a action `youtube-new-videos`. Use `/youtube_add <@handle, username ou URL do canal>` para inscrever um canal e `/youtube_list` para revisar as inscrições. `/youtube_remove <canal>` remove a inscrição; `/youtube_check` consulta os feeds imediatamente. Dentro do tópico que deve receber os avisos, envie `/bindaction youtube-new-videos`. É possível vincular essa action a vários tópicos ou grupos, sem criar um script Java por destino. O bot verifica os feeds a cada dez minutos; `/runaction youtube-new-videos` também faz uma consulta apenas para o chat atual. Esses comandos exigem `TG_BOT_ADMIN_ID`.
 
 As inscrições e o último vídeo entregue por destino ficam em `data/youtube-subscriptions.json`. Na primeira consulta, os vídeos já presentes no feed estabelecem o ponto inicial; só vídeos posteriores geram avisos. Uma entrega com falha é tentada novamente, sem marcar o vídeo como enviado. Para `@handle` ou URL `/user/`, o bot tenta identificar o canal na página pública do YouTube. Opcionalmente, configure `YOUTUBE_API_KEY` no `.env` para usar a [API oficial de canais](https://developers.google.com/youtube/v3/docs/channels/list) nessa resolução. URLs `/channel/UC...` dispensam resolução. A página pública pode mudar; se a resolução falhar, use a URL com o ID do canal. O feed público determina quais vídeos estão disponíveis para notificação.
-**Exportar comandos** writes a UTF-8 `comandos.txt` beside `bot.json`, listing
-only `COMMAND` triggers with their editable descriptions. When an older flow
-has no description, its title is used. Scheduled, text, photo and callback
-flows do not appear in this user-facing command list.
+**Exportar comandos** grava `comandos.txt` ao lado de `bot.json` com os comandos
+dos fluxos `COMMAND` e os comandos internos de actions e YouTube. Ao iniciar,
+o runner atualiza o menu `/` do Telegram com essa mesma lista. Reinicie o bot
+depois de editar os comandos. Fluxos agendados, de texto, foto e callback não
+aparecem no menu; o Telegram aceita até 100 comandos, com nomes em letras
+minúsculas, números e sublinhados.
 Drag empty canvas space with the primary mouse button to pan the graph without bounds or scroll bars. Drag a card to change its position; pan position never changes saved card coordinates.
 
 ## Project variables and runner

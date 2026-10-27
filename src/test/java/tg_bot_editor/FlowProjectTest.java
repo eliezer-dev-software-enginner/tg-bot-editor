@@ -201,7 +201,9 @@ class FlowProjectTest {
         assertFalse(commands.contains("Publicar notícias do G1"));
         assertFalse(commands.contains("ads:*"));
         assertTrue(commands.contains("/topic — Mostra os IDs do grupo e do tópico atual"));
-        assertEquals(10, commands.lines().filter(line -> line.startsWith("/")).count());
+        assertTrue(commands.contains("/youtube_add — Inscreve um canal do YouTube"));
+        assertTrue(commands.contains("/bindaction — Vincula uma action a este chat ou tópico"));
+        assertEquals(20, commands.lines().filter(line -> line.startsWith("/")).count());
     }
 
     @Test void firstLaunchInstallsAnEditableProjectOnlyOnce() throws Exception {

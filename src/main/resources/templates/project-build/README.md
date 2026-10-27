@@ -22,6 +22,11 @@ preencha `TG_BOT_TOKEN` com o token do seu bot e rode:
 java -jar build/libs/*.jar bot.json
 ```
 
+Ao iniciar, o runner registra no menu `/` do Telegram os comandos dos fluxos
+`COMMAND` e os comandos internos de actions e YouTube. Reinicie o bot após
+alterar os comandos para atualizar o menu. Falhas nesse registro aparecem no
+terminal; o runner continua atendendo mensagens.
+
 O arquivo `.env`, a pasta `data/` e o build `build/` são locais e ignorados
 pelo Git. Variáveis do processo têm prioridade sobre as de `.env`. Use apenas
 uma instância por token para evitar disputas no long polling.
