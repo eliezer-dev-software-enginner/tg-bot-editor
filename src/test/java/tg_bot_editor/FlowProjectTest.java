@@ -10,6 +10,42 @@ import static org.junit.jupiter.api.Assertions.*;
 class FlowProjectTest {
     @TempDir Path directory;
 
+    @Test void youtubeNotificationsStartAtCurrentVideoAndRetryFailedDeliveries() throws Exception {
+        String channel = "UC1234567890123456789012";
+        var xml = new java.util.concurrent.atomic.AtomicReference<>(youtubeFeed("AAAAAAAAAAA"));
+        var subscriptions = new YouTubeSubscriptions(directory, url -> xml.get());
+        assertTrue(subscriptions.add("https://www.youtube.com/channel/" + channel).contains("inscrito"));
+        var topic = new ActionBindings.Destination(-100123, 37);
+        var delivered = new java.util.ArrayList<String>();
+        assertEquals(0, subscriptions.check(java.util.List.of(topic), (target, text) -> delivered.add(text)));
+        xml.set(youtubeFeed("BBBBBBBBBBB", "AAAAAAAAAAA"));
+        assertThrows(java.io.IOException.class, () -> subscriptions.check(java.util.List.of(topic),
+                (target, text) -> { throw new java.io.IOException("Telegram offline"); }));
+        var reloaded = new YouTubeSubscriptions(directory, url -> xml.get());
+        assertEquals(1, reloaded.check(java.util.List.of(topic), (target, text) -> delivered.add(text)));
+        assertEquals(0, reloaded.check(java.util.List.of(topic), (target, text) -> delivered.add(text)));
+        assertEquals(1, delivered.size());
+        assertTrue(delivered.getFirst().contains("youtube.com/watch?v=BBBBBBBBBBB"));
+        assertTrue(subscriptions.list().contains(channel));
+        assertTrue(subscriptions.remove(channel).contains("removida"));
+    }
+
+    @Test void resolvesYoutubeHandleFromPublicChannelMetadata() throws Exception {
+        String channel = "UC1234567890123456789012";
+        ProjectEnvironment.activate(directory);
+        var subscriptions = new YouTubeSubscriptions(directory, url -> url.contains("/@CanalTeste")
+                ? "<script>{\"externalId\":\"" + channel + "\"}</script>" : youtubeFeed("AAAAAAAAAAA"));
+        assertTrue(subscriptions.add("@CanalTeste").contains(channel));
+        assertThrows(IllegalArgumentException.class, () -> subscriptions.add("https://example.com/@CanalTeste"));
+    }
+
+    private static String youtubeFeed(String... ids) {
+        StringBuilder xml = new StringBuilder("<feed xmlns=\"http://www.w3.org/2005/Atom\" xmlns:yt=\"http://www.youtube.com/xml/schemas/2015\">");
+        for (String id : ids) xml.append("<entry><yt:videoId>").append(id)
+                .append("</yt:videoId><title>Vídeo ").append(id).append("</title></entry>");
+        return xml.append("</feed>").toString();
+    }
+
     @Test void listsAndBindsActionsToGroupsAndTopicsWithoutEditingJava() throws Exception {
         var project = new FlowProject();
         var first = new FlowProject.Flow("news", "Notícias", "60", 0, 0);

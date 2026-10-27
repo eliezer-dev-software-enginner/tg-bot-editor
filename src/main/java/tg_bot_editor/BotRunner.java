@@ -28,6 +28,7 @@ public final class BotRunner {
     private final String token;
     private final FlowProject project;
     private final ActionBindings bindings;
+    private final YouTubeSubscriptions youtube;
     private final long adminId;
     private final Map<String, BotAction> actions = new HashMap<>();
     private final Map<String, Instant> lastStartupDelivery = new HashMap<>();
@@ -40,6 +41,7 @@ public final class BotRunner {
         FlowValidator.validate(project);
         actions.putAll(ActionCompiler.compileProject(projectDirectory, project));
         bindings = new ActionBindings(projectDirectory);
+        youtube = new YouTubeSubscriptions(projectDirectory);
         String configuredAdmin = ProjectEnvironment.get("TG_BOT_ADMIN_ID");
         adminId = configuredAdmin == null || configuredAdmin.isBlank() ? 0 : Long.parseLong(configuredAdmin);
     }
@@ -69,8 +71,8 @@ public final class BotRunner {
     }
 
     private void startSchedules() {
-        if (project.flows.stream().noneMatch(flow -> scheduled(flow.trigger))) return;
         schedules = Executors.newSingleThreadScheduledExecutor();
+        schedules.scheduleWithFixedDelay(this::checkYouTube, 1, 10, TimeUnit.MINUTES);
         for (var flow : project.flows) {
             if (!scheduled(flow.trigger)) continue;
             long chat = 0;
@@ -94,6 +96,15 @@ public final class BotRunner {
 
     private static boolean scheduled(String trigger) {
         return "INTERVAL".equalsIgnoreCase(trigger) || "DAILY".equalsIgnoreCase(trigger);
+    }
+
+    private void checkYouTube() {
+        try {
+            youtube.check(bindings.destinations(YouTubeSubscriptions.ACTION_ID),
+                    (destination, message) -> send(destination.chatId(), destination.threadId(), message));
+        } catch (Exception error) {
+            System.err.println("Falha ao verificar vídeos do YouTube: " + safeMessage(error));
+        }
     }
 
     static boolean shouldStopPolling(int status) {
@@ -221,7 +232,8 @@ public final class BotRunner {
             send(context.chatId(), context.threadId(), "Seu ID: " + context.userId());
             return true;
         }
-        if (!java.util.Set.of("/actions", "/bindings", "/bindaction", "/unbindaction", "/runaction")
+        if (!java.util.Set.of("/actions", "/bindings", "/bindaction", "/unbindaction", "/runaction",
+                "/youtube_add", "/youtube_remove", "/youtube_list", "/youtube_check")
                 .contains(command)) return false;
         String argument = parts.length == 2 ? parts[1].trim() : "";
         String response;
@@ -245,7 +257,22 @@ public final class BotRunner {
             for (var flow : project.flows)
                 list.append(flow.id).append(" — ").append(flow.title).append(" (")
                         .append(flow.trigger).append(")\n");
+            list.append(YouTubeSubscriptions.ACTION_ID).append(" — Novos vídeos do YouTube (automático)\n");
             return list.toString();
+        }
+        if (command.equals("/youtube_list")) return youtube.list();
+        if (command.equals("/youtube_add")) {
+            if (argument.isEmpty()) return "Use /youtube_add <@handle, username ou URL de canal>.";
+            return youtube.add(argument);
+        }
+        if (command.equals("/youtube_remove")) {
+            if (argument.isEmpty()) return "Use /youtube_remove <@handle, username ou URL de canal>.";
+            return youtube.remove(argument);
+        }
+        if (command.equals("/youtube_check")) {
+            int count = youtube.check(bindings.destinations(YouTubeSubscriptions.ACTION_ID),
+                    (target, message) -> send(target.chatId(), target.threadId(), message));
+            return count + " vídeo(s) novo(s) enviado(s).";
         }
         if (command.equals("/bindings")) {
             var ids = bindings.at(destination);
@@ -253,13 +280,19 @@ public final class BotRunner {
                     : "Actions vinculadas aqui:\n" + String.join("\n", ids);
         }
         var flow = project.flows.stream().filter(item -> item.id.equals(argument)).findFirst();
-        if (argument.isEmpty() || flow.isEmpty()) return "Informe um ID válido. Use /actions para listar.";
+        if (argument.isEmpty() || (flow.isEmpty() && !argument.equals(YouTubeSubscriptions.ACTION_ID)))
+            return "Informe um ID válido. Use /actions para listar.";
         if (command.equals("/bindaction"))
             return bindings.add(argument, destination) ? "Action " + argument + " vinculada a este destino."
                     : "Action " + argument + " já está vinculada aqui.";
         if (command.equals("/unbindaction"))
             return bindings.remove(argument, destination) ? "Vínculo de " + argument + " removido."
                     : "Action " + argument + " não estava vinculada aqui.";
+        if (argument.equals(YouTubeSubscriptions.ACTION_ID)) {
+            int count = youtube.check(java.util.List.of(destination),
+                    (target, message) -> send(target.chatId(), target.threadId(), message));
+            return count + " vídeo(s) novo(s) enviado(s).";
+        }
         Object reply = actions.get(argument).run(context);
         send(context.chatId(), context.threadId(), reply);
         return "Action " + argument + " executada.";

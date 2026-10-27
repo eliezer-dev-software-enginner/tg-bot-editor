@@ -41,6 +41,18 @@ passam a valer sem reiniciar. Actions agendadas publicam em todos os destinos
 vinculados; sem vínculos, usam o destino antigo de `targetChatEnv`. Só o usuário
 configurado como administrador pode usar esses comandos, exceto `/whoami`.
 
+## Novos vídeos do YouTube
+
+Use `/youtube_add <@handle, username ou URL de canal>` para inscrever um canal,
+`/youtube_list` para listar, `/youtube_remove <canal>` para remover e
+`/youtube_check` para consultar agora. No tópico de destino, envie
+`/bindaction youtube-new-videos`. O runner verifica os canais a cada dez minutos
+e envia apenas vídeos publicados após a primeira consulta naquele destino.
+As inscrições e confirmações de entrega ficam em `data/youtube-subscriptions.json`.
+Uma falha de entrega é tentada novamente. URLs `/channel/UC...` funcionam sem
+chave; para resolver `@handle` o bot usa a página pública ou, se houver
+`YOUTUBE_API_KEY` no `.env`, a API oficial de canais.
+
 ## Termux
 
 Com o Git e o OpenJDK 25 já configurados, clone o repositório na pasta privada

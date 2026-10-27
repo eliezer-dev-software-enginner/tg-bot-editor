@@ -61,6 +61,12 @@ No chat com o bot, use `/whoami` para descobrir seu ID numérico e configure `TG
 | `/runaction <id>` | Executa a action imediatamente no grupo ou tópico atual. |
 
 Os vínculos ficam em `data/action-bindings.json`, fora do Git, e passam a valer sem reiniciar o bot. Para gatilhos `INTERVAL` e `DAILY`, cada execução usa todos os destinos vinculados, incluindo o `message_thread_id` do tópico. Se não houver vínculos, continua valendo o destino configurado em `targetChatEnv`. Uma action agendada sem destino apenas aguarda um vínculo. Comandos normais do projeto continuam seguindo seus gatilhos existentes; o vínculo configura os destinos de ações agendadas e o `/runaction` permite testar qualquer action sob demanda. O bot precisa estar no grupo e ter permissão para publicar ali.
+
+### Vídeos novos do YouTube
+
+O runner inclui a action `youtube-new-videos`. Use `/youtube_add <@handle, username ou URL do canal>` para inscrever um canal e `/youtube_list` para revisar as inscrições. `/youtube_remove <canal>` remove a inscrição; `/youtube_check` consulta os feeds imediatamente. Dentro do tópico que deve receber os avisos, envie `/bindaction youtube-new-videos`. É possível vincular essa action a vários tópicos ou grupos, sem criar um script Java por destino. O bot verifica os feeds a cada dez minutos; `/runaction youtube-new-videos` também faz uma consulta apenas para o chat atual. Esses comandos exigem `TG_BOT_ADMIN_ID`.
+
+As inscrições e o último vídeo entregue por destino ficam em `data/youtube-subscriptions.json`. Na primeira consulta, os vídeos já presentes no feed estabelecem o ponto inicial; só vídeos posteriores geram avisos. Uma entrega com falha é tentada novamente, sem marcar o vídeo como enviado. Para `@handle` ou URL `/user/`, o bot tenta identificar o canal na página pública do YouTube. Opcionalmente, configure `YOUTUBE_API_KEY` no `.env` para usar a [API oficial de canais](https://developers.google.com/youtube/v3/docs/channels/list) nessa resolução. URLs `/channel/UC...` dispensam resolução. A página pública pode mudar; se a resolução falhar, use a URL com o ID do canal. O feed público determina quais vídeos estão disponíveis para notificação.
 **Exportar comandos** writes a UTF-8 `comandos.txt` beside `bot.json`, listing
 only `COMMAND` triggers with their editable descriptions. When an older flow
 has no description, its title is used. Scheduled, text, photo and callback
