@@ -4,7 +4,6 @@ import javafx.application.Platform;
 import megalodonte.base.components.Component;
 import megalodonte.base.components.ScreenComponent;
 import megalodonte.base.state.State;
-import megalodonte.base.theme.ThemeManager;
 import megalodonte.components.*;
 import megalodonte.components.inputs.*;
 import megalodonte.components.layout_components.*;
@@ -19,12 +18,12 @@ import java.util.concurrent.TimeUnit;
 /** The editor stores project paths; scripts and settings belong to each project. */
 public final class HomeScreen implements ScreenComponent {
     private final RecentProjects recent = new RecentProjects();
+    private final State<List<String>> recentPaths = State.of(List.of());
+    private final State<String> recentChoice = State.of(null);
     private final State<String> projectLabel = State.of("Nenhum projeto aberto");
     private final State<String> status = State.of("Crie ou abra um projeto para começar.");
     private final State<String> runLabel = State.of("▶ Executar");
-    private final State<String> stopLabel = State.of("■ Parado");
-    private boolean darkTheme = ThemePreference.isDark();
-    private final State<String> themeLabel = State.of(darkTheme ? "☀ Tema claro" : "☾ Tema escuro");
+    private final State<String> stopLabel = State.of("■ Parar");
     private final State<String> title = State.of("");
     private final State<String> description = State.of("");
     private final State<String> pattern = State.of("");
@@ -55,6 +54,7 @@ public final class HomeScreen implements ScreenComponent {
             });
         });
         try {
+            refreshRecents();
             Path starter = ProjectWorkspace.migrateStarter(ProjectWorkspace.defaultProjectsDirectory());
             Path legacy = Path.of(System.getProperty("user.home"), "Documents", "TG-bot Editor", "bot.json");
             Path initial = recent.list().stream().filter(Files::isRegularFile).findFirst().orElse(null);
@@ -67,7 +67,7 @@ public final class HomeScreen implements ScreenComponent {
     }
 
     @Override public Component render() {
-        var heading = new Container(new ContainerProps().paddingAll(12).spacingOf(6).themeBackground()).children(
+        var heading = new Container(new ContainerProps().paddingAll(12).spacingOf(6)).children(
                 new Text("TG-bot Editor", new TextProps().fontSize(26)), new Text(projectLabel), new Text(status),
                 new Row(new RowProps().spacingOf(7)).children(
                         new Button("Novo projeto").onClick(() -> newProjectOpen.set(true)),
@@ -79,13 +79,15 @@ public final class HomeScreen implements ScreenComponent {
                         new Button(stopLabel, new ButtonProps().danger()).onClick(this::stopBot),
                         new Button("Exportar comandos").onClick(this::exportCommands)),
                 new Row(new RowProps().spacingOf(7)).children(
+                        new Select<String>(new SelectProps().minWidth(230).maxWidth(230))
+                                .items(recentPaths).value(recentChoice),
+                        new Button("Abrir recente").onClick(this::openRecent),
                         new Button("+ Novo comando").onClick(this::add),
                         new Button("+ Script").onClick(() -> {
                             if (file == null) status.set("Abra um projeto antes de criar scripts.");
                             else newScriptOpen.set(true);
-                        }),
-                        new Button(themeLabel, new ButtonProps().secondary()).onClick(this::toggleTheme)));
-        var inspector = new Container(new ContainerProps().paddingAll(16).spacingOf(10).width(330).themeSurface()).children(
+                        })));
+        var inspector = new Container(new ContainerProps().paddingAll(16).spacingOf(10).width(330)).children(
                 new Text("Propriedades", new TextProps().fontSize(20)),
                 new Text("Título"), new Input(title, field("Nome da ação")),
                 new Text("Descrição do comando"), new Input(description, field("O que este comando faz")),
@@ -112,14 +114,14 @@ public final class HomeScreen implements ScreenComponent {
         var workspace = new Row(new RowProps().spacingOf(12).fillHeight()).children(
                 canvas,
                 new Scroll(inspector).fillAvailableHeight());
-        var base = new Container(new ContainerProps().fillHeight().themeBackground()).children(heading, workspace);
-        var newProject = new Container(new ContainerProps().paddingAll(24).spacingOf(12).width(430).themeSurface()).children(
+        var base = new Container(new ContainerProps().fillHeight()).children(heading, workspace);
+        var newProject = new Container(new ContainerProps().paddingAll(24).spacingOf(12).width(430)).children(
                 new Text("Novo projeto", new TextProps().fontSize(21)),
                 new Text("Nome"), new Input(newProjectName, field("Meu bot")),
                 new Text("Pasta onde criar o projeto"), new Text(newParentLabel),
                 new Button("Escolher outra pasta").onClick(this::chooseParent),
                 new Button("Criar projeto").onClick(this::createProject));
-        var newScript = new Container(new ContainerProps().paddingAll(24).spacingOf(12).width(430).themeSurface()).children(
+        var newScript = new Container(new ContainerProps().paddingAll(24).spacingOf(12).width(430)).children(
                 new Text("Novo script Java", new TextProps().fontSize(21)),
                 new Text("Nome da classe"), new Input(newScriptName, field("MeuNovoScript")),
                 new Text("Use MeuNovoScript.run(); em um comando."),
@@ -183,7 +185,7 @@ public final class HomeScreen implements ScreenComponent {
             ProjectEnvironment.useDraft(file.getParent(), environment.get());
             ActionCompiler.compileProject(file.getParent(), project);
             FlowStore.write(file, project); ProjectEnvironment.write(file.getParent(), environment.get());
-            recent.remember(file); status.set("Projeto salvo: " + file);
+            recent.remember(file); refreshRecents(); status.set("Projeto salvo: " + file);
             return true;
         } catch (Exception error) { status.set("Falha ao salvar: " + error.getMessage()); return false; }
     }
@@ -209,13 +211,12 @@ public final class HomeScreen implements ScreenComponent {
                     .start();
             botProcess = process;
             runLabel.set("▶ Executando");
-            stopLabel.set("■ Parar");
             status.set("Bot em execução. Saída: " + log);
             process.onExit().thenAccept(exited -> Platform.runLater(() -> {
                 if (botProcess == exited) {
                     botProcess = null;
                     runLabel.set("▶ Executar");
-                    stopLabel.set("■ Parado");
+                    stopLabel.set("■ Parar");
                     status.set("Bot encerrado (código " + exited.exitValue() + "). Saída: " + log);
                 }
             }));
@@ -223,11 +224,7 @@ public final class HomeScreen implements ScreenComponent {
     }
     private void stopBot() {
         Process running = botProcess;
-        if (running == null || !running.isAlive()) {
-            stopLabel.set("■ Parado");
-            status.set("Nenhum bot em execução.");
-            return;
-        }
+        if (running == null || !running.isAlive()) { status.set("Nenhum bot em execução."); return; }
         running.destroy();
         stopLabel.set("■ Parando");
         status.set("Parando o bot...");
@@ -258,12 +255,8 @@ public final class HomeScreen implements ScreenComponent {
         if ("PHOTO".equals(kind)) pattern.set("*");
     }
 
-    private void toggleTheme() {
-        darkTheme = !darkTheme;
-        ThemeManager.setTheme(new EditorTheme(darkTheme));
-        themeLabel.set(darkTheme ? "☀ Tema claro" : "☾ Tema escuro");
-        try { ThemePreference.save(darkTheme); }
-        catch (Exception error) { status.set("Tema alterado, mas não foi possível guardar a preferência: " + error.getMessage()); }
+    private void refreshRecents() throws Exception {
+        recentPaths.set(recent.list().stream().map(Path::toString).toList());
     }
     private void load(Path target) throws Exception {
         Path absolute = target.toAbsolutePath().normalize();
@@ -280,7 +273,7 @@ public final class HomeScreen implements ScreenComponent {
         canvas.resetView(); refresh(); canvas.select(null);
         if (!project.flows.isEmpty()) select(project.flows.getFirst().id);
         else { title.set(""); description.set(""); pattern.set(""); script.set(""); }
-        recent.remember(file); status.set("Pasta: " + file.getParent());
+        recent.remember(file); refreshRecents(); status.set("Pasta: " + file.getParent());
     }
     private void openProject() {
         try {
@@ -289,6 +282,11 @@ public final class HomeScreen implements ScreenComponent {
             if (chosen.isEmpty()) return;
             persistDraft(); load(Path.of(chosen.get()));
         } catch (Exception error) { status.set("Não foi possível abrir o projeto: " + error.getMessage()); }
+    }
+    private void openRecent() {
+        if (recentChoice.get() == null) { status.set("Escolha um projeto recente."); return; }
+        try { persistDraft(); load(Path.of(recentChoice.get())); }
+        catch (Exception error) { status.set("Não foi possível abrir o projeto recente: " + error.getMessage()); }
     }
     private void closeProject() {
         if (file == null) { status.set("Nenhum projeto aberto."); return; }
@@ -316,7 +314,7 @@ public final class HomeScreen implements ScreenComponent {
         }
         botProcess = null;
         runLabel.set("▶ Executar");
-        stopLabel.set("■ Parado");
+        stopLabel.set("■ Parar");
     }
     private void persistDraft() throws Exception {
         if (file == null) return;
