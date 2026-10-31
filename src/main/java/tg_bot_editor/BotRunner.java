@@ -216,7 +216,8 @@ public final class BotRunner {
         if (message.isMissingNode()) return;
         long chat = message.path("chat").path("id").asLong();
         JsonNode sender = callback.isMissingNode() ? message.path("from") : callback.path("from");
-        String value = callback.isMissingNode() ? message.path("text").asText("") : callback.path("data").asText("");
+        String value = callback.isMissingNode() ? BotCommands.normalize(message.path("text").asText(""))
+                : callback.path("data").asText("");
         JsonNode photos = message.path("photo");
         String photoRef = photos.isArray() && !photos.isEmpty()
                 ? photos.get(photos.size() - 1).path("file_id").asText("") : null;

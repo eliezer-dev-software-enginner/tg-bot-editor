@@ -23,6 +23,12 @@ public final class BotCommands {
 
     private BotCommands() { }
 
+    /** Removes Telegram's @bot suffix from the command token, preserving arguments. */
+    public static String normalize(String text) {
+        if (text == null || !text.startsWith("/")) return text;
+        return text.replaceFirst("^(/[A-Za-z0-9_]+)@[A-Za-z0-9_]+(?=\\s|$)", "$1");
+    }
+
     public static List<Entry> list(FlowProject project) {
         var commands = new LinkedHashMap<String, Entry>();
         for (Entry entry : BUILT_INS) commands.put(entry.name(), entry);

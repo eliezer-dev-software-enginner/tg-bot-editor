@@ -126,6 +126,9 @@ class FlowProjectTest {
         FlowStore.write(saved, project);
         var restored = FlowStore.read(saved);
         assertEquals("help", FlowRouter.find(restored, "COMMAND", "/help me").orElseThrow().id);
+        assertEquals("/help argumento", BotCommands.normalize("/help@opragmatico_bot argumento"));
+        assertEquals("help", FlowRouter.find(restored, "COMMAND",
+                BotCommands.normalize("/help@opragmatico_bot argumento")).orElseThrow().id);
         assertTrue(FlowRouter.find(restored, "COMMAND", "/unknown").isEmpty());
         assertEquals(30, restored.flows.get(1).x);
         assertFalse(java.nio.file.Files.readString(saved).contains("token"));
