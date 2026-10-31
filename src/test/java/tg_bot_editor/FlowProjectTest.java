@@ -52,6 +52,22 @@ class FlowProjectTest {
         assertEquals(1, delivered.size());
     }
 
+    @Test void legacyYoutubeSubscriptionDeliversLatestOnce() throws Exception {
+        String channel = "UC1234567890123456789012";
+        var legacy = new YouTubeSubscriptions.Channel();
+        legacy.id = channel;
+        legacy.input = "@legacy";
+        legacy.title = "Legacy";
+        java.nio.file.Files.createDirectories(directory.resolve("data"));
+        new com.fasterxml.jackson.databind.ObjectMapper().writeValue(
+                directory.resolve("data/youtube-subscriptions.json").toFile(), new YouTubeSubscriptions.Channel[]{legacy});
+        var subscriptions = new YouTubeSubscriptions(directory, url -> youtubeFeed("AAAAAAAAAAA"));
+        var topic = new ActionBindings.Destination(-100123, 37);
+        var delivered = new java.util.ArrayList<String>();
+        assertEquals(1, subscriptions.check(java.util.List.of(topic), (target, text) -> delivered.add(text)));
+        assertEquals(0, subscriptions.check(java.util.List.of(topic), (target, text) -> delivered.add(text)));
+    }
+
     private static String youtubeFeed(String... ids) {
         StringBuilder xml = new StringBuilder("<feed xmlns=\"http://www.w3.org/2005/Atom\" xmlns:yt=\"http://www.youtube.com/xml/schemas/2015\">");
         for (String id : ids) xml.append("<entry><yt:videoId>").append(id)

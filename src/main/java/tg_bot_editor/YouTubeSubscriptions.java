@@ -107,9 +107,13 @@ final class YouTubeSubscriptions {
                 if (last == null) {
                     last = channel.initialVideoId;
                     if (last == null) {
-                        // Legacy subscriptions have no baseline. Start at the current video once.
+                        // Legacy subscriptions have no baseline. Deliver the latest video once,
+                        // so their first destination check is visible and future checks can advance.
+                        Video video = feed.getFirst();
+                        sender.send(destination, "📺 Novo vídeo de " + channel.title + ": " + video.title() + "\n" + video.url());
                         channel.lastSeen.put(key, feed.getFirst().id());
                         save();
+                        sent++;
                         continue;
                     }
                 }
