@@ -10,6 +10,20 @@ import static org.junit.jupiter.api.Assertions.*;
 class FlowProjectTest {
     @TempDir Path directory;
 
+    @Test void projectCommandCanUseRuntimeServiceAndOwnMenuDescription() throws Exception {
+        var project = new FlowProject();
+        var flow = new FlowProject.Flow("whoami", "Identificação", "/whoami", 0, 0);
+        flow.description = "Mostra IDs do usuário e do tópico.";
+        flow.script = "return context.commands().execute(context);";
+        project.flows.add(flow);
+        assertEquals(flow.description, BotCommands.list(project).stream()
+                .filter(command -> command.name().equals("/whoami")).findFirst().orElseThrow().description());
+        var action = ActionCompiler.compile(flow.script);
+        var context = new BotContext(42, 7, "/whoami", "tester", null, null,
+                input -> "Usuário: " + input.userId());
+        assertEquals("Usuário: 7", action.run(context));
+    }
+
     @Test void youtubeNotificationsStartAtCurrentVideoAndRetryFailedDeliveries() throws Exception {
         String channel = "UC1234567890123456789012";
         var xml = new java.util.concurrent.atomic.AtomicReference<>(youtubeFeed("AAAAAAAAAAA"));

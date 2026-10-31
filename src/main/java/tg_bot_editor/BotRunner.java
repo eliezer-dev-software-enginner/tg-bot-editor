@@ -225,10 +225,10 @@ public final class BotRunner {
                 : value.startsWith("/") ? "COMMAND" : "TEXT") : "CALLBACK";
         Integer threadId = message.hasNonNull("message_thread_id") ? message.path("message_thread_id").asInt() : null;
         var context = new BotContext(chat, sender.path("id").asLong(), value,
-                sender.path("username").asText(""), photoRef, threadId);
-        if ("COMMAND".equals(kind) && handleActionCommand(context)) return;
+                sender.path("username").asText(""), photoRef, threadId, this::executeProjectCommand);
         var match = FlowRouter.find(project, kind, value);
         if (match.isEmpty()) {
+            if ("COMMAND".equals(kind) && handleActionCommand(context)) return;
             answerCallback(callback);
             return;
         }
@@ -247,13 +247,17 @@ public final class BotRunner {
     private boolean handleActionCommand(BotContext context) throws Exception {
         String[] parts = context.text().trim().split("\\s+", 2);
         String command = parts[0].split("@", 2)[0].toLowerCase(java.util.Locale.ROOT);
-        if (command.equals("/whoami")) {
-            send(context.chatId(), context.threadId(), "Seu ID: " + context.userId());
-            return true;
-        }
-        if (!java.util.Set.of("/actions", "/bindings", "/bindaction", "/unbindaction", "/runaction",
+        if (!command.equals("/whoami") && !java.util.Set.of("/actions", "/bindings", "/bindaction", "/unbindaction", "/runaction",
                 "/youtube_add", "/youtube_remove", "/youtube_list", "/youtube_check")
                 .contains(command)) return false;
+        send(context.chatId(), context.threadId(), executeProjectCommand(context));
+        return true;
+    }
+
+    private Object executeProjectCommand(BotContext context) throws Exception {
+        String[] parts = context.text().trim().split("\\s+", 2);
+        String command = parts[0].split("@", 2)[0].toLowerCase(java.util.Locale.ROOT);
+        if (command.equals("/whoami")) return "Seu ID: " + context.userId();
         String argument = parts.length == 2 ? parts[1].trim() : "";
         String response;
         if (adminId == 0) response = "Configure TG_BOT_ADMIN_ID no .env do projeto para administrar actions.";
@@ -265,8 +269,7 @@ public final class BotRunner {
                 response = "Falha ao executar action: " + safeMessage(error);
             }
         }
-        send(context.chatId(), context.threadId(), response);
-        return true;
+        return response;
     }
 
     String actionCommand(String command, String argument, BotContext context) throws Exception {
