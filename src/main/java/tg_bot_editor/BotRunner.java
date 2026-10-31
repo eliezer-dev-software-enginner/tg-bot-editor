@@ -288,9 +288,12 @@ public final class BotRunner {
             return youtube.remove(argument);
         }
         if (command.equals("/youtube_check")) {
-            int count = youtube.check(bindings.destinations(YouTubeSubscriptions.ACTION_ID),
+            var targets = bindings.destinations(YouTubeSubscriptions.ACTION_ID);
+            if (targets.isEmpty()) return "Nenhum grupo ou tópico vinculado a youtube-new-videos. "
+                    + "Envie /bindaction youtube-new-videos no destino desejado.";
+            int count = youtube.check(targets,
                     (target, message) -> send(target.chatId(), target.threadId(), message));
-            return count + " vídeo(s) novo(s) enviado(s).";
+            return count + " vídeo(s) novo(s) enviado(s) para " + targets.size() + " destino(s).";
         }
         if (command.equals("/bindings")) {
             var ids = bindings.at(destination);

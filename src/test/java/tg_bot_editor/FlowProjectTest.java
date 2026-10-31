@@ -39,6 +39,19 @@ class FlowProjectTest {
         assertThrows(IllegalArgumentException.class, () -> subscriptions.add("https://example.com/@CanalTeste"));
     }
 
+    @Test void newVideoBeforeFirstCheckAfterBindingIsNotLost() throws Exception {
+        String channel = "UC1234567890123456789012";
+        var xml = new java.util.concurrent.atomic.AtomicReference<>(youtubeFeed("AAAAAAAAAAA"));
+        var subscriptions = new YouTubeSubscriptions(directory, url -> xml.get());
+        subscriptions.add("https://www.youtube.com/channel/" + channel);
+        xml.set(youtubeFeed("BBBBBBBBBBB", "AAAAAAAAAAA"));
+        var topic = new ActionBindings.Destination(-100123, 37);
+        var delivered = new java.util.ArrayList<String>();
+        var reloaded = new YouTubeSubscriptions(directory, url -> xml.get());
+        assertEquals(1, reloaded.check(java.util.List.of(topic), (target, text) -> delivered.add(text)));
+        assertEquals(1, delivered.size());
+    }
+
     private static String youtubeFeed(String... ids) {
         StringBuilder xml = new StringBuilder("<feed xmlns=\"http://www.w3.org/2005/Atom\" xmlns:yt=\"http://www.youtube.com/xml/schemas/2015\">");
         for (String id : ids) xml.append("<entry><yt:videoId>").append(id)

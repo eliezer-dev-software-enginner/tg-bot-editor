@@ -37,6 +37,8 @@ final class YouTubeSubscriptions {
         public String id;
         public String input;
         public String title;
+        /** Latest video when subscribed; used when a destination is bound later. */
+        public String initialVideoId;
         public Map<String, String> lastSeen = new HashMap<>();
         public Channel() { }
         Channel(String id, String input, String title) {
@@ -75,6 +77,7 @@ final class YouTubeSubscriptions {
         List<Video> feed = readFeed(fetcher.get(feedUrl(id)));
         String title = input.trim();
         Channel channel = new Channel(id, title, title);
+        if (!feed.isEmpty()) channel.initialVideoId = feed.getFirst().id();
         channels.add(channel);
         save();
         return "Canal inscrito: " + title + " (" + id + "). "
@@ -102,9 +105,13 @@ final class YouTubeSubscriptions {
                 String key = destination.chatId() + ":" + (destination.threadId() == null ? 0 : destination.threadId());
                 String last = channel.lastSeen.get(key);
                 if (last == null) {
-                    channel.lastSeen.put(key, feed.getFirst().id());
-                    save();
-                    continue;
+                    last = channel.initialVideoId;
+                    if (last == null) {
+                        // Legacy subscriptions have no baseline. Start at the current video once.
+                        channel.lastSeen.put(key, feed.getFirst().id());
+                        save();
+                        continue;
+                    }
                 }
                 int index = 0;
                 while (index < feed.size() && !feed.get(index).id().equals(last)) index++;
