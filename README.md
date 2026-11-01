@@ -15,6 +15,42 @@ The generated bot projects have a separate Gradle Wrapper build that compiles fo
 
 ## Projects and scripts
 
+### Padrões de gatilho e botões
+
+No painel **Propriedades**, o campo **Padrão** muda de significado conforme o
+gatilho. `COMMAND` usa um comando como `/menu` (também aceita argumentos depois
+de um espaço e a forma `/menu@nome_do_bot`). `INTERVAL` usa minutos, como `10`;
+`DAILY` usa horários como `09:00,18:30`. Para `TEXT`, `CALLBACK`, `PHOTO` e
+`DOCUMENT`, `*` recebe qualquer valor desse tipo. Um padrão como `menu:*`
+recebe valores que começam com `menu:`. O asterisco só funciona no final;
+`menu:*:abrir` não é suportado. Entre fluxos do mesmo tipo, um padrão exato
+vence um prefixo, e um prefixo vence `*`. `COMMAND` não usa `*`.
+
+Para criar botões, retorne um `BotReply` no script Java de um fluxo, por
+exemplo no comando `/menu`:
+
+```java
+return BotReply.text("Escolha uma opção:").withButtons(java.util.List.of(
+    BotButton.callback("Detalhes", "menu:detalhes"),
+    BotButton.link("Site", "https://example.com")
+));
+```
+
+Cada botão é exibido em sua própria linha. O botão **Site** abre a URL e não
+aciona um fluxo. O botão **Detalhes** envia `menu:detalhes` ao bot. Para tratar
+esse clique, crie outro fluxo com gatilho `CALLBACK`, padrão
+`menu:detalhes` e script como:
+
+```java
+return "Você clicou em Detalhes.";
+```
+
+Nesse fluxo, `context.text()` contém `menu:detalhes`. Para tratar vários
+botões `menu:...` em um fluxo só, use o padrão `menu:*` e decida a resposta
+pelo valor de `context.text()`. Um fluxo `CALLBACK` com padrão `*` serve de
+fallback. O mesmo mecanismo vale para botões em anúncios; a decisão sobre o
+que cada clique faz pertence ao script do projeto.
+
 The editor and bot projects are separate. **Novo projeto** creates a portable,
 independently buildable folder (by default under `~/Documents/TG-bot Editor/projects/`):
 

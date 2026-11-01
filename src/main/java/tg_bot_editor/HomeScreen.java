@@ -46,21 +46,26 @@ public final class HomeScreen implements ScreenComponent {
                 new Text("Propriedades", new TextProps().fontSize(20)),
                 new Text("Título"), Components.input(model.title, "Nome da ação"),
                 new Text("Descrição do comando"), Components.input(model.description, "O que este comando faz"),
-                new Text("Script Java · retorne texto ou BotReply"), new JavaCodeEditor(model.script, 230),
+                new Row(new RowProps().spacingOf(6)).children(
+                        new Text("Script Java · retorne texto ou BotReply"),
+                        new Button("?").tooltip("Exemplo: return BotReply.text(\"Escolha\").withButtons(java.util.List.of(BotButton.callback(\"Abrir\", \"menu:abrir\"))); Crie um fluxo CALLBACK com padrão menu:abrir para tratar o clique.")),
+                new JavaCodeEditor(model.script, 230),
                 new Row(new RowProps().spacingOf(6)).children(
                         new Button("Aplicar").tooltip("Aplica as alterações da ação selecionada ao projeto. Salve para persistir no disco.").onClick(model::apply),
                         new Button("Excluir").tooltip("Remove a ação selecionada do projeto. Salve para persistir no disco.").onClick(model::remove)),
                 new Text("Tipo de gatilho"), new Text(model.trigger),
                 new Row(new RowProps().spacingOf(6)).children(
                         new Button("Comando").tooltip("Executa a ação quando receber um comando como /start.").onClick(() -> model.chooseTrigger("COMMAND")),
-                        new Button("Texto").tooltip("Executa a ação quando receber uma mensagem de texto correspondente ao padrão.").onClick(() -> model.chooseTrigger("TEXT"))),
+                        new Button("Texto").tooltip("Texto exato, prefixo como pedido:* ou * para qualquer texto. O asterisco só funciona no fim do padrão.").onClick(() -> model.chooseTrigger("TEXT"))),
                 new Row(new RowProps().spacingOf(6)).children(
-                        new Button("Callback").tooltip("Executa a ação ao clicar em um botão de resposta do bot.").onClick(() -> model.chooseTrigger("CALLBACK")),
-                        new Button("Foto").tooltip("Executa a ação quando receber uma foto.").onClick(() -> model.chooseTrigger("PHOTO"))),
+                        new Button("Callback").tooltip("Use BotButton.callback(\"Detalhes\", \"menu:detalhes\") na resposta; crie outro fluxo CALLBACK com padrão menu:detalhes. menu:* recebe todos os cliques desse prefixo.").onClick(() -> model.chooseTrigger("CALLBACK")),
+                        new Button("Foto").tooltip("Use * como padrão para receber qualquer foto; context.photoRef() contém a referência da imagem.").onClick(() -> model.chooseTrigger("PHOTO"))),
                 new Row(new RowProps().spacingOf(6)).children(
                         new Button("Intervalo").tooltip("Executa a ação periodicamente; informe o intervalo em minutos no campo Padrão.").onClick(() -> model.chooseTrigger("INTERVAL")),
                         new Button("Horários diários").tooltip("Executa a ação nos horários HH:mm informados no campo Padrão.").onClick(() -> model.chooseTrigger("DAILY"))),
-                new Text("Padrão · comando, texto, minutos ou HH:mm"),
+                new Row(new RowProps().spacingOf(6)).children(
+                        new Text("Padrão · comando, texto, minutos ou HH:mm"),
+                        new Button("?").tooltip("* aceita qualquer TEXT, CALLBACK, PHOTO ou DOCUMENT. pedido:* aceita valores que começam com pedido:. Exato tem prioridade sobre prefixo, e prefixo sobre *. COMMAND usa /comando; INTERVAL usa minutos; DAILY usa HH:mm.")),
                 Components.input(model.pattern, "/start"),
                 new Text("Variáveis de ambiente do projeto"),
                 Components.environment(model.environment),

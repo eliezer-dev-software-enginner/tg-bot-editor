@@ -36,6 +36,30 @@ recebe um HTTP 4xx permanente, evitando tentativas repetidas sem fim.
 
 ## Comandos do projeto
 
+### Padrões e botões de resposta
+
+Em `bot.json`, `COMMAND` usa `/comando`; `INTERVAL` usa minutos (`10`) e
+`DAILY` usa horários (`09:00,18:30`). Nos gatilhos `TEXT`, `CALLBACK`, `PHOTO`
+e `DOCUMENT`, `*` aceita qualquer valor; `menu:*` aceita valores iniciados por
+`menu:`. O asterisco só funciona no final. Um padrão exato tem prioridade sobre
+um prefixo, e um prefixo tem prioridade sobre `*`. Comandos não usam `*`.
+
+Um fluxo `/menu` pode montar botões no script Java assim:
+
+```java
+return BotReply.text("Escolha:").withButtons(java.util.List.of(
+    BotButton.callback("Detalhes", "menu:detalhes"),
+    BotButton.link("Site", "https://example.com")
+));
+```
+
+Cada botão ocupa uma linha. `BotButton.link` abre a URL. Ao clicar em
+`BotButton.callback`, o Telegram envia o segundo argumento como dado do
+callback: crie outro fluxo com gatilho `CALLBACK`, padrão `menu:detalhes` e
+script `return "Você clicou em Detalhes.";`. Nesse fluxo, `context.text()`
+contém `menu:detalhes`. Para vários botões, um padrão `menu:*` pode tratar os
+cliques pelo valor de `context.text()`; `*` funciona como fallback geral.
+
 O runtime não cria comandos próprios. Defina cada comando em `bot.json` como
 fluxo `COMMAND` e coloque suas respostas e regras em `scripts/`. Tarefas
 periódicas usam fluxos `INTERVAL` ou `DAILY`. O menu `/` do Telegram inclui
