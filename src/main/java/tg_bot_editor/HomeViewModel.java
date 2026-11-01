@@ -14,8 +14,6 @@ import java.util.concurrent.TimeUnit;
 /** The editor stores project paths; scripts and settings belong to each project. */
 final class HomeViewModel {
     private final RecentProjects recent = new RecentProjects();
-    final State<List<String>> recentPaths = State.of(List.of());
-    final State<String> recentChoice = State.of(null);
     final State<String> projectLabel = State.of("Nenhum projeto aberto");
     final State<String> status = State.of("Crie ou abra um projeto para começar.");
     final State<String> botActionLabel = State.of("▶ Executar");
@@ -49,7 +47,6 @@ final class HomeViewModel {
             });
         });
         try {
-            refreshRecents();
             Path canonical = CanonicalProjects.botFile();
             Path starter = Files.isRegularFile(canonical) ? canonical
                     : ProjectWorkspace.migrateStarter(ProjectWorkspace.defaultProjectsDirectory());
@@ -124,7 +121,7 @@ final class HomeViewModel {
             ProjectEnvironment.useDraft(file.getParent(), environment.get());
             ActionCompiler.compileProject(file.getParent(), project);
             FlowStore.write(file, project); ProjectEnvironment.write(file.getParent(), environment.get());
-            recent.remember(file); refreshRecents(); status.set("Projeto salvo: " + file);
+            recent.remember(file); status.set("Projeto salvo: " + file);
             return true;
         } catch (Exception error) { status.set("Falha ao salvar: " + error.getMessage()); return false; }
     }
@@ -201,9 +198,6 @@ final class HomeViewModel {
         if ("PHOTO".equals(kind)) pattern.set("*");
     }
 
-    private void refreshRecents() throws Exception {
-        recentPaths.set(recent.list().stream().map(Path::toString).toList());
-    }
     private void load(Path target) throws Exception {
         Path absolute = CanonicalProjects.resolve(target);
         if (!absolute.getFileName().toString().equals("bot.json"))
@@ -219,7 +213,7 @@ final class HomeViewModel {
         canvas.current().resetView(); refresh(); canvas.current().select(null);
         if (!project.flows.isEmpty()) select(project.flows.getFirst().id);
         else { title.set(""); description.set(""); pattern.set(""); script.set(""); }
-        recent.remember(file); refreshRecents(); status.set("Pasta: " + file.getParent());
+        recent.remember(file); status.set("Pasta: " + file.getParent());
     }
     void openProject() {
         try {
@@ -228,11 +222,6 @@ final class HomeViewModel {
             if (chosen.isEmpty()) return;
             persistDraft(); load(Path.of(chosen.get()));
         } catch (Exception error) { status.set("Não foi possível abrir o projeto: " + error.getMessage()); }
-    }
-    void openRecent() {
-        if (recentChoice.get() == null) { status.set("Escolha um projeto recente."); return; }
-        try { persistDraft(); load(Path.of(recentChoice.get())); }
-        catch (Exception error) { status.set("Não foi possível abrir o projeto recente: " + error.getMessage()); }
     }
     void closeProject() {
         if (file == null) { status.set("Nenhum projeto aberto."); return; }

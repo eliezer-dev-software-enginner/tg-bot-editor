@@ -37,9 +37,6 @@ public final class HomeScreen implements ScreenComponent {
                         new Button(model.botActionLabel, new ButtonProps().primary()).onClick(model::toggleBot),
                         new Button("Exportar comandos").onClick(model::exportCommands)),
                 new Row(new RowProps().spacingOf(7)).children(
-                        new Select<String>(new SelectProps().minWidth(230).maxWidth(230))
-                                .items(model.recentPaths).value(model.recentChoice),
-                        new Button("Abrir recente").onClick(model::openRecent),
                         new Button("+ Novo comando").onClick(model::add),
                         new Button("+ Script").onClick(model::openNewScript)));
     }
