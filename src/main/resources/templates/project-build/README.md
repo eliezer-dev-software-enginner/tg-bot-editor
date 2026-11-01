@@ -23,7 +23,7 @@ java -jar build/libs/*.jar bot.json
 ```
 
 Ao iniciar, o runner registra no menu `/` do Telegram os comandos dos fluxos
-`COMMAND` e os comandos internos de actions e YouTube. Reinicie o bot após
+`COMMAND` definidos pelo projeto. Reinicie o bot após
 alterar os comandos para atualizar o menu. Falhas nesse registro aparecem no
 terminal; o runner continua atendendo mensagens.
 
@@ -34,29 +34,12 @@ O bot precisa ter permissão de publicar nos canais configurados. O runner
 mostra a descrição de erros da API do Telegram e encerra o polling quando
 recebe um HTTP 4xx permanente, evitando tentativas repetidas sem fim.
 
-## Actions em grupos e tópicos
+## Comandos do projeto
 
-Envie `/whoami` ao bot, copie seu ID para `TG_BOT_ADMIN_ID` no `.env` e reinicie
-o runner. No grupo ou tópico desejado, `/actions` lista as actions do projeto,
-`/bindaction <id>` vincula uma delas, `/bindings` mostra os vínculos atuais,
-`/unbindaction <id>` remove um vínculo e `/runaction <id>` executa a action ali
-imediatamente. É possível vincular várias actions ao mesmo destino e uma action
-a vários destinos. Os vínculos são salvos em `data/action-bindings.json` e
-passam a valer sem reiniciar. Actions agendadas publicam em todos os destinos
-vinculados; sem vínculos, usam o destino antigo de `targetChatEnv`. Só o usuário
-configurado como administrador pode usar esses comandos, exceto `/whoami`.
-
-## Novos vídeos do YouTube
-
-Use `/youtube_add <@handle, username ou URL de canal>` para inscrever um canal,
-`/youtube_list` para listar, `/youtube_remove <canal>` para remover e
-`/youtube_check` para consultar agora. No tópico de destino, envie
-`/bindaction youtube-new-videos`. O runner verifica os canais a cada dez minutos
-e envia apenas vídeos publicados após a primeira consulta naquele destino.
-As inscrições e confirmações de entrega ficam em `data/youtube-subscriptions.json`.
-Uma falha de entrega é tentada novamente. URLs `/channel/UC...` funcionam sem
-chave; para resolver `@handle` o bot usa a página pública ou, se houver
-`YOUTUBE_API_KEY` no `.env`, a API oficial de canais.
+O runtime não cria comandos próprios. Defina cada comando em `bot.json` como
+fluxo `COMMAND` e coloque suas respostas e regras em `scripts/`. Tarefas
+periódicas usam fluxos `INTERVAL` ou `DAILY`. O menu `/` do Telegram inclui
+somente os comandos presentes no projeto.
 
 ## Termux
 

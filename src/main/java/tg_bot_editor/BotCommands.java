@@ -9,18 +9,6 @@ import java.util.List;
 public final class BotCommands {
     public record Entry(String name, String description) { }
 
-    private static final List<Entry> BUILT_INS = List.of(
-            new Entry("/whoami", "Mostra seu ID de usuário e do chat"),
-            new Entry("/actions", "Lista as actions disponíveis"),
-            new Entry("/bindings", "Lista as actions vinculadas aqui"),
-            new Entry("/bindaction", "Vincula uma action a este chat ou tópico"),
-            new Entry("/unbindaction", "Remove uma action deste chat ou tópico"),
-            new Entry("/runaction", "Executa uma action neste chat ou tópico"),
-            new Entry("/youtube_add", "Inscreve um canal do YouTube"),
-            new Entry("/youtube_remove", "Remove a inscrição de um canal"),
-            new Entry("/youtube_list", "Lista os canais inscritos"),
-            new Entry("/youtube_check", "Verifica novos vídeos agora"));
-
     private BotCommands() { }
 
     /** Removes Telegram's @bot suffix from the command token, preserving arguments. */
@@ -31,7 +19,6 @@ public final class BotCommands {
 
     public static List<Entry> list(FlowProject project) {
         var commands = new LinkedHashMap<String, Entry>();
-        for (Entry entry : BUILT_INS) commands.put(entry.name(), entry);
         for (var flow : project.flows) {
             if (flow == null || !"COMMAND".equalsIgnoreCase(flow.trigger) || flow.pattern == null) continue;
             String name = flow.pattern.strip();

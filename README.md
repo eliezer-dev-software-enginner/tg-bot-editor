@@ -48,27 +48,17 @@ The flow body is a short Java expression or block, such as `return MeuNovoScript
 Click a card to edit its trigger and Java body. **Excluir** in Properties removes the selected command; **Salvar projeto** persists the change. Switching cards retains edits in memory. The Java editor provides syntax colors, line numbers and indentation. **Executar teste** runs the selected action locally; use it only for project code you trust, since project scripts run with your user permissions.
 **Executar** saves and validates the open project, then starts its Telegram runner in a separate Java process. Set `TG_BOT_TOKEN` in the project's ignored `.env` first. **Parar** stops that process; closing or switching projects also stops it. The editor shows the runner's state and appends its output to `data/bot-runner.log` in the project folder. Restart the bot after changing a script or flow. Do not start the same project from a terminal at the same time.
 
-## Actions em grupos e tópicos
+## Comandos e ações do projeto
 
-No chat com o bot, use `/whoami` para descobrir seu ID numérico e configure `TG_BOT_ADMIN_ID` no `.env` do projeto. Reinicie o runner. Apenas esse usuário pode listar, vincular e executar actions. Dentro de um grupo ou tópico, use:
+O editor não define comandos do bot. Crie um fluxo `COMMAND` em `bot.json` para
+cada comando e implemente sua resposta e regras em `scripts/`. A execução de
+outro fluxo pode usar a capacidade genérica `context.commands().runAction(id,
+context)`. Para notificações periódicas, use um fluxo `INTERVAL` ou `DAILY`.
+O projeto canônico `meu-primeiro-projeto` contém exemplos de administração de
+actions e inscrições no YouTube em seus próprios scripts.
 
-| Comando | Resultado |
-| --- | --- |
-| `/actions` | Lista IDs, nomes e gatilhos das actions do projeto. |
-| `/bindaction <id>` | Vincula a action ao grupo ou tópico atual. Repita para vincular várias actions ou use o comando em outro destino. |
-| `/bindings` | Mostra as actions vinculadas ao destino atual. |
-| `/unbindaction <id>` | Remove o vínculo apenas do destino atual. |
-| `/runaction <id>` | Executa a action imediatamente no grupo ou tópico atual. |
-
-Os vínculos ficam em `data/action-bindings.json`, fora do Git, e passam a valer sem reiniciar o bot. Para gatilhos `INTERVAL` e `DAILY`, cada execução usa todos os destinos vinculados, incluindo o `message_thread_id` do tópico. Se não houver vínculos, continua valendo o destino configurado em `targetChatEnv`. Uma action agendada sem destino apenas aguarda um vínculo. Comandos normais do projeto continuam seguindo seus gatilhos existentes; o vínculo configura os destinos de ações agendadas e o `/runaction` permite testar qualquer action sob demanda. O bot precisa estar no grupo e ter permissão para publicar ali.
-
-### Vídeos novos do YouTube
-
-O runner inclui a action `youtube-new-videos`. Use `/youtube_add <@handle, username ou URL do canal>` para inscrever um canal e `/youtube_list` para revisar as inscrições. `/youtube_remove <canal>` remove a inscrição; `/youtube_check` consulta os feeds imediatamente. Dentro do tópico que deve receber os avisos, envie `/bindaction youtube-new-videos`. É possível vincular essa action a vários tópicos ou grupos, sem criar um script Java por destino. O bot verifica os feeds a cada dez minutos; `/runaction youtube-new-videos` também faz uma consulta apenas para o chat atual. Esses comandos exigem `TG_BOT_ADMIN_ID`.
-
-As inscrições e o último vídeo entregue por destino ficam em `data/youtube-subscriptions.json`. Na primeira consulta, os vídeos já presentes no feed estabelecem o ponto inicial; só vídeos posteriores geram avisos. Uma entrega com falha é tentada novamente, sem marcar o vídeo como enviado. Para `@handle` ou URL `/user/`, o bot tenta identificar o canal na página pública do YouTube. Opcionalmente, configure `YOUTUBE_API_KEY` no `.env` para usar a [API oficial de canais](https://developers.google.com/youtube/v3/docs/channels/list) nessa resolução. URLs `/channel/UC...` dispensam resolução. A página pública pode mudar; se a resolução falhar, use a URL com o ID do canal. O feed público determina quais vídeos estão disponíveis para notificação.
 **Exportar comandos** grava `comandos.txt` ao lado de `bot.json` com os comandos
-dos fluxos `COMMAND` e os comandos internos de actions e YouTube. Ao iniciar,
+dos fluxos `COMMAND` do projeto. Ao iniciar,
 o runner atualiza o menu `/` do Telegram com essa mesma lista. Reinicie o bot
 depois de editar os comandos. Fluxos agendados, de texto, foto e callback não
 aparecem no menu; o Telegram aceita até 100 comandos, com nomes em letras

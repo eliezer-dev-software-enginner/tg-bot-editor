@@ -1,7 +1,7 @@
 package tg_bot_editor;
 
-/** Runtime capabilities available to project-owned management command flows. */
+/** Executes a project action by ID without deciding command syntax or responses. */
 @FunctionalInterface
 public interface BotCommandService {
-    Object execute(BotContext context) throws Exception;
+    Object runAction(String actionId, BotContext context) throws Exception;
 }

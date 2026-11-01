@@ -28,8 +28,6 @@ public final class BotRunner {
     private final String token;
     private final FlowProject project;
     private final ActionBindings bindings;
-    private final YouTubeSubscriptions youtube;
-    private final long adminId;
     private final Map<String, BotAction> actions = new HashMap<>();
     private final Map<String, Instant> lastStartupDelivery = new HashMap<>();
     private ScheduledExecutorService schedules;
@@ -41,9 +39,6 @@ public final class BotRunner {
         FlowValidator.validate(project);
         actions.putAll(ActionCompiler.compileProject(projectDirectory, project));
         bindings = new ActionBindings(projectDirectory);
-        youtube = new YouTubeSubscriptions(projectDirectory);
-        String configuredAdmin = ProjectEnvironment.get("TG_BOT_ADMIN_ID");
-        adminId = configuredAdmin == null || configuredAdmin.isBlank() ? 0 : Long.parseLong(configuredAdmin);
     }
 
     public static void main(String[] args) throws Exception {
@@ -90,7 +85,6 @@ public final class BotRunner {
 
     private void startSchedules() {
         schedules = Executors.newSingleThreadScheduledExecutor();
-        schedules.scheduleWithFixedDelay(this::checkYouTube, 1, 10, TimeUnit.MINUTES);
         for (var flow : project.flows) {
             if (!scheduled(flow.trigger)) continue;
             long chat = 0;
@@ -114,15 +108,6 @@ public final class BotRunner {
 
     private static boolean scheduled(String trigger) {
         return "INTERVAL".equalsIgnoreCase(trigger) || "DAILY".equalsIgnoreCase(trigger);
-    }
-
-    private void checkYouTube() {
-        try {
-            youtube.check(bindings.destinations(YouTubeSubscriptions.ACTION_ID),
-                    (destination, message) -> send(destination.chatId(), destination.threadId(), message));
-        } catch (Exception error) {
-            System.err.println("Falha ao verificar vídeos do YouTube: " + safeMessage(error));
-        }
     }
 
     static boolean shouldStopPolling(int status) {
@@ -225,10 +210,9 @@ public final class BotRunner {
                 : value.startsWith("/") ? "COMMAND" : "TEXT") : "CALLBACK";
         Integer threadId = message.hasNonNull("message_thread_id") ? message.path("message_thread_id").asInt() : null;
         var context = new BotContext(chat, sender.path("id").asLong(), value,
-                sender.path("username").asText(""), photoRef, threadId, this::executeProjectCommand);
+                sender.path("username").asText(""), photoRef, threadId, this::runProjectAction);
         var match = FlowRouter.find(project, kind, value);
         if (match.isEmpty()) {
-            if ("COMMAND".equals(kind) && handleActionCommand(context)) return;
             answerCallback(callback);
             return;
         }
@@ -244,83 +228,10 @@ public final class BotRunner {
         answerCallback(callback);
     }
 
-    private boolean handleActionCommand(BotContext context) throws Exception {
-        String[] parts = context.text().trim().split("\\s+", 2);
-        String command = parts[0].split("@", 2)[0].toLowerCase(java.util.Locale.ROOT);
-        if (!command.equals("/whoami") && !java.util.Set.of("/actions", "/bindings", "/bindaction", "/unbindaction", "/runaction",
-                "/youtube_add", "/youtube_remove", "/youtube_list", "/youtube_check")
-                .contains(command)) return false;
-        send(context.chatId(), context.threadId(), executeProjectCommand(context));
-        return true;
-    }
-
-    private Object executeProjectCommand(BotContext context) throws Exception {
-        String[] parts = context.text().trim().split("\\s+", 2);
-        String command = parts[0].split("@", 2)[0].toLowerCase(java.util.Locale.ROOT);
-        if (command.equals("/whoami")) return "Seu ID: " + context.userId();
-        String argument = parts.length == 2 ? parts[1].trim() : "";
-        String response;
-        if (adminId == 0) response = "Configure TG_BOT_ADMIN_ID no .env do projeto para administrar actions.";
-        else if (context.userId() != adminId) response = "Apenas o administrador pode administrar actions.";
-        else {
-            try { response = actionCommand(command, argument, context); }
-            catch (Exception error) {
-                System.err.println("Falha no comando de action: " + safeMessage(error));
-                response = "Falha ao executar action: " + safeMessage(error);
-            }
-        }
-        return response;
-    }
-
-    String actionCommand(String command, String argument, BotContext context) throws Exception {
-        var destination = new ActionBindings.Destination(context.chatId(), context.threadId());
-        if (command.equals("/actions")) {
-            StringBuilder list = new StringBuilder("Actions disponíveis:\n");
-            for (var flow : project.flows)
-                list.append(flow.id).append(" — ").append(flow.title).append(" (")
-                        .append(flow.trigger).append(")\n");
-            list.append(YouTubeSubscriptions.ACTION_ID).append(" — Novos vídeos do YouTube (automático)\n");
-            return list.toString();
-        }
-        if (command.equals("/youtube_list")) return youtube.list();
-        if (command.equals("/youtube_add")) {
-            if (argument.isEmpty()) return "Use /youtube_add <@handle, username ou URL de canal>.";
-            return youtube.add(argument);
-        }
-        if (command.equals("/youtube_remove")) {
-            if (argument.isEmpty()) return "Use /youtube_remove <@handle, username ou URL de canal>.";
-            return youtube.remove(argument);
-        }
-        if (command.equals("/youtube_check")) {
-            var targets = bindings.destinations(YouTubeSubscriptions.ACTION_ID);
-            if (targets.isEmpty()) return "Nenhum grupo ou tópico vinculado a youtube-new-videos. "
-                    + "Envie /bindaction youtube-new-videos no destino desejado.";
-            int count = youtube.check(targets,
-                    (target, message) -> send(target.chatId(), target.threadId(), message));
-            return count + " vídeo(s) novo(s) enviado(s) para " + targets.size() + " destino(s).";
-        }
-        if (command.equals("/bindings")) {
-            var ids = bindings.at(destination);
-            return ids.isEmpty() ? "Nenhuma action vinculada aqui. Use /bindaction <id>."
-                    : "Actions vinculadas aqui:\n" + String.join("\n", ids);
-        }
-        var flow = project.flows.stream().filter(item -> item.id.equals(argument)).findFirst();
-        if (argument.isEmpty() || (flow.isEmpty() && !argument.equals(YouTubeSubscriptions.ACTION_ID)))
-            return "Informe um ID válido. Use /actions para listar.";
-        if (command.equals("/bindaction"))
-            return bindings.add(argument, destination) ? "Action " + argument + " vinculada a este destino."
-                    : "Action " + argument + " já está vinculada aqui.";
-        if (command.equals("/unbindaction"))
-            return bindings.remove(argument, destination) ? "Vínculo de " + argument + " removido."
-                    : "Action " + argument + " não estava vinculada aqui.";
-        if (argument.equals(YouTubeSubscriptions.ACTION_ID)) {
-            int count = youtube.check(java.util.List.of(destination),
-                    (target, message) -> send(target.chatId(), target.threadId(), message));
-            return count + " vídeo(s) novo(s) enviado(s).";
-        }
-        Object reply = actions.get(argument).run(context);
-        send(context.chatId(), context.threadId(), reply);
-        return "Action " + argument + " executada.";
+    private Object runProjectAction(String actionId, BotContext context) throws Exception {
+        BotAction action = actions.get(actionId);
+        if (action == null) throw new IllegalArgumentException("Action não encontrada: " + actionId);
+        return action.run(context);
     }
 
     private void answerCallback(JsonNode callback) {

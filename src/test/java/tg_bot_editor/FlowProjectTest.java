@@ -14,107 +14,14 @@ class FlowProjectTest {
         var project = new FlowProject();
         var flow = new FlowProject.Flow("whoami", "Identificação", "/whoami", 0, 0);
         flow.description = "Mostra IDs do usuário e do tópico.";
-        flow.script = "return context.commands().execute(context);";
+        flow.script = "return context.commands().runAction(\"demo\", context);";
         project.flows.add(flow);
         assertEquals(flow.description, BotCommands.list(project).stream()
                 .filter(command -> command.name().equals("/whoami")).findFirst().orElseThrow().description());
         var action = ActionCompiler.compile(flow.script);
         var context = new BotContext(42, 7, "/whoami", "tester", null, null,
-                input -> "Usuário: " + input.userId());
+                (id, input) -> "Usuário: " + input.userId());
         assertEquals("Usuário: 7", action.run(context));
-    }
-
-    @Test void youtubeNotificationsStartAtCurrentVideoAndRetryFailedDeliveries() throws Exception {
-        String channel = "UC1234567890123456789012";
-        var xml = new java.util.concurrent.atomic.AtomicReference<>(youtubeFeed("AAAAAAAAAAA"));
-        var subscriptions = new YouTubeSubscriptions(directory, url -> xml.get());
-        assertTrue(subscriptions.add("https://www.youtube.com/channel/" + channel).contains("inscrito"));
-        var topic = new ActionBindings.Destination(-100123, 37);
-        var delivered = new java.util.ArrayList<String>();
-        assertEquals(0, subscriptions.check(java.util.List.of(topic), (target, text) -> delivered.add(text)));
-        xml.set(youtubeFeed("BBBBBBBBBBB", "AAAAAAAAAAA"));
-        assertThrows(java.io.IOException.class, () -> subscriptions.check(java.util.List.of(topic),
-                (target, text) -> { throw new java.io.IOException("Telegram offline"); }));
-        var reloaded = new YouTubeSubscriptions(directory, url -> xml.get());
-        assertEquals(1, reloaded.check(java.util.List.of(topic), (target, text) -> delivered.add(text)));
-        assertEquals(0, reloaded.check(java.util.List.of(topic), (target, text) -> delivered.add(text)));
-        assertEquals(1, delivered.size());
-        assertTrue(delivered.getFirst().contains("youtube.com/watch?v=BBBBBBBBBBB"));
-        assertTrue(subscriptions.list().contains(channel));
-        assertTrue(subscriptions.remove(channel).contains("removida"));
-    }
-
-    @Test void resolvesYoutubeHandleFromPublicChannelMetadata() throws Exception {
-        String channel = "UC1234567890123456789012";
-        ProjectEnvironment.activate(directory);
-        var subscriptions = new YouTubeSubscriptions(directory, url -> url.contains("/@CanalTeste")
-                ? "<script>{\"externalId\":\"" + channel + "\"}</script>" : youtubeFeed("AAAAAAAAAAA"));
-        assertTrue(subscriptions.add("@CanalTeste").contains(channel));
-        assertThrows(IllegalArgumentException.class, () -> subscriptions.add("https://example.com/@CanalTeste"));
-    }
-
-    @Test void newVideoBeforeFirstCheckAfterBindingIsNotLost() throws Exception {
-        String channel = "UC1234567890123456789012";
-        var xml = new java.util.concurrent.atomic.AtomicReference<>(youtubeFeed("AAAAAAAAAAA"));
-        var subscriptions = new YouTubeSubscriptions(directory, url -> xml.get());
-        subscriptions.add("https://www.youtube.com/channel/" + channel);
-        xml.set(youtubeFeed("BBBBBBBBBBB", "AAAAAAAAAAA"));
-        var topic = new ActionBindings.Destination(-100123, 37);
-        var delivered = new java.util.ArrayList<String>();
-        var reloaded = new YouTubeSubscriptions(directory, url -> xml.get());
-        assertEquals(1, reloaded.check(java.util.List.of(topic), (target, text) -> delivered.add(text)));
-        assertEquals(1, delivered.size());
-    }
-
-    @Test void legacyYoutubeSubscriptionDeliversLatestOnce() throws Exception {
-        String channel = "UC1234567890123456789012";
-        var legacy = new YouTubeSubscriptions.Channel();
-        legacy.id = channel;
-        legacy.input = "@legacy";
-        legacy.title = "Legacy";
-        java.nio.file.Files.createDirectories(directory.resolve("data"));
-        new com.fasterxml.jackson.databind.ObjectMapper().writeValue(
-                directory.resolve("data/youtube-subscriptions.json").toFile(), new YouTubeSubscriptions.Channel[]{legacy});
-        var subscriptions = new YouTubeSubscriptions(directory, url -> youtubeFeed("AAAAAAAAAAA"));
-        var topic = new ActionBindings.Destination(-100123, 37);
-        var delivered = new java.util.ArrayList<String>();
-        assertEquals(1, subscriptions.check(java.util.List.of(topic), (target, text) -> delivered.add(text)));
-        assertEquals(0, subscriptions.check(java.util.List.of(topic), (target, text) -> delivered.add(text)));
-    }
-
-    private static String youtubeFeed(String... ids) {
-        StringBuilder xml = new StringBuilder("<feed xmlns=\"http://www.w3.org/2005/Atom\" xmlns:yt=\"http://www.youtube.com/xml/schemas/2015\">");
-        for (String id : ids) xml.append("<entry><yt:videoId>").append(id)
-                .append("</yt:videoId><title>Vídeo ").append(id).append("</title></entry>");
-        return xml.append("</feed>").toString();
-    }
-
-    @Test void listsAndBindsActionsToGroupsAndTopicsWithoutEditingJava() throws Exception {
-        var project = new FlowProject();
-        var first = new FlowProject.Flow("news", "Notícias", "60", 0, 0);
-        first.trigger = "INTERVAL";
-        var second = new FlowProject.Flow("summary", "Resumo", "09:00", 0, 0);
-        second.trigger = "DAILY";
-        project.flows.add(first);
-        project.flows.add(second);
-        java.nio.file.Files.createDirectories(directory.resolve("scripts"));
-        ProjectEnvironment.activate(directory);
-        var runner = new BotRunner("test-token", directory, project);
-        var topic = new BotContext(-100123, 42, "", "tester", null, 37);
-        var group = new BotContext(-100123, 42, "", "tester");
-        assertTrue(runner.actionCommand("/actions", "", topic).contains("news — Notícias (INTERVAL)"));
-        assertTrue(runner.actionCommand("/bindaction", "news", topic).contains("vinculada"));
-        assertTrue(runner.actionCommand("/bindaction", "summary", topic).contains("vinculada"));
-        assertTrue(runner.actionCommand("/bindaction", "news", topic).contains("já está"));
-        assertTrue(runner.actionCommand("/bindaction", "news", group).contains("vinculada"));
-        assertTrue(runner.actionCommand("/bindings", "", topic).contains("news\nsummary"));
-        assertEquals(java.util.List.of(new ActionBindings.Destination(-100123, 37),
-                new ActionBindings.Destination(-100123, null)),
-                new ActionBindings(directory).destinations("news"));
-        assertTrue(runner.actionCommand("/unbindaction", "news", topic).contains("removido"));
-        assertEquals(java.util.List.of(new ActionBindings.Destination(-100123, null)),
-                new ActionBindings(directory).destinations("news"));
-        assertTrue(runner.actionCommand("/bindaction", "missing", topic).contains("ID válido"));
     }
 
     @Test void themePreferencePersistsOutsideBotProjects() throws Exception {
@@ -247,9 +154,7 @@ class FlowProjectTest {
         assertFalse(commands.contains("Publicar notícias do G1"));
         assertFalse(commands.contains("ads:*"));
         assertTrue(commands.contains("/topic — Mostra os IDs do grupo e do tópico atual"));
-        assertTrue(commands.contains("/youtube_add — Inscreve um canal do YouTube"));
-        assertTrue(commands.contains("/bindaction — Vincula uma action a este chat ou tópico"));
-        assertEquals(20, commands.lines().filter(line -> line.startsWith("/")).count());
+        assertEquals(10, commands.lines().filter(line -> line.startsWith("/")).count());
     }
 
     @Test void firstLaunchInstallsAnEditableProjectOnlyOnce() throws Exception {
