@@ -1,5 +1,7 @@
 # TG-bot Editor
 
+![Identidade visual de TG-bot Editor](src/main/resources/icon.png)
+
 A native Megalodonte desktop application for visually defining Telegram bot routes. One runner and one Telegram identity can execute command, text, photo, callback and scheduled flows. The canvas, project controls, Java code editor and inputs are Megalodonte components; no WebView is used.
 
 ## Build and launch
