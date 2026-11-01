@@ -1,35 +1,72 @@
 # TG-bot Editor
 
-![Identidade visual de TG-bot Editor](src/main/resources/icon.png)
+![Ícone do TG-bot Editor](src/main/resources/icon.png)
 
-A native Megalodonte desktop application for visually defining Telegram bot routes. One runner and one Telegram identity can execute command, text, photo, callback and scheduled flows. The canvas, project controls, Java code editor and inputs are Megalodonte components; no WebView is used.
+Editor desktop para criar, testar e executar fluxos de bots do Telegram. Cada projeto guarda seus gatilhos em `bot.json` e suas regras Java em `scripts/`. O editor oferece um painel visual; o bot gerado também pode rodar sozinho no Linux ou no Termux, sem JavaFX.
 
-## Build and launch
+## Começar
 
-The desktop editor requires a JDK 25 installation with `javac`. Its Gradle build resolves `megalodonte-components`, `megalodonte-base` and `megalodonte-theme` version `1.0.0-beta` from Maven Local or Maven Central. These artifacts are not included in this repository. By default, `settings.gradle.kts` includes sibling source checkouts at `../../framework/libraries/megalodonte-components` and `../../framework/libraries/megalodonte-theme`. Outside that workspace, disable those included builds with `-PuseLocalSources=false`; the three artifacts must then be available in one of the configured Maven repositories. From the repository root:
+O editor requer JDK 25, com `javac`, e um ambiente gráfico. Na raiz deste repositório:
 
-```bash
-./gradlew -PuseLocalSources=false test
+```sh
+./gradlew test
+./gradlew run
+```
+
+Por padrão, o Gradle inclui os checkouts de `megalodonte-components` e `megalodonte-theme` do workspace Megalodonte. Em outra estrutura de pastas, use `-PuseLocalSources=false` se as dependências Megalodonte já estiverem disponíveis no Maven Local ou em um repositório configurado:
+
+```sh
 ./gradlew -PuseLocalSources=false run
 ```
 
-The generated bot projects have a separate Gradle Wrapper build that compiles for Java 21 using the JDK running Gradle (version 21 or newer); see below. The editor has a graphical interface, so `run` requires a desktop environment.
+## Criar e executar um projeto
 
-## Projects and scripts
+1. Clique em **Novo projeto**, informe o nome e a pasta de destino. O editor cria `bot.json`, `scripts/`, o código do runner, o Gradle Wrapper e `.env.example`.
+2. Clique em **+ Novo comando**. Selecione o cartão e defina o tipo de gatilho, o padrão e o script Java em **Propriedades**. Use **+ Script** quando a ação precisar de uma classe própria.
+3. Clique em **Aplicar** para atualizar o fluxo e em **Salvar projeto** para gravá-lo. **Executar teste** roda a ação selecionada localmente com a entrada de exemplo, sem enviar mensagem ao Telegram.
+4. Preencha `TG_BOT_TOKEN` em **Variáveis de ambiente do projeto** ou no `.env` do projeto. Clique em **Executar** para iniciar o bot; o mesmo botão passa a **Parar** enquanto ele estiver ativo. A saída fica em `data/bot-runner.log` na pasta do projeto.
 
-### Padrões de gatilho e botões
+**Abrir projeto** seleciona um `bot.json` existente. **Abrir pasta do projeto** mostra os arquivos para edição externa. **Exportar comandos** cria `comandos.txt` a partir dos fluxos `COMMAND`; ao iniciar, o runner também publica esses comandos no menu `/` do Telegram. Reinicie o bot depois de alterar fluxos ou scripts. Use apenas uma instância por token, pois duas instâncias disputam o long polling.
 
-No painel **Propriedades**, o campo **Padrão** muda de significado conforme o
-gatilho. `COMMAND` usa um comando como `/menu` (também aceita argumentos depois
-de um espaço e a forma `/menu@nome_do_bot`). `INTERVAL` usa minutos, como `10`;
-`DAILY` usa horários como `09:00,18:30`. Para `TEXT`, `CALLBACK`, `PHOTO` e
-`DOCUMENT`, `*` recebe qualquer valor desse tipo. Um padrão como `menu:*`
-recebe valores que começam com `menu:`. O asterisco só funciona no final;
-`menu:*:abrir` não é suportado. Entre fluxos do mesmo tipo, um padrão exato
-vence um prefixo, e um prefixo vence `*`. `COMMAND` não usa `*`.
+Um projeto criado pelo editor tem esta estrutura:
 
-Para criar botões, retorne um `BotReply` no script Java de um fluxo, por
-exemplo no comando `/menu`:
+```text
+meu-bot/
+├── bot.json                 # gatilhos, padrões e ações
+├── scripts/                 # classes Java do projeto
+├── runtime/                 # runner e API genérica do bot
+├── gradlew                  # build independente do editor
+├── .env.example             # variáveis disponíveis, sem segredos
+├── .env                     # configuração local, ignorada pelo Git
+└── data/                    # estado e logs locais, ignorados pelo Git
+```
+
+Para validar ou executar o projeto sem abrir o editor, use JDK 21 ou superior dentro da pasta criada:
+
+```sh
+./gradlew clean build
+java -jar build/libs/*.jar --check bot.json
+java -jar build/libs/*.jar bot.json
+```
+
+`--check` compila e valida os fluxos sem conectar ao Telegram nem exigir token. Antes da execução real, copie `.env.example` para `.env` e configure o token. O README gerado no projeto explica o uso no Termux.
+
+## Gatilhos e botões
+
+O campo **Padrão** depende do gatilho:
+
+| Gatilho | Exemplo de padrão | Quando executa |
+| --- | --- | --- |
+| `COMMAND` | `/menu` | Comando recebido, inclusive com argumentos ou `@nome_do_bot`. |
+| `TEXT` | `pedido:*` | Texto que começa com `pedido:`. |
+| `CALLBACK` | `menu:detalhes` | Clique em botão que envia esse dado. |
+| `PHOTO` ou `DOCUMENT` | `*` | Qualquer mensagem do tipo correspondente. |
+| `INTERVAL` | `10` | A cada 10 minutos. |
+| `DAILY` | `09:00,18:30` | Nos horários indicados. |
+
+Em `TEXT`, `CALLBACK`, `PHOTO` e `DOCUMENT`, `*` aceita qualquer valor e um asterisco final cria um prefixo, como `menu:*`. Um padrão exato tem prioridade sobre prefixos; `*` serve como fallback. `COMMAND` não usa asterisco.
+
+Uma ação pode devolver texto simples ou um `BotReply`. Este exemplo mostra como um botão aciona outro fluxo:
 
 ```java
 return BotReply.text("Escolha uma opção:").withButtons(java.util.List.of(
@@ -38,143 +75,28 @@ return BotReply.text("Escolha uma opção:").withButtons(java.util.List.of(
 ));
 ```
 
-Cada botão é exibido em sua própria linha. O botão **Site** abre a URL e não
-aciona um fluxo. O botão **Detalhes** envia `menu:detalhes` ao bot. Para tratar
-esse clique, crie outro fluxo com gatilho `CALLBACK`, padrão
-`menu:detalhes` e script como:
+O botão **Detalhes** envia `menu:detalhes` ao bot. Crie um fluxo `CALLBACK` com esse padrão e, em seu script, retorne uma resposta:
 
 ```java
 return "Você clicou em Detalhes.";
 ```
 
-Nesse fluxo, `context.text()` contém `menu:detalhes`. Para tratar vários
-botões `menu:...` em um fluxo só, use o padrão `menu:*` e decida a resposta
-pelo valor de `context.text()`. Um fluxo `CALLBACK` com padrão `*` serve de
-fallback. O mesmo mecanismo vale para botões em anúncios; a decisão sobre o
-que cada clique faz pertence ao script do projeto.
+Nesse fluxo, `context.text()` contém o dado recebido. Use `menu:*` para tratar vários botões da mesma família e `context.commands().runAction(id, context)` quando um fluxo precisar executar outra ação do projeto. O botão **Site** apenas abre a URL. Cada botão aparece em sua própria linha.
 
-The editor and bot projects are separate. **Novo projeto** creates a portable,
-independently buildable folder (by default under `~/Documents/TG-bot Editor/projects/`):
+As respostas, permissões, assinaturas de canais e regras de anúncios pertencem aos scripts do **projeto do bot**. O editor fornece os gatilhos, a persistência e o transporte Telegram; ele não define os comandos particulares de um bot.
 
-When the canonical checkout `applications/meu-primeiro-projeto` exists, the
-editor opens its `bot.json` at startup. Selecting the former copy at
-`~/Documents/TG-bot Editor/projects/meu-primeiro-projeto/bot.json` also opens
-the checkout instead. This keeps the flows shown in the editor in the same
-Git repository as the production bot. The former copy remains available for
-recovering local data. Without a canonical checkout, the editor retains its
-starter-project behavior. Existing runtime files and scripts are not replaced
-when a project is opened.
+## Configuração e dados
 
-```text
-Meu bot/
-├── bot.json          # visual flows and Java action bodies
-├── scripts/          # editable Java classes such as MeuNovoScript.java
-├── runtime/          # standalone headless runner and bot API source
-├── gradlew, build.gradle.kts  # Gradle Wrapper; produces build/libs/<project>.jar
-├── README.md         # build and Termux instructions
-├── .env.example      # local configuration template without secrets
-├── .env              # local variable values; never commit
-├── .gitignore        # excludes .env, data/ and build/
-└── data/             # generated runtime state; never commit
-```
+O `.env` é local e ignorado pelo Git. Variáveis do processo prevalecem sobre ele. O token do bot é `TG_BOT_TOKEN`; `TG_BOT_ADMIN_ID` e `YOUTUBE_API_KEY` ficam disponíveis para scripts que precisem deles. O banco JSON do runner fica, por padrão, em `data/bot-database.json` dentro do projeto. Defina `TG_BOT_DATABASE_FILE` para usar outro arquivo `.json`; um caminho relativo é resolvido a partir da pasta do projeto.
 
-Every new project includes the runner sources and Gradle Wrapper. In that project's
-directory, run `./gradlew clean build` followed by
-`java -jar build/libs/<project>.jar --check bot.json` to validate it without a
-Telegram token. Fill an ignored `.env` and omit `--check` to start the bot.
-The editor packages these runner sources from its own code so generated projects
-do not depend on the editor installation. The included project README documents
-cloning and running with OpenJDK 21 or newer on Termux.
+O editor guarda a lista de projetos recentes na configuração do usuário, fora dos projetos. Ao abrir, restaura o projeto principal configurado, o mais recente ou cria um projeto inicial. Se precisar indicar explicitamente o projeto principal, use a propriedade de sistema `tg.bot.editor.canonicalBot` com o caminho de seu `bot.json`.
 
-The flow body is a short Java expression or block, such as `return MeuNovoScript.run();`. **+ Script** asks for a Java class name and creates a compilable `scripts/MeuNovoScript.java`. **Abrir pasta do projeto** opens this folder for IntelliJ, VS Code or a file manager. Edit these classes externally, then use **Salvar projeto** to compile every script and action together. Flow bodies and project Java files are loaded by a project class loader; the example-specific `G1NewsAction` and `GenshinAdsAction` are not built into the editor application.
+## Empacotar
 
-**Abrir projeto** selects a `bot.json`; **Fechar projeto** preserves the current draft and clears the canvas. On startup, the editor opens the canonical bot checkout when available, otherwise the most recent project. Its path list is stored separately at `~/.config/tg-bot-editor/recent-projects.properties` (or under `XDG_CONFIG_HOME`). Existing `~/Documents/TG-bot Editor/bot.json` projects are recognized and receive missing external scripts. When an older bundled G1 starter is opened, the missing ads routes are merged without replacing existing flows.
+O empacotamento usa Python 3 e a biblioteca separada `megalodonte-packaging`, instalada no ambiente ou indicada por `MEGALODONTE_PACKAGING_HOME`:
 
-Click a card to edit its trigger and Java body. **Excluir** in Properties removes the selected command; **Salvar projeto** persists the change. Switching cards retains edits in memory. The Java editor provides syntax colors, line numbers and indentation. **Executar teste** runs the selected action locally; use it only for project code you trust, since project scripts run with your user permissions.
-**Executar** saves and validates the open project, then starts its Telegram runner in a separate Java process. Set `TG_BOT_TOKEN` in the project's ignored `.env` first. **Parar** stops that process; closing or switching projects also stops it. The editor shows the runner's state and appends its output to `data/bot-runner.log` in the project folder. Restart the bot after changing a script or flow. Do not start the same project from a terminal at the same time.
-
-## Comandos e ações do projeto
-
-O editor não define comandos do bot. Crie um fluxo `COMMAND` em `bot.json` para
-cada comando e implemente sua resposta e regras em `scripts/`. A execução de
-outro fluxo pode usar a capacidade genérica `context.commands().runAction(id,
-context)`. Para notificações periódicas, use um fluxo `INTERVAL` ou `DAILY`.
-O projeto canônico `meu-primeiro-projeto` contém exemplos de administração de
-actions e inscrições no YouTube em seus próprios scripts.
-
-**Exportar comandos** grava `comandos.txt` ao lado de `bot.json` com os comandos
-dos fluxos `COMMAND` do projeto. Ao iniciar,
-o runner atualiza o menu `/` do Telegram com essa mesma lista. Reinicie o bot
-depois de editar os comandos. Fluxos agendados, de texto, foto e callback não
-aparecem no menu; o Telegram aceita até 100 comandos, com nomes em letras
-minúsculas, números e sublinhados.
-Drag empty canvas space with the primary mouse button to pan the graph without bounds or scroll bars. Drag a card to change its position; pan position never changes saved card coordinates.
-
-## Project variables and runner
-
-The **Variáveis de ambiente do projeto** multiline input edits the project's `.env`, one `NAME=value` per line. For example:
-
-```dotenv
-TG_BOT_TOKEN=your-bot-token
-TG_BOT_G1_CHAT=-1000000000000
-TG_BOT_ADS_DATA_DIR=/absolute/path/to/ads_data
-```
-
-Process environment variables override `.env` values. Set the scheduled destinations directly in the project variables: the starter's G1 route uses `TG_BOT_G1_CHAT`, while new scheduled routes use `TG_BOT_TARGET_CHAT` by default. Existing routes retain their saved variable names. Tokens and chat IDs do not go into `bot.json`; the generated `.gitignore` excludes `.env`. The runner uses the bot identity supplied through `TG_BOT_TOKEN`. Do not run it alongside another publisher using the same token, because long polling would conflict and scheduled posts could be duplicated.
-
-```bash
-./gradlew -PuseLocalSources=false runBot -PbotProject=examples/meu-primeiro-projeto/bot.json
-```
-
-The example project is [examples/meu-primeiro-projeto](examples/meu-primeiro-projeto). Copy `.env.example` to `.env` and set local values before starting its runner. `runBot` uses the editor's Gradle classpath; it does not create a standalone project JAR. The editor's **Executar** button starts the saved project directly.
-The runner schedules daily flows at their exact time; subsecond rounding cannot
-trigger repeated posts immediately before a scheduled hour. Permanent
-Telegram HTTP 4xx polling errors include the API description and stop the runner
-instead of retrying every few seconds. An HTTP error while delivering a reply
-is logged with its destination and the failed update is skipped; it does not
-stop long polling. Scheduled channels must grant the bot
-permission to publish messages.
-
-## Migrated example flows
-
-| Source bot | Project flows |
-| --- | --- |
-| `arsenal-soup` | G1 feed every three hours, with per-article acknowledgement after Telegram confirms delivery. |
-| `genshin-ads` | `/ads`, `/novo`, `/save`, `/listar`, `/publicar`, `/config`, `/addchat`, `/removechat`, photo/text wizard, edit/delete/publish callbacks, and a one-minute scheduler for saved ad intervals. Set `TG_BOT_ADS_DATA_DIR` to an absolute folder such as the existing `genshin-ads/ads_data`; otherwise state stays in the ignored project `data/`. |
-| `promove-grupo-bot-ads` | Not yet migrated; its payment and admin features still need a separate project script/flow port. |
-
-The new ads flow accepts Telegram photo file IDs for the unified bot identity.
-Old photo IDs from another bot identity cannot be reused, but imported ads use
-their local image files instead. The example's `GenshinAdsAction` is project
-source, so you can change it without rebuilding the editor.
-When `TG_BOT_ADS_DATA_DIR` points to a folder with legacy `ads.json`,
-`configs.json` and `images/`, the first read imports the ads and channel IDs
-into `genshin-ads.json` in that folder. The original files are preserved; local
-images are referenced by absolute path. Imported ads start a fresh publishing
-interval, avoiding an immediate burst of scheduled posts. Stop the old publisher
-before using the new runner against the same channels.
-
-Ad destinations may be a whole group/channel or a specific forum topic. Send
-`/topic` inside a topic to obtain its `chat_id` and `message_thread_id`, then
-register it with `/addchat <group-id> <topic-id> [name]`, for example
-`/addchat -1001234567890 37 Atualizações`. In `/listar`, choose a saved ad and
-press **Publicar em tópico** to see the registered topics as buttons; selecting
-one publishes only that ad to that topic. **Publicar agora** still sends it to
-all registered destinations. The Bot API cannot list every existing topic in
-a group, so the picker shows only topics registered for that user. Existing
-channel IDs keep working. The standalone runner sends `message_thread_id` for
-topic deliveries.
-
-## Packaging
-
-The command below requires Python 3 and the separate `megalodonte-packaging` Python library. Install that library in your Python environment or point `MEGALODONTE_PACKAGING_HOME` to its source checkout; the library is not included here.
-
-```bash
+```sh
 python3 scripts/package.py build appimage
 ```
 
-The shared `megalodonte-packaging` workflow builds AppImage, DEB and MSI when manually dispatched or when a `v*` tag is pushed. The packaged runtime includes Java compiler modules so project scripts can compile at run time.
-
-## License
-
-No license file is present in this repository. The licensing terms need confirmation from the project owner.
+O [workflow de empacotamento](.github/workflows/package.yml) produz pacotes para Linux e Windows em execução manual ou tag `v*`.
