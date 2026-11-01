@@ -11,3 +11,9 @@ agendamento, persistência e transporte Telegram. Não adicione verificadores
 periódicos específicos no `BotRunner`; represente-os como fluxos do projeto.
 Ao alterar a API do runtime, atualize as fontes empacotadas em
 `ProjectWorkspace` e valide um projeto criado pelo editor.
+
+O bot `meu-primeiro-projeto` usado em produção está no checkout Git
+`../meu-primeiro-projeto`. O editor deve abrir esse checkout como projeto
+principal. A cópia antiga em `~/Documents/TG-bot Editor/projects/` não é outro
+checkout de publicação; nunca a trate como fonte de verdade. Ao migrar fluxos,
+confirme também qual `bot.json` a interface está exibindo.

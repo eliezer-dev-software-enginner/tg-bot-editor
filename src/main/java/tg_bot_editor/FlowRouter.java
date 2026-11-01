@@ -17,16 +17,15 @@ public final class FlowRouter {
                 case "COMMAND" -> normalized.equals(flow.pattern)
                         || normalized.startsWith(flow.pattern + " ")
                         || normalized.startsWith(flow.pattern + "@");
-                case "TEXT", "CALLBACK", "PHOTO" -> normalized.equalsIgnoreCase(flow.pattern)
+                case "TEXT", "CALLBACK", "PHOTO", "DOCUMENT" -> normalized.equalsIgnoreCase(flow.pattern)
                         || flow.pattern.equals("*") || (flow.pattern.endsWith("*")
                         && normalized.regionMatches(true, 0, flow.pattern, 0, flow.pattern.length() - 1));
                 default -> false;
             };
         }).sorted((a, b) -> {
-            boolean aWildcard = a.pattern.endsWith("*");
-            boolean bWildcard = b.pattern.endsWith("*");
-            if (aWildcard != bWildcard) return Boolean.compare(aWildcard, bWildcard);
-            return Integer.compare(b.pattern.length(), a.pattern.length());
+            int aPrefix = a.pattern.endsWith("*") ? a.pattern.length() : Integer.MAX_VALUE;
+            int bPrefix = b.pattern.endsWith("*") ? b.pattern.length() : Integer.MAX_VALUE;
+            return Integer.compare(bPrefix, aPrefix);
         })
                 .findFirst();
     }

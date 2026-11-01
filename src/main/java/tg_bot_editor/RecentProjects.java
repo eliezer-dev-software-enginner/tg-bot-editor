@@ -22,13 +22,16 @@ public final class RecentProjects {
         var paths = new ArrayList<Path>();
         for (int i = 0; i < 10; i++) {
             String value = props.getProperty("project." + i, "");
-            if (!value.isBlank()) paths.add(Path.of(value).toAbsolutePath().normalize());
+            if (!value.isBlank()) {
+                Path path = CanonicalProjects.resolve(Path.of(value));
+                if (!paths.contains(path)) paths.add(path);
+            }
         }
         return List.copyOf(paths);
     }
 
     public void remember(Path projectFile) throws IOException {
-        Path project = projectFile.toAbsolutePath().normalize();
+        Path project = CanonicalProjects.resolve(projectFile);
         if (!Files.isRegularFile(project)) throw new IOException("Project file does not exist: " + project);
         var paths = new ArrayList<Path>();
         paths.add(project);

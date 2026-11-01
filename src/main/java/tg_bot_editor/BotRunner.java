@@ -2,6 +2,7 @@ package tg_bot_editor;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
 
 import java.net.URI;
 import java.net.URLEncoder;
@@ -16,7 +17,9 @@ import java.time.Instant;
 import java.time.LocalTime;
 import java.time.ZonedDateTime;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -27,18 +30,20 @@ public final class BotRunner {
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
     private final String token;
     private final FlowProject project;
-    private final ActionBindings bindings;
+    private final Path projectDirectory;
     private final Map<String, BotAction> actions = new HashMap<>();
     private final Map<String, Instant> lastStartupDelivery = new HashMap<>();
+    private final Set<Long> privateCommandMenus = new HashSet<>();
     private ScheduledExecutorService schedules;
     private long offset;
 
-    BotRunner(String token, Path projectDirectory, FlowProject project) throws Exception {
+    private BotRunner(String token, Path projectDirectory, FlowProject project) throws Exception {
         this.token = token;
         this.project = project;
+        this.projectDirectory = projectDirectory;
         FlowValidator.validate(project);
         actions.putAll(ActionCompiler.compileProject(projectDirectory, project));
-        bindings = new ActionBindings(projectDirectory);
+        offset = BotDatabase.read("telegramOffset", null, new TypeReference<Long>() { }, () -> 0L);
     }
 
     public static void main(String[] args) throws Exception {
@@ -56,9 +61,10 @@ public final class BotRunner {
         ProjectEnvironment.activate(projectFile.getParent());
         String token = ProjectEnvironment.get("TG_BOT_TOKEN");
         if (token == null || token.isBlank()) throw new IllegalStateException("Defina TG_BOT_TOKEN fora do projeto");
+        BotDatabase.initialize();
         var runner = new BotRunner(token, projectFile.getParent(), project);
         try {
-            runner.registerCommands();
+            runner.registerPrivateCommands();
             runner.startSchedules();
             runner.poll();
         } finally {
@@ -66,30 +72,15 @@ public final class BotRunner {
         }
     }
 
-    private void registerCommands() {
-        try {
-            var commands = BotCommands.list(project);
-            if (commands.size() > 100) throw new IllegalStateException("O Telegram aceita no máximo 100 comandos; encontrados " + commands.size());
-            var payload = JSON.createArrayNode();
-            for (var command : commands) {
-                var item = payload.addObject();
-                item.put("command", command.name().substring(1));
-                item.put("description", command.description());
-            }
-            call("setMyCommands", "commands=" + URLEncoder.encode(JSON.writeValueAsString(payload), StandardCharsets.UTF_8), 20);
-            System.out.println("Menu do Telegram atualizado: " + commands.size() + " comandos.");
-        } catch (Exception error) {
-            System.err.println("Não foi possível atualizar o menu de comandos do Telegram: " + safeMessage(error));
-        }
-    }
-
-    private void startSchedules() {
+    private void startSchedules() throws java.io.IOException {
         schedules = Executors.newSingleThreadScheduledExecutor();
         for (var flow : project.flows) {
             if (!scheduled(flow.trigger)) continue;
             long chat = 0;
             if (flow.targetChatEnv != null && !flow.targetChatEnv.isBlank()) {
                 String target = ProjectEnvironment.get(flow.targetChatEnv);
+                if ((target == null || target.isBlank()) && new ActionBindings(projectDirectory).destinations(flow.id).isEmpty())
+                    throw new IllegalStateException("Defina " + flow.targetChatEnv + " para " + flow.title);
                 if (target != null && !target.isBlank()) {
                     try { chat = Long.parseLong(target); }
                     catch (NumberFormatException error) { throw new IllegalArgumentException(flow.targetChatEnv + " deve ser numérico", error); }
@@ -108,6 +99,36 @@ public final class BotRunner {
 
     private static boolean scheduled(String trigger) {
         return "INTERVAL".equalsIgnoreCase(trigger) || "DAILY".equalsIgnoreCase(trigger);
+    }
+
+    private void registerPrivateCommands() {
+        var commands = JSON.createArrayNode();
+        var available = BotCommands.list(project);
+        if (available.size() > 100) throw new IllegalStateException("O Telegram aceita no máximo 100 comandos.");
+        for (var command : available)
+            commands.addObject().put("command", command.name().substring(1))
+                    .put("description", command.description());
+        try {
+            call("setMyCommands", "commands=" + URLEncoder.encode(commands.toString(), StandardCharsets.UTF_8)
+                    + "&scope=" + URLEncoder.encode("{\"type\":\"all_private_chats\"}", StandardCharsets.UTF_8), 20);
+            call("setMyCommands", "commands=" + URLEncoder.encode(commands.toString(), StandardCharsets.UTF_8), 20);
+            System.out.println("Menu de comandos atualizado: " + available.size() + " comandos.");
+        } catch (Exception error) {
+            System.err.println("Não foi possível atualizar o menu de comandos: " + safeMessage(error));
+        }
+        configureCommandMenu(null);
+    }
+
+    private void configureCommandMenu(Long chatId) {
+        String data = "menu_button=" + URLEncoder.encode("{\"type\":\"commands\"}", StandardCharsets.UTF_8);
+        if (chatId != null) data += "&chat_id=" + chatId;
+        try {
+            call("setChatMenuButton", data, 20);
+            if (chatId != null) privateCommandMenus.add(chatId);
+        } catch (Exception error) {
+            System.err.println("Não foi possível ativar o botão de comandos"
+                    + (chatId == null ? " padrão" : " no chat " + chatId) + ": " + safeMessage(error));
+        }
     }
 
     static boolean shouldStopPolling(int status) {
@@ -144,21 +165,26 @@ public final class BotRunner {
 
     private void runScheduled(FlowProject.Flow flow, long chat, boolean startup) {
         try {
-            var destinations = bindings.destinations(flow.id);
-            if (destinations.isEmpty() && chat != 0)
-                destinations = java.util.List.of(new ActionBindings.Destination(chat, null));
+            var destinations = new ActionBindings(projectDirectory).destinations(flow.id);
             boolean delivered = false;
-            for (var destination : destinations) {
-                try {
+            if (destinations.isEmpty()) {
+                Object reply = actions.get(flow.id).run(new BotContext(chat, 0, "", "scheduler"));
+                send(chat, reply);
+                delivered = !(reply instanceof java.util.Collection<?> batch && batch.isEmpty());
+            } else {
+                for (int i = 0; i < destinations.size(); i++) {
+                    var destination = destinations.get(i);
                     Object reply = actions.get(flow.id).run(new BotContext(destination.chatId(), 0, "", "scheduler",
                             null, destination.threadId()));
                     send(destination.chatId(), destination.threadId(), reply);
                     delivered |= !(reply instanceof java.util.Collection<?> batch && batch.isEmpty());
-                } catch (Exception error) {
-                    System.err.println("Ação agendada falhou em " + destination.chatId() + ": " + safeMessage(error));
+                    // An action that returns explicit deliveries has already selected all targets.
+                    if (reply instanceof BotDelivery || reply instanceof java.util.Collection<?> batch
+                            && batch.stream().anyMatch(BotDelivery.class::isInstance)) break;
                 }
             }
-            if (startup && delivered) lastStartupDelivery.put(flow.id, Instant.now());
+            if (startup && delivered)
+                lastStartupDelivery.put(flow.id, Instant.now());
         } catch (Exception error) {
             System.err.println("Ação agendada falhou: " + flow.title + ": " + safeMessage(error));
         }
@@ -180,6 +206,7 @@ public final class BotRunner {
                                 + ": " + safeMessage(error));
                     } finally {
                         offset = Math.max(offset, update.path("update_id").asLong() + 1);
+                        BotDatabase.write("telegramOffset", offset);
                     }
                 }
             } catch (InterruptedException stopped) {
@@ -201,30 +228,51 @@ public final class BotRunner {
         if (message.isMissingNode()) return;
         long chat = message.path("chat").path("id").asLong();
         JsonNode sender = callback.isMissingNode() ? message.path("from") : callback.path("from");
+        if (chat > 0 && chat == sender.path("id").asLong() && !privateCommandMenus.contains(chat))
+            configureCommandMenu(chat);
         String value = callback.isMissingNode() ? BotCommands.normalize(message.path("text").asText(""))
                 : callback.path("data").asText("");
         JsonNode photos = message.path("photo");
         String photoRef = photos.isArray() && !photos.isEmpty()
                 ? photos.get(photos.size() - 1).path("file_id").asText("") : null;
-        String kind = callback.isMissingNode() ? (photoRef != null ? "PHOTO"
+        JsonNode document = message.path("document");
+        String kind = callback.isMissingNode() ? (!document.isMissingNode() ? "DOCUMENT" : photoRef != null ? "PHOTO"
                 : value.startsWith("/") ? "COMMAND" : "TEXT") : "CALLBACK";
         Integer threadId = message.hasNonNull("message_thread_id") ? message.path("message_thread_id").asInt() : null;
-        var context = new BotContext(chat, sender.path("id").asLong(), value,
-                sender.path("username").asText(""), photoRef, threadId, this::runProjectAction);
-        var match = FlowRouter.find(project, kind, value);
+        var match = FlowRouter.find(project, kind, kind.equals("DOCUMENT") ? "*" : value);
         if (match.isEmpty()) {
             answerCallback(callback);
             return;
         }
-        Object reply;
+        Path downloaded = null;
         try {
-            reply = actions.get(match.get().id).run(context);
-        } catch (Exception error) {
-            System.err.println("Ação falhou: " + match.get().title + ": " + safeMessage(error));
-            answerCallback(callback);
-            return;
+            if (kind.equals("DOCUMENT")) {
+                try {
+                    if (document.path("file_size").asLong() > 20_000_000L)
+                        throw new IllegalArgumentException("Documento acima do limite de 20 MB para download pelo bot.");
+                    downloaded = downloadFile(document.path("file_id").asText());
+                }
+                catch (Exception error) {
+                    if (chat == sender.path("id").asLong())
+                        send(chat, BotReply.text("Falha ao baixar o documento: " + safeMessage(error)));
+                    return;
+                }
+            }
+        var context = new BotContext(chat, sender.path("id").asLong(), value,
+                    sender.path("username").asText(""), photoRef,
+                    threadId,
+                    downloaded, document.path("file_name").asText(""), this::downloadFile,
+                    this::runProjectAction);
+            try {
+                send(chat, context.threadId(), actions.get(match.get().id).run(context));
+            } catch (Exception error) {
+                System.err.println("Ação falhou: " + match.get().title + ": " + safeMessage(error));
+                if (chat == context.userId())
+                    send(chat, BotReply.text("Ação falhou: " + safeMessage(error)));
+            }
+        } finally {
+            if (downloaded != null) Files.deleteIfExists(downloaded);
         }
-        send(chat, context.threadId(), reply);
         answerCallback(callback);
     }
 
@@ -254,6 +302,11 @@ public final class BotRunner {
             send(delivery.chatId(), delivery.threadId(), delivery.reply());
             return;
         }
+        if (value instanceof BotDocument document) {
+            try { sendDocument(chat, threadId, document); }
+            finally { if (document.cleanup() != null) document.cleanup().run(); }
+            return;
+        }
         if (value instanceof Iterable<?> batch) {
             for (Object item : batch) send(chat, threadId, item);
             return;
@@ -274,14 +327,19 @@ public final class BotRunner {
                     String data = "chat_id=" + chat + "&photo=" + URLEncoder.encode(reply.photoRef(), StandardCharsets.UTF_8)
                             + "&caption=" + URLEncoder.encode(reply.text() == null ? "" : reply.text(), StandardCharsets.UTF_8)
                             + options;
-                    result = call("sendPhoto", data, 40);
+                    try {
+                        result = call("sendPhoto", data, 40);
+                    } catch (TelegramApiException photoError) {
+                        // A public image URL can be valid for us yet inaccessible to Telegram.
+                        // Preserve the news text and its delivery acknowledgement in that case.
+                        sendText(chat, reply, options);
+                        result = JSON.createObjectNode().put("ok", true);
+                    }
                 }
                 if (!result.path("ok").asBoolean())
                     throw new IllegalStateException("Telegram recusou sendPhoto");
             } else if (reply.text() != null && !reply.text().isBlank()) {
-                String data = "chat_id=" + chat + "&text=" + URLEncoder.encode(reply.text(), StandardCharsets.UTF_8) + options;
-                if (!call("sendMessage", data, 20).path("ok").asBoolean())
-                    throw new IllegalStateException("Telegram recusou sendMessage");
+                sendText(chat, reply, options);
             } else {
                 throw new IllegalStateException("A ação retornou uma resposta vazia");
             }
@@ -290,6 +348,14 @@ public final class BotRunner {
                     + (threadId == null ? "" : ", tópico " + threadId) + " falhou: " + error.getMessage(), error);
         }
         if (reply.afterSend() != null) reply.afterSend().run();
+    }
+
+    private void sendText(long chat, BotReply reply, String options) throws Exception {
+        if (reply.text() == null || reply.text().isBlank())
+            throw new IllegalStateException("A foto não pôde ser enviada e não há texto alternativo");
+        String data = "chat_id=" + chat + "&text=" + URLEncoder.encode(reply.text(), StandardCharsets.UTF_8) + options;
+        if (!call("sendMessage", data, 20).path("ok").asBoolean())
+            throw new IllegalStateException("Telegram recusou sendMessage");
     }
 
     private static String replyMarkup(BotReply reply) throws Exception {
@@ -328,6 +394,42 @@ public final class BotRunner {
         output.write(("\r\n--" + boundary + "--\r\n").getBytes(StandardCharsets.UTF_8));
         return request("sendPhoto", java.net.http.HttpRequest.BodyPublishers.ofByteArray(output.toByteArray()),
                 "multipart/form-data; boundary=" + boundary, 60);
+    }
+
+    private void sendDocument(long chat, Integer threadId, BotDocument document) throws Exception {
+        String boundary = "tg-bot-" + java.util.UUID.randomUUID();
+        var prefix = new java.io.ByteArrayOutputStream();
+        writePart(prefix, boundary, "chat_id", Long.toString(chat));
+        if (threadId != null) writePart(prefix, boundary, "message_thread_id", Integer.toString(threadId));
+        writePart(prefix, boundary, "caption", document.caption() == null ? "" : document.caption());
+        String filename = document.filename().replaceAll("[^a-zA-Z0-9._-]", "_");
+        prefix.write(("--" + boundary + "\r\nContent-Disposition: form-data; name=\"document\"; filename=\""
+                + filename + "\"\r\nContent-Type: application/zip\r\n\r\n").getBytes(StandardCharsets.UTF_8));
+        var body = HttpRequest.BodyPublishers.concat(HttpRequest.BodyPublishers.ofByteArray(prefix.toByteArray()),
+                HttpRequest.BodyPublishers.ofFile(document.path()),
+                HttpRequest.BodyPublishers.ofString("\r\n--" + boundary + "--\r\n"));
+        request("sendDocument", body, "multipart/form-data; boundary=" + boundary, 120);
+    }
+
+    private Path downloadFile(String fileId) throws Exception {
+        if (fileId == null || fileId.isBlank()) throw new IllegalArgumentException("Arquivo do Telegram sem file_id.");
+        JsonNode result = call("getFile", "file_id=" + URLEncoder.encode(fileId, StandardCharsets.UTF_8), 20);
+        String filePath = result.path("result").path("file_path").asText("");
+        if (filePath.isBlank() || filePath.startsWith("/") || filePath.contains(".."))
+            throw new IllegalStateException("Caminho de arquivo inválido retornado pelo Telegram.");
+        Path temp = Files.createTempFile("tg-bot-download-", ".tmp");
+        try {
+            var request = HttpRequest.newBuilder(URI.create("https://api.telegram.org/file/bot" + token + "/" + filePath))
+                    .timeout(Duration.ofSeconds(60)).GET().build();
+            var response = http.send(request, HttpResponse.BodyHandlers.ofFile(temp));
+            if (response.statusCode() != 200 || Files.size(temp) > 20_000_000L)
+                throw new IllegalStateException("Não foi possível baixar arquivo do Telegram (HTTP "
+                        + response.statusCode() + ", limite 20 MB).");
+            return temp;
+        } catch (Exception error) {
+            Files.deleteIfExists(temp);
+            throw error;
+        }
     }
 
     private static void writePart(java.io.ByteArrayOutputStream output, String boundary, String name, String value)

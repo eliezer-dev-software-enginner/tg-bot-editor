@@ -28,7 +28,9 @@ tasks.processResources {
             "tg_bot_editor/BotButton.java", "tg_bot_editor/BotContext.java",
             "tg_bot_editor/BotDelivery.java", "tg_bot_editor/BotReply.java",
             "tg_bot_editor/BotRunner.java", "tg_bot_editor/BotCommands.java", "tg_bot_editor/ActionBindings.java",
-            "tg_bot_editor/BotCommandService.java", "tg_bot_editor/FlowProject.java",
+            "tg_bot_editor/BotCommandService.java", "tg_bot_editor/BotDatabase.java",
+            "tg_bot_editor/BotDocument.java", "tg_bot_editor/BotFileService.java",
+            "tg_bot_editor/ProjectActionBindings.java", "tg_bot_editor/FlowProject.java",
             "tg_bot_editor/FlowRouter.java", "tg_bot_editor/FlowStore.java",
             "tg_bot_editor/FlowValidator.java", "tg_bot_editor/ProjectEnvironment.java"
         )

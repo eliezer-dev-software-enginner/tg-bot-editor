@@ -50,9 +50,12 @@ final class HomeViewModel {
         });
         try {
             refreshRecents();
-            Path starter = ProjectWorkspace.migrateStarter(ProjectWorkspace.defaultProjectsDirectory());
+            Path canonical = CanonicalProjects.botFile();
+            Path starter = Files.isRegularFile(canonical) ? canonical
+                    : ProjectWorkspace.migrateStarter(ProjectWorkspace.defaultProjectsDirectory());
             Path legacy = Path.of(System.getProperty("user.home"), "Documents", "TG-bot Editor", "bot.json");
-            Path initial = recent.list().stream().filter(Files::isRegularFile).findFirst().orElse(null);
+            Path initial = Files.isRegularFile(canonical) ? canonical
+                    : recent.list().stream().filter(Files::isRegularFile).findFirst().orElse(null);
             if (initial == null && Files.isRegularFile(legacy)) initial = legacy;
             if (initial == null) initial = starter == null
                     ? ProjectWorkspace.ensureStarter(ProjectWorkspace.defaultProjectsDirectory()) : starter;
@@ -202,7 +205,7 @@ final class HomeViewModel {
         recentPaths.set(recent.list().stream().map(Path::toString).toList());
     }
     private void load(Path target) throws Exception {
-        Path absolute = target.toAbsolutePath().normalize();
+        Path absolute = CanonicalProjects.resolve(target);
         if (!absolute.getFileName().toString().equals("bot.json"))
             throw new IllegalArgumentException("Selecione o arquivo bot.json de um projeto.");
         var loaded = FlowStore.read(absolute);

@@ -10,6 +10,24 @@ import static org.junit.jupiter.api.Assertions.*;
 class FlowProjectTest {
     @TempDir Path directory;
 
+    @Test void oldGeneratedBotPathResolvesToCanonicalCheckout() throws Exception {
+        Path canonical = directory.resolve("applications/meu-primeiro-projeto/bot.json");
+        java.nio.file.Files.createDirectories(canonical.getParent());
+        java.nio.file.Files.writeString(canonical, "{}");
+        String previous = System.getProperty("tg.bot.editor.canonicalBot");
+        System.setProperty("tg.bot.editor.canonicalBot", canonical.toString());
+        try {
+            Path oldCopy = ProjectWorkspace.defaultProjectsDirectory()
+                    .resolve("meu-primeiro-projeto/bot.json");
+            assertEquals(canonical, CanonicalProjects.resolve(oldCopy));
+            assertEquals(directory.resolve("other/bot.json"),
+                    CanonicalProjects.resolve(directory.resolve("other/bot.json")));
+        } finally {
+            if (previous == null) System.clearProperty("tg.bot.editor.canonicalBot");
+            else System.setProperty("tg.bot.editor.canonicalBot", previous);
+        }
+    }
+
     @Test void projectCommandCanUseRuntimeServiceAndOwnMenuDescription() throws Exception {
         var project = new FlowProject();
         var flow = new FlowProject.Flow("whoami", "Identificação", "/whoami", 0, 0);
@@ -20,7 +38,7 @@ class FlowProjectTest {
                 .filter(command -> command.name().equals("/whoami")).findFirst().orElseThrow().description());
         var action = ActionCompiler.compile(flow.script);
         var context = new BotContext(42, 7, "/whoami", "tester", null, null,
-                (id, input) -> "Usuário: " + input.userId());
+                null, "", null, (id, input) -> "Usuário: " + input.userId());
         assertEquals("Usuário: 7", action.run(context));
     }
 

@@ -18,7 +18,14 @@ The generated bot projects have a separate Gradle Wrapper build that compiles fo
 The editor and bot projects are separate. **Novo projeto** creates a portable,
 independently buildable folder (by default under `~/Documents/TG-bot Editor/projects/`):
 
-On first launch, the editor installs and opens an editable `meu-primeiro-projeto` starter at `~/Documents/TG-bot Editor/projects/meu-primeiro-projeto/`. Its 15 G1 and Genshin Ads flows and two Java script files are copied from the package. An earlier starter stored as `projects/arsenal-soup/` is renamed in place so its scripts and local data remain intact. Later launches reopen the most recent project; existing project files are not overwritten. When an older project is opened, the editor adds missing Gradle Wrapper files without overwriting its existing build or scripts.
+When the canonical checkout `applications/meu-primeiro-projeto` exists, the
+editor opens its `bot.json` at startup. Selecting the former copy at
+`~/Documents/TG-bot Editor/projects/meu-primeiro-projeto/bot.json` also opens
+the checkout instead. This keeps the flows shown in the editor in the same
+Git repository as the production bot. The former copy remains available for
+recovering local data. Without a canonical checkout, the editor retains its
+starter-project behavior. Existing runtime files and scripts are not replaced
+when a project is opened.
 
 ```text
 Meu bot/

@@ -12,7 +12,9 @@ public final class ProjectWorkspace {
     public static final String STARTER_NAME = "meu-primeiro-projeto";
     private static final List<String> RUNTIME_SOURCES = List.of(
             "ActionCompiler", "BotAction", "BotButton", "BotContext", "BotDelivery", "BotReply",
-            "BotRunner", "BotCommands", "ActionBindings", "BotCommandService", "FlowProject", "FlowRouter", "FlowStore", "FlowValidator", "ProjectEnvironment");
+            "BotRunner", "BotCommands", "ActionBindings", "BotCommandService", "BotDatabase",
+            "BotDocument", "BotFileService", "ProjectActionBindings", "FlowProject", "FlowRouter",
+            "FlowStore", "FlowValidator", "ProjectEnvironment");
     private ProjectWorkspace() { }
 
     public static Path defaultProjectsDirectory() {
@@ -68,8 +70,7 @@ public final class ProjectWorkspace {
         Files.createDirectories(runtime);
         for (String source : RUNTIME_SOURCES) {
             Path target = runtime.resolve(source + ".java");
-            if (!Files.exists(target) || source.equals("BotRunner") || source.equals("BotCommands") || source.equals("BotContext") || source.equals("ActionBindings")
-                    || source.equals("BotCommandService"))
+            if (!Files.exists(target))
                 copyTemplate("/templates/project-runtime/tg_bot_editor/" + source + ".java", target);
         }
     }

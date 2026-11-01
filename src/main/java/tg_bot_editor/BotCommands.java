@@ -27,7 +27,7 @@ public final class BotCommands {
             if (description == null || description.isBlank()) description = "Sem descrição";
             description = description.strip().replaceAll("\\R+", " ");
             if (description.length() > 256) description = description.substring(0, 256);
-            commands.put(name, new Entry(name, description));
+            commands.putIfAbsent(name, new Entry(name, description));
         }
         var result = new ArrayList<>(commands.values());
         result.sort(Comparator.comparing(Entry::name));
