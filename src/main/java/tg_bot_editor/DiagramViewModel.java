@@ -23,6 +23,7 @@ final class DiagramViewModel {
     final State<String> splitterArray = State.of("{{output}}");
     final State<String> selectedLabel = State.of("Selecione um componente para ver seu papel.");
     final State<List<String>> selectedTypes = State.of(List.of());
+    final State<List<String>> actionHints = State.of(List.of());
     final State<String> javaScript = State.of("");
     final State<String> status = State.of("");
     final Ref<DiagramCanvas> canvas = new Ref<>(new DiagramCanvas());
@@ -61,7 +62,8 @@ final class DiagramViewModel {
         if ("SPLITTER".equals(node.type)) splitterArray.set(String.valueOf(node.settings.getOrDefault("array", "{{output}}")));
         selectedLabel.set("CALLBACK".equals(node.type) ? "Início · comando recebido"
                 : "JAVA".equals(node.type) ? "Java · action"
-                : "RESPONSE".equals(node.type) ? "Resposta síncrona" : node.type);
+                : "RESPONSE".equals(node.type) ? "Resposta síncrona"
+                : "ITEM".equals(node.type) ? "Início · item do Splitter" : node.type);
         showAction(node);
         selectedTypes.set(List.of(node.type));
     }
@@ -167,6 +169,11 @@ final class DiagramViewModel {
         selectedTypes.set(List.of());
         componentName.set("");
         javaScript.set("");
+        actionHints.set(diagram != null && diagram.nodes.stream().anyMatch(node -> "ITEM".equals(node.type))
+                ? List.of("Na primeira action, input é o item atual.",
+                        "Nas seguintes, input é o resultado anterior.",
+                        "index é a posição do item (a partir de 0).",
+                        "Exemplo: return input;") : List.of());
         if (diagram != null) {
             name.set(diagram.name);
             selectedLabel.set("Selecione um componente para editar seu nome.");

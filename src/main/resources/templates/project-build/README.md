@@ -35,6 +35,18 @@ O bot precisa ter permissão de publicar nos canais configurados. O runner
 mostra a descrição de erros da API do Telegram e encerra o polling quando
 recebe um HTTP 4xx permanente, evitando tentativas repetidas sem fim.
 
+## Splitter
+
+No subfluxo de um Splitter, a primeira action Java recebe o item atual em
+`input` e sua posição, começando em zero, em `index`. As actions Java seguintes
+recebem em `input` o resultado da etapa anterior. Por exemplo:
+
+```java
+return "Item " + (index + 1) + ": " + input;
+```
+
+Uma Resposta síncrona seguinte pode usar `{{output}}` para enviar o resultado.
+
 ## Comandos do projeto
 
 ### Padrões e botões de resposta

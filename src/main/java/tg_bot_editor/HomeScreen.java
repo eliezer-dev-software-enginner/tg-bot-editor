@@ -196,13 +196,19 @@ public final class HomeScreen implements ScreenComponent {
                             new Text("Action"),
                             new Button("⛶").tooltip("Expandir o editor da action para visualizar e editar o código.")
                                     .onClick(() -> model.diagrams.expandedActionOpen.set(true))),
+                    new StateList<>(model.diagrams.actionHints, hint -> new Text(hint), 2),
                     new JavaCodeEditor(model.diagrams.javaScript, 230,
                             model.javaKeywords, List.of("context")));
             case "SPLITTER" -> new Container(new ContainerProps().spacingOf(8)).children(
                     new Text("Lista de entrada"), Components.input(model.diagrams.splitterArray, "{{output}}"),
                     new Text("Use {{output}} para percorrer a lista retornada pela etapa anterior."),
-                    new Button("Criar ou abrir subfluxo").tooltip("Abre o fluxo executado para cada item da lista.")
+                    new Text("Na primeira action do subfluxo, input é o item atual."),
+                    new Text("index indica a posição do item, a partir de 0."),
+                    new Button("Criar ou abrir subfluxo").tooltip("Abre o fluxo de cada item: use input e index na action Java.")
                             .onClick(model.diagrams::openSubflow));
+            case "ITEM" -> new Container(new ContainerProps().spacingOf(8)).children(
+                    new Text("A primeira action Java recebe o item em input."),
+                    new Text("index indica a posição do item, a partir de 0."));
             default -> new Container(new ContainerProps());
         };
     }
@@ -210,7 +216,8 @@ public final class HomeScreen implements ScreenComponent {
     private Component expandedActionDialog() {
         return new Container(new ContainerProps().paddingAll(20).spacingOf(12).width(1000).height(570).themeSurface()).children(
                 new Text("Action", new TextProps().fontSize(21)),
-                new JavaCodeEditor(model.diagrams.javaScript, 465,
+                new StateList<>(model.diagrams.actionHints, hint -> new Text(hint), 2),
+                new JavaCodeEditor(model.diagrams.javaScript, 390,
                         model.javaKeywords, List.of("context")),
                 new Button("Voltar ao diagrama").onClick(() -> model.diagrams.expandedActionOpen.set(false)));
     }

@@ -48,7 +48,7 @@ O [contexto e andamento](docs/CONTEXT.md), as [decisões](docs/DECISIONS.md) e a
 
 Na tela de um diagrama, arraste um item da paleta **Componentes** para posicioná-lo no canvas e clique em **Salvar diagrama** para guardá-lo. Cada diagrama admite um início. Os novos componentes ficam sem conexão; a criação de conexões e a configuração e execução dos novos tipos ainda estão em desenvolvimento.
 
-Para inspecionar um Splitter existente, selecione-o e clique em **Criar ou abrir subfluxo**; o botão **Voltar ao diagrama anterior** retorna ao fluxo que o contém. O caminho `{{output}}` percorre a lista devolvida pela etapa anterior; no subfluxo, a action Java recebe cada item em `input` e sua posição (começando em zero) em `index`. O Splitter devolve as respostas em ordem; a opção `concat` reúne resultados textuais e está configurada no arquivo do diagrama. Conexões e opções de agregação ainda não são editáveis visualmente.
+Para inspecionar um Splitter existente, selecione-o e clique em **Criar ou abrir subfluxo**; o botão **Voltar ao diagrama anterior** retorna ao fluxo que o contém. O caminho `{{output}}` percorre a lista devolvida pela etapa anterior; no subfluxo, a primeira action Java recebe cada item em `input` e sua posição (começando em zero) em `index`; nas actions seguintes, `input` recebe o resultado da etapa anterior. O Splitter devolve as respostas em ordem; a opção `concat` reúne resultados textuais e está configurada no arquivo do diagrama. Conexões e opções de agregação ainda não são editáveis visualmente.
 
 Os editores Java destacam os tipos comuns, a API do bot e as classes encontradas pelos nomes dos arquivos `.java` em `scripts/`. Ao criar um script pelo editor ou abrir novamente o diagrama, a lista é atualizada para o projeto atual.
 
@@ -113,3 +113,11 @@ python3 scripts/package.py build appimage
 ```
 
 O [workflow de empacotamento](.github/workflows/package.yml) produz pacotes para Linux e Windows em execução manual ou tag `v*`.
+
+Exemplo de action Java dentro do subfluxo de um Splitter:
+
+```java
+return "Item " + (index + 1) + ": " + input;
+```
+
+Uma Resposta síncrona seguinte pode enviar esse resultado com `{{output}}`.
