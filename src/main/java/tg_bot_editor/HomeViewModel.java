@@ -30,6 +30,7 @@ final class HomeViewModel {
     final State<String> newParentLabel = State.of(ProjectWorkspace.defaultProjectsDirectory().toString());
     final State<Boolean> newProjectOpen = State.of(false);
     final State<Boolean> newScriptOpen = State.of(false);
+    final State<Boolean> legacyOpen = State.of(false);
     final Ref<FlowCanvas> canvas = new Ref<>(new FlowCanvas());
     private Path newParent = ProjectWorkspace.defaultProjectsDirectory();
     private Path file;

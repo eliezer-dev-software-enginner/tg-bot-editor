@@ -2,10 +2,13 @@ package tg_bot_editor;
 
 import megalodonte.base.components.Component;
 import megalodonte.base.components.ScreenComponent;
+import megalodonte.base.state.ForEachState;
+import megalodonte.base.state.ReadableState;
 import megalodonte.components.*;
 import megalodonte.components.inputs.*;
 import megalodonte.components.layout_components.*;
 import megalodonte.props.*;
+import java.util.List;
 
 /** Declarative editor view; state and project operations live in HomeViewModel. */
 public final class HomeScreen implements ScreenComponent {
@@ -15,11 +18,10 @@ public final class HomeScreen implements ScreenComponent {
         return new Stack().children(
                 new Container(new ContainerProps().fillHeight().themeBackground()).children(
                         heading(),
-                        new Row(new RowProps().spacingOf(12).fillHeight()).children(
-                                model.canvas.current(),
-                                new Scroll(inspector()).fillAvailableHeight())),
+                        new Scroll(diagramCards()).fillAvailableHeight()),
                 new Modal(model.newProjectOpen, newProjectDialog()),
                 new Modal(model.newScriptOpen, newScriptDialog()),
+                new Modal(model.legacyOpen, legacyEditorDialog()),
                 new Modal(model.diagrams.open, diagramDialog())
         ).fillHeight();
     }
@@ -38,10 +40,46 @@ public final class HomeScreen implements ScreenComponent {
                         new Button(model.botActionLabel, new ButtonProps().primary()).onClick(model::toggleBot),
                         new Button("Exportar comandos").onClick(model::exportCommands)),
                 new Row(new RowProps().spacingOf(7)).children(
-                        new Button("+ Novo comando").onClick(model::add),
-                        new Button("+ Script").onClick(model::openNewScript),
-                        new Button("Diagramas").tooltip("Abre os fluxos visuais dos comandos simples.")
-                                .onClick(model.diagrams::show)));
+                        new Button("+ Novo comando").onClick(() -> {
+                            model.add(); model.legacyOpen.set(true);
+                        }),
+                        new Button("Editar comandos antigos").tooltip("Abre o editor dos fluxos legados em bot.json.")
+                                .onClick(() -> model.legacyOpen.set(true)),
+                        new Button("+ Script").onClick(model::openNewScript)));
+    }
+
+    private Component diagramCards() {
+        return new Container(new ContainerProps().paddingAll(16).spacingOf(12).themeBackground()).children(
+                new Text("Diagramas do projeto", new TextProps().fontSize(21)),
+                new Text("Cada card abre um fluxo visual independente. Os comandos ainda sem diagrama ficam no editor antigo."),
+                new FlowRow(new FlowRowProps().spacingOf(12).verticalSpacing(12).fillWidth())
+                        .items(new ForEachState<DiagramViewModel.Summary, Card>() {
+                            @Override public ReadableState<List<DiagramViewModel.Summary>> getState() {
+                                return model.diagrams.summaries;
+                            }
+                            @Override public List<Card> getComponents() {
+                                return model.diagrams.summaries.get().stream().map(HomeScreen.this::diagramCard).toList();
+                            }
+                        }));
+    }
+
+    private Card diagramCard(DiagramViewModel.Summary summary) {
+        return new Card(new Container(new ContainerProps().paddingAll(14).spacingOf(9).themeSurface()).children(
+                new Text(summary.name(), new TextProps().fontSize(18)),
+                new Text("Gatilho: " + summary.trigger()),
+                new Text(summary.steps() + " componentes · " + (summary.enabled() ? "Ativo" : "Rascunho")),
+                new Button("Abrir diagrama").onClick(() -> model.diagrams.openDiagram(summary.id()))),
+                new CardProps().width(240));
+    }
+
+    private Component legacyEditorDialog() {
+        return new Container(new ContainerProps().paddingAll(14).spacingOf(8).width(1080).height(550).themeSurface()).children(
+                new Row(new RowProps().spacingOf(8)).children(
+                        new Text("Comandos antigos", new TextProps().fontSize(20)),
+                        new Button("Salvar projeto").onClick(model::save),
+                        new Button("Fechar").onClick(() -> model.legacyOpen.set(false))),
+                new Row(new RowProps().spacingOf(10).fillHeight()).children(
+                        model.canvas.current(), new Scroll(inspector()).fillAvailableHeight()));
     }
 
     private Component inspector() {

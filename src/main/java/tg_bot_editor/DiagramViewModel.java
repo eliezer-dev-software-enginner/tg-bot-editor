@@ -11,7 +11,9 @@ import java.util.List;
 
 /** First diagram editor slice: /start event connected to a visual text response. */
 final class DiagramViewModel {
+    record Summary(String id, String name, String trigger, int steps, boolean enabled) { }
     final State<Boolean> open = State.of(false);
+    final State<List<Summary>> summaries = State.of(List.of());
     final State<String> name = State.of("start");
     final State<List<String>> available = State.of(List.of());
     final State<String> chosen = State.of("start");
@@ -54,6 +56,7 @@ final class DiagramViewModel {
         directory = projectDirectory;
         project = directory == null ? new DiagramProject() : DiagramStore.read(directory);
         flows = directory == null ? new FlowProject() : FlowStore.read(directory.resolve("bot.json"));
+        updateSummaries();
         available.set(project.diagrams.stream().map(item -> item.id).toList());
         diagram = project.diagrams.stream().filter(item -> "start".equals(item.id)).findFirst().orElse(null);
         chosen.set(diagram == null ? null : diagram.id);
@@ -65,6 +68,12 @@ final class DiagramViewModel {
         diagram = project.diagrams.stream().filter(item -> item.id.equals(chosen.get())).findFirst().orElse(null);
         showSelected();
         canvas.current().resetView();
+    }
+
+    void openDiagram(String id) {
+        chosen.set(id);
+        selectDiagram();
+        if (diagram != null) open.set(true);
     }
 
     private void showSelected() {
@@ -102,6 +111,7 @@ final class DiagramViewModel {
             project.diagrams.add(diagram);
         }
         available.set(project.diagrams.stream().map(item -> item.id).toList());
+        updateSummaries();
         chosen.set(diagram.id);
         showSelected(); canvas.current().resetView(); open.set(true);
     }
@@ -123,6 +133,7 @@ final class DiagramViewModel {
                     .ifPresent(node -> node.settings = Map.of("text", response.get()));
             diagram.enabled = true;
             DiagramStore.write(directory, project);
+            updateSummaries();
             status.set("Diagrama salvo e ativo: " + pattern.get().trim());
             refresh();
         } catch (Exception error) { status.set("Não foi possível salvar o diagrama: " + error.getMessage()); }
@@ -161,5 +172,14 @@ final class DiagramViewModel {
                                 : "JAVA".equals(node.type) ? "JAVA" : "RESPOSTA",
                         node.x, node.y)).toList(),
                 diagram.edges.stream().map(edge -> new DiagramCanvas.Edge(edge.from, edge.to, edge.kind)).toList());
+    }
+
+    private void updateSummaries() {
+        summaries.set(project.diagrams.stream().map(item -> {
+            String trigger = item.nodes.stream().filter(node -> "CALLBACK".equals(node.type))
+                    .findFirst().map(node -> String.valueOf(node.settings.getOrDefault("pattern", "")))
+                    .orElse("Sem gatilho");
+            return new Summary(item.id, item.name, trigger, item.nodes.size(), item.enabled);
+        }).toList());
     }
 }
