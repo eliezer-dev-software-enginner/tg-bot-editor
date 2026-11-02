@@ -12,6 +12,7 @@ import java.util.List;
 final class DiagramViewModel {
     record Summary(String id, String name, String trigger, int steps, boolean enabled) { }
     final State<Boolean> open = State.of(false);
+    final State<Boolean> expandedActionOpen = State.of(false);
     final State<List<Summary>> summaries = State.of(List.of());
     final State<String> name = State.of("start");
     final State<List<String>> available = State.of(List.of());

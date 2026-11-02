@@ -22,7 +22,8 @@ public final class HomeScreen implements ScreenComponent {
                 new Modal(model.newProjectOpen, newProjectDialog()),
                 new Modal(model.newScriptOpen, newScriptDialog()),
                 new Modal(model.legacyOpen, legacyEditorDialog()),
-                new Modal(model.diagrams.open, diagramDialog())
+                new Modal(model.diagrams.open, diagramDialog()),
+                new Modal(model.diagrams.expandedActionOpen, expandedActionDialog())
         ).fillHeight();
     }
 
@@ -189,9 +190,21 @@ public final class HomeScreen implements ScreenComponent {
                             new InputProps().height(230).width(320)),
                     new Text("Use {{output}} para enviar o retorno da etapa Java."));
             case "JAVA" -> new Container(new ContainerProps().spacingOf(8)).children(
-                    new Text("Action"), new JavaCodeEditor(model.diagrams.javaScript, 230,
+                    new Row(new RowProps().spacingOf(8)).children(
+                            new Text("Action"),
+                            new Button("⛶").tooltip("Expandir o editor da action para visualizar e editar o código.")
+                                    .onClick(() -> model.diagrams.expandedActionOpen.set(true))),
+                    new JavaCodeEditor(model.diagrams.javaScript, 230,
                             List.of("ProjectEnvironment", "context"), List.of("context")));
             default -> new Container(new ContainerProps());
         };
+    }
+
+    private Component expandedActionDialog() {
+        return new Container(new ContainerProps().paddingAll(20).spacingOf(12).width(1000).height(570).themeSurface()).children(
+                new Text("Action", new TextProps().fontSize(21)),
+                new JavaCodeEditor(model.diagrams.javaScript, 465,
+                        List.of("ProjectEnvironment", "context"), List.of("context")),
+                new Button("Voltar ao diagrama").onClick(() -> model.diagrams.expandedActionOpen.set(false)));
     }
 }
