@@ -75,9 +75,9 @@ Para o bot, isso sugere que a decisão de seguir um caminho pertence à **conex�
 
 Hoje o projeto guarda fluxos em `bot.json` e lógica Java em `scripts/`. O runtime aceita `COMMAND`, `TEXT`, `CALLBACK`, `PHOTO`, `DOCUMENT`, `INTERVAL` e `DAILY`; o editor oferece criação por gatilho e edição de script. A lógica e as respostas de um bot específico pertencem ao projeto gerado, não ao editor. Uma futura migração deverá abrir projetos existentes e conservar seus comandos, callbacks, dados e comportamento antes de substituir o formato ou a interface.
 
-## Investigação futura, ainda não iniciada
+## Investigação e planejamento pendentes
 
 1. Levantar requisitos do bot e mapear cada fluxo existente para o modelo de diagramas, incluindo comandos, callbacks, agendamentos, roteamento, persistência e execução no Termux.
 2. Estudar documentação pública do TOTVS iPaaS e confrontá-la com as capturas e com o uso real pretendido. Referências indicadas: [visão geral](https://www.totvs.com/blog/negocios/totvs-ipaas/), [conceitos de iPaaS](https://www.totvs.com/blog/gestao-de-vendas/ipaas/), [central de atendimento](https://centraldeatendimento.totvs.com/hc/pt-br/sections/41614636890903-Integra%C3%A7%C3%B5es-e-Plataforma) e [ficha técnica](https://produtos.totvs.com/ficha-tecnica/tudo-sobre-o-totvs-ipaas/). Os links estão registrados, mas seu conteúdo não foi analisado nesta sessão.
-3. Avaliar um formato versionado para múltiplos diagramas, modelo de dados entre etapas, compatibilidade com `bot.json`, execução e testes.
-4. Só então planejar os componentes de UI necessários na codebase Megalodonte e as mudanças no editor e runtime, com migração verificável do projeto canônico do bot.
+3. Aprofundar o formato versionado já iniciado, o modelo de dados entre etapas, a compatibilidade com `bot.json`, a execução e os testes.
+4. Planejar os componentes de UI e as mudanças adicionais no editor e runtime, com migração verificável do projeto canônico do bot. Consulte [CONTEXT.md](CONTEXT.md), [DECISIONS.md](DECISIONS.md) e [TODO.md](TODO.md) para o andamento.

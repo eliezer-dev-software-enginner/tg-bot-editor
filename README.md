@@ -44,6 +44,8 @@ meu-bot/
 
 A tela inicial mostra os diagramas do projeto em cards. Clique em **Abrir diagrama** para editar o fluxo visual; os comandos ainda sem diagrama ficam em **Editar comandos antigos**. Ao selecionar um componente no canvas, o painel mostra seu nome e suas propriedades: **Comando** para o início ou **Texto da resposta** para a resposta síncrona. No diagrama `start`, selecione cada um dos dois componentes para editar esses campos e depois clique em **Salvar diagrama**. Ao selecionar um nó **Java**, o painel mostra a action vinculada, o script de `bot.json` e o código da classe em `scripts/` para consulta. Essa action existente ainda produz a resposta dinâmica. Ao salvar, um diagrama habilitado tem prioridade sobre o fluxo legado do mesmo comando. O formato e as decisões em aberto estão em [proposta do editor de diagramas](docs/proposta-editor-diagramas.md).
 
+O [contexto e andamento](docs/CONTEXT.md), as [decisões](docs/DECISIONS.md) e as [próximas etapas](docs/TODO.md) acompanham a evolução do projeto.
+
 ![Diagrama start no editor, com entrada e resposta ligadas](docs/images/diagrama-start-editor.png)
 
 Para validar ou executar o projeto sem abrir o editor, use JDK 21 ou superior dentro da pasta criada:
