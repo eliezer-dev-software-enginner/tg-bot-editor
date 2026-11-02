@@ -48,6 +48,8 @@ class DiagramStoreTest {
         assertTrue(Files.isRegularFile(botFile));
         assertTrue(Files.isRegularFile(botFile.getParent().resolve(DiagramStore.FILE_NAME)));
         assertTrue(DiagramStore.read(botFile.getParent()).diagrams.isEmpty());
+        assertTrue(Files.isRegularFile(botFile.getParent()
+                .resolve("runtime/src/main/java/tg_bot_editor/DiagramExecutor.java")));
     }
 
     @Test void conditionsAreAttachedToEdgesAndElseIsUnique() throws Exception {
@@ -74,6 +76,28 @@ class DiagramStoreTest {
         diagram.edges.add(edge("another-else", "start", "yes", "ELSE"));
         assertThrows(IllegalArgumentException.class, () -> DiagramStore.write(directory, project));
         assertEquals(2, DiagramStore.read(directory).diagrams.getFirst().edges.size());
+    }
+
+    @Test void enabledStartDiagramHandlesCommandAndReturnsConfiguredText() throws Exception {
+        var project = new DiagramProject();
+        var diagram = diagram("start", "start");
+        diagram.enabled = true;
+        var trigger = node("start-trigger", "CALLBACK");
+        trigger.settings = Map.of("event", "COMMAND", "pattern", "/start");
+        var response = node("start-response", "RESPONSE");
+        response.settings = Map.of("text", "Boas-vindas existentes");
+        diagram.nodes.add(trigger);
+        diagram.nodes.add(response);
+        diagram.edges.add(edge("link", trigger.id, response.id, "ALWAYS"));
+        project.diagrams.add(diagram);
+        DiagramStore.write(directory, project);
+
+        var restored = DiagramStore.read(directory);
+        assertEquals("Boas-vindas existentes", DiagramExecutor.run(
+                DiagramExecutor.find(restored, "COMMAND", "/start@meu_bot argumento").orElseThrow()));
+        assertTrue(DiagramExecutor.find(restored, "COMMAND", "/status").isEmpty());
+        diagram.enabled = false;
+        assertTrue(DiagramExecutor.find(project, "COMMAND", "/start").isEmpty());
     }
 
     private static DiagramProject.Diagram diagram(String id, String name) {

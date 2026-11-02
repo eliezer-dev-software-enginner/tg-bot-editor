@@ -30,6 +30,7 @@ public final class BotRunner {
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
     private final String token;
     private final FlowProject project;
+    private final DiagramProject diagrams;
     private final Path projectDirectory;
     private final Map<String, BotAction> actions = new HashMap<>();
     private final Map<String, Instant> lastStartupDelivery = new HashMap<>();
@@ -40,6 +41,7 @@ public final class BotRunner {
     private BotRunner(String token, Path projectDirectory, FlowProject project) throws Exception {
         this.token = token;
         this.project = project;
+        this.diagrams = DiagramStore.read(projectDirectory);
         this.projectDirectory = projectDirectory;
         FlowValidator.validate(project);
         actions.putAll(ActionCompiler.compileProject(projectDirectory, project));
@@ -54,6 +56,7 @@ public final class BotRunner {
         var project = FlowStore.read(projectFile);
         if (check) {
             FlowValidator.validate(project);
+            DiagramStore.read(projectFile.getParent());
             int count = ActionCompiler.compileProject(projectFile.getParent(), project).size();
             System.out.println("Projeto válido: " + count + " fluxos Java compilados.");
             return;
@@ -239,8 +242,10 @@ public final class BotRunner {
         String kind = callback.isMissingNode() ? (!document.isMissingNode() ? "DOCUMENT" : photoRef != null ? "PHOTO"
                 : value.startsWith("/") ? "COMMAND" : "TEXT") : "CALLBACK";
         Integer threadId = message.hasNonNull("message_thread_id") ? message.path("message_thread_id").asInt() : null;
-        var match = FlowRouter.find(project, kind, kind.equals("DOCUMENT") ? "*" : value);
-        if (match.isEmpty()) {
+        var diagram = DiagramExecutor.find(diagrams, kind, value);
+        var match = diagram.isPresent() ? java.util.Optional.<FlowProject.Flow>empty()
+                : FlowRouter.find(project, kind, kind.equals("DOCUMENT") ? "*" : value);
+        if (diagram.isEmpty() && match.isEmpty()) {
             answerCallback(callback);
             return;
         }
@@ -264,9 +269,11 @@ public final class BotRunner {
                     downloaded, document.path("file_name").asText(""), this::downloadFile,
                     this::runProjectAction);
             try {
-                send(chat, context.threadId(), actions.get(match.get().id).run(context));
+                send(chat, context.threadId(), diagram.isPresent()
+                        ? DiagramExecutor.run(diagram.get()) : actions.get(match.get().id).run(context));
             } catch (Exception error) {
-                System.err.println("Ação falhou: " + match.get().title + ": " + safeMessage(error));
+                System.err.println("Ação falhou: " + (diagram.isPresent() ? diagram.get().name : match.get().title)
+                        + ": " + safeMessage(error));
                 if (chat == context.userId())
                     send(chat, BotReply.text("Ação falhou: " + safeMessage(error)));
             }

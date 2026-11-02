@@ -42,7 +42,9 @@ meu-bot/
 └── data/                    # estado e logs locais, ignorados pelo Git
 ```
 
-A evolução para diagramas com componentes e conexões está em desenvolvimento. O formato inicial de rascunho e as decisões em aberto estão em [proposta do editor de diagramas](docs/proposta-editor-diagramas.md); por enquanto, apenas `bot.json` é editado e executado pela interface.
+A evolução para diagramas com componentes e conexões está em desenvolvimento. O primeiro percurso funcional é **Diagrama start**: no editor, abra esse painel, ajuste o texto da resposta e clique em **Salvar diagrama**. O runner usa o diagrama habilitado para `/start` antes do fluxo legado em `bot.json`; os demais comandos continuam em `bot.json`. O formato e as decisões em aberto estão em [proposta do editor de diagramas](docs/proposta-editor-diagramas.md).
+
+![Diagrama start no editor, com entrada e resposta ligadas](docs/images/diagrama-start-editor.png)
 
 Para validar ou executar o projeto sem abrir o editor, use JDK 21 ou superior dentro da pasta criada:
 

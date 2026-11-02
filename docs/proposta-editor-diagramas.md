@@ -1,10 +1,10 @@
 # Proposta: editor de diagramas para bots Telegram
 
-> A implementação começou pelo formato versionado e pela persistência dos rascunhos. Os diagramas ainda não são editáveis na interface nem executados pelo bot. A análise detalhada do TOTVS iPaaS segue pendente.
+> O primeiro percurso funcional é o diagrama `start`: entrada `/start` conectada a uma resposta de texto. A análise detalhada do TOTVS iPaaS segue pendente.
 
 ## Estado da implementação
 
-Projetos novos agora recebem `diagrams.json` ao lado de `bot.json`. O arquivo tem uma lista de diagramas com componentes, posições, configurações e conexões. As conexões podem guardar condições `IF`, um ramo `ELSE` e grupos de comparações; o Splitter pode referenciar um diagrama de subfluxo. A leitura e a gravação são validadas, e a gravação é atômica. O formato legado `bot.json` continua responsável pela execução atual e não é reescrito ao salvar um rascunho de diagramas. Ainda faltam editor visual, execução dos componentes, migração dos fluxos existentes, configuração da UI de resposta e testes completos de ponta a ponta antes de publicar diagramas.
+Projetos novos recebem `diagrams.json` ao lado de `bot.json`. O arquivo tem uma lista de diagramas com componentes, posições, configurações e conexões. As conexões podem guardar condições `IF`, um ramo `ELSE` e grupos de comparações; o Splitter pode referenciar um diagrama de subfluxo. A leitura e a gravação são validadas, e a gravação é atômica. O editor já mostra e permite mover os nós do primeiro diagrama, editar a entrada `/start` e o texto da resposta. Ao salvar, esse diagrama fica habilitado; o runner o prioriza para `/start`, sem reescrever o fluxo legado em `bot.json`. Os demais comandos continuam pelo runtime anterior. Os outros tipos de componentes e condições ainda são somente modelo de rascunho, sem execução; a configuração visual geral, a migração dos demais fluxos e os testes com Telegram real permanecem pendentes.
 
 ## Objetivo
 

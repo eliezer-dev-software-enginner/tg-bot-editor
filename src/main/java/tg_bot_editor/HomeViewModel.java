@@ -13,6 +13,7 @@ import java.util.concurrent.TimeUnit;
 
 /** The editor stores project paths; scripts and settings belong to each project. */
 final class HomeViewModel {
+    final DiagramViewModel diagrams = new DiagramViewModel();
     private final RecentProjects recent = new RecentProjects();
     final State<String> projectLabel = State.of("Nenhum projeto aberto");
     final State<String> status = State.of("Crie ou abra um projeto para começar.");
@@ -57,6 +58,7 @@ final class HomeViewModel {
             if (initial == null) initial = starter == null
                     ? ProjectWorkspace.ensureStarter(ProjectWorkspace.defaultProjectsDirectory()) : starter;
             load(initial);
+            if (Boolean.getBoolean("tg.bot.editor.showStartDiagram")) diagrams.show();
         } catch (Exception error) { status.set("Não foi possível restaurar o projeto: " + error.getMessage()); }
         refresh();
     }
@@ -208,6 +210,7 @@ final class HomeViewModel {
         ProjectWorkspace.initializeLegacyScripts(absolute.getParent(), loaded);
         ProjectEnvironment.activate(absolute.getParent());
         project = loaded; file = absolute; selected = null;
+        diagrams.load(file.getParent());
         environment.set(ProjectEnvironment.read(file.getParent()));
         projectLabel.set("Projeto aberto: " + file.getParent().getFileName());
         canvas.current().resetView(); refresh(); canvas.current().select(null);
@@ -229,6 +232,7 @@ final class HomeViewModel {
         catch (Exception error) { status.set("Não foi possível fechar sem salvar o rascunho: " + error.getMessage()); return; }
         stopRunningBot();
         file = null; selected = null; project = new FlowProject();
+        try { diagrams.load(null); } catch (Exception ignored) { }
         projectLabel.set("Nenhum projeto aberto"); title.set(""); description.set(""); pattern.set("");
         script.set(""); environment.set(""); canvas.current().resetView(); refresh(); canvas.current().select(null);
         status.set("Projeto fechado. O último rascunho foi salvo.");

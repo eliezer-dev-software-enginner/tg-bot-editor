@@ -19,7 +19,8 @@ public final class HomeScreen implements ScreenComponent {
                                 model.canvas.current(),
                                 new Scroll(inspector()).fillAvailableHeight())),
                 new Modal(model.newProjectOpen, newProjectDialog()),
-                new Modal(model.newScriptOpen, newScriptDialog())
+                new Modal(model.newScriptOpen, newScriptDialog()),
+                new Modal(model.diagrams.open, diagramDialog())
         ).fillHeight();
     }
 
@@ -38,7 +39,9 @@ public final class HomeScreen implements ScreenComponent {
                         new Button("Exportar comandos").onClick(model::exportCommands)),
                 new Row(new RowProps().spacingOf(7)).children(
                         new Button("+ Novo comando").onClick(model::add),
-                        new Button("+ Script").onClick(model::openNewScript)));
+                        new Button("+ Script").onClick(model::openNewScript),
+                        new Button("Diagrama start").tooltip("Abre o fluxo visual do comando /start.")
+                                .onClick(model.diagrams::show)));
     }
 
     private Component inspector() {
@@ -90,5 +93,26 @@ public final class HomeScreen implements ScreenComponent {
                 new Text("Nome da classe"), Components.input(model.newScriptName, "MeuNovoScript"),
                 new Text("Use MeuNovoScript.run(); em um comando."),
                 new Button("Criar script").onClick(model::createScript));
+    }
+
+    private Component diagramDialog() {
+        return new Container(new ContainerProps().paddingAll(16).spacingOf(9).width(1080).height(545).themeSurface()).children(
+                new Text("Diagrama start", new TextProps().fontSize(22)),
+                new Text("Comando /start → Resposta síncrona"),
+                new Row(new RowProps().spacingOf(8)).children(
+                        new Button("Salvar diagrama").onClick(model.diagrams::save),
+                        new Button("Prévia").onClick(model.diagrams::preview),
+                        new Button("Fechar").onClick(() -> model.diagrams.open.set(false))),
+                new Row(new RowProps().spacingOf(10).fillHeight()).children(
+                        model.diagrams.canvas.current(),
+                        new Scroll(new Container(new ContainerProps().paddingAll(12).spacingOf(8)
+                                .width(350).themeSurface()).children(
+                                new Text("Propriedades", new TextProps().fontSize(19)),
+                                new Text(model.diagrams.selectedLabel),
+                                new Text("Comando"), Components.input(model.diagrams.pattern, "/start"),
+                                new Text("Texto da resposta"),
+                                new TextAreaInput(model.diagrams.response,
+                                        new InputProps().height(230).width(320)),
+                                new Text(model.diagrams.status))).fillAvailableHeight()));
     }
 }
