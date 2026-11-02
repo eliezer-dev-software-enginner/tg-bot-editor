@@ -46,6 +46,8 @@ A tela inicial mostra os diagramas do projeto em cards. Clique em **Abrir diagra
 
 O [contexto e andamento](docs/CONTEXT.md), as [decisões](docs/DECISIONS.md) e as [próximas etapas](docs/TODO.md) acompanham a evolução do projeto.
 
+Na tela de um diagrama, arraste um item da paleta **Componentes** para posicioná-lo no canvas e clique em **Salvar diagrama** para guardá-lo. Cada diagrama admite um início. Os novos componentes ficam sem conexão; a criação de conexões e a configuração e execução dos novos tipos ainda estão em desenvolvimento.
+
 ![Diagrama start no editor, com entrada e resposta ligadas](docs/images/diagrama-start-editor.png)
 
 Para validar ou executar o projeto sem abrir o editor, use JDK 21 ou superior dentro da pasta criada:

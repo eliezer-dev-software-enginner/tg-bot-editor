@@ -35,6 +35,7 @@ final class DiagramViewModel {
 
     DiagramViewModel() {
         canvas.current().onSelect(this::selectNode);
+        canvas.current().onDrop(drop -> addComponent(drop.type(), drop.x(), drop.y()));
         canvas.current().onMove(move -> {
             if (diagram == null) return;
             diagram.nodes.stream().filter(node -> node.id.equals(move.id())).findFirst().ifPresent(node -> {
@@ -44,7 +45,7 @@ final class DiagramViewModel {
     }
 
     void selectNode(String id) {
-        saveSelectedName();
+        saveSelectedFields();
         selectedNodeId = id;
         var node = diagram == null ? null : diagram.nodes.stream()
                 .filter(item -> item.id.equals(id)).findFirst().orElse(null);
@@ -55,6 +56,8 @@ final class DiagramViewModel {
             return;
         }
         componentName.set(node.name);
+        if ("CALLBACK".equals(node.type)) pattern.set(String.valueOf(node.settings.getOrDefault("pattern", "")));
+        if ("RESPONSE".equals(node.type)) response.set(String.valueOf(node.settings.getOrDefault("text", "")));
         selectedLabel.set("CALLBACK".equals(node.type) ? "Início · comando recebido"
                 : "JAVA".equals(node.type) ? "Java · ação existente: " + node.settings.get("flowId")
                 : "RESPONSE".equals(node.type) ? "Resposta síncrona" : node.type);
@@ -62,10 +65,40 @@ final class DiagramViewModel {
         selectedTypes.set(List.of(node.type));
     }
 
-    private void saveSelectedName() {
-        if (diagram != null && selectedNodeId != null && !componentName.get().isBlank())
-            diagram.nodes.stream().filter(node -> node.id.equals(selectedNodeId)).findFirst()
-                    .ifPresent(node -> node.name = componentName.get().trim());
+    private void saveSelectedFields() {
+        if (diagram == null || selectedNodeId == null) return;
+        diagram.nodes.stream().filter(node -> node.id.equals(selectedNodeId)).findFirst().ifPresent(node -> {
+            if (!componentName.get().isBlank()) node.name = componentName.get().trim();
+            var values = new java.util.HashMap<>(node.settings);
+            if ("CALLBACK".equals(node.type)) values.put("pattern", pattern.get().trim());
+            if ("RESPONSE".equals(node.type)) values.put("text", response.get());
+            node.settings = values;
+        });
+    }
+
+    void addComponent(String type, double x, double y) {
+        if (diagram == null) return;
+        String label = switch (type) {
+            case "CALLBACK" -> "Callback"; case "TIMER" -> "Timer";
+            case "CONVERTER" -> "Converter"; case "JAVA" -> "Java";
+            case "GENERATOR" -> "Generator"; case "RESPONSE" -> "Resposta síncrona";
+            case "JDBC" -> "JDBC"; case "JSON_DB" -> "JsonDB"; case "SPLITTER" -> "Splitter";
+            default -> null;
+        };
+        if (label == null || !Double.isFinite(x) || !Double.isFinite(y)) return;
+        if (List.of("CALLBACK", "TIMER").contains(type) && diagram.nodes.stream()
+                .anyMatch(node -> List.of("CALLBACK", "TIMER", "ITEM").contains(node.type))) {
+            status.set("O diagrama já possui um componente de início."); return;
+        }
+        saveSelectedFields();
+        var node = new DiagramProject.Node();
+        node.id = java.util.UUID.randomUUID().toString(); node.name = label; node.type = type;
+        node.x = x; node.y = y;
+        if ("CALLBACK".equals(type)) node.settings = Map.of("event", "COMMAND", "pattern", "");
+        if ("RESPONSE".equals(type)) node.settings = Map.of("text", "");
+        diagram.nodes.add(node);
+        refresh(); canvas.current().select(node.id); selectNode(node.id);
+        status.set("Componente adicionado sem conexão. A configuração e execução dos novos tipos ainda estão em desenvolvimento.");
     }
 
     void load(Path projectDirectory) throws Exception {
@@ -135,21 +168,21 @@ final class DiagramViewModel {
 
     void save() {
         if (diagram == null || directory == null) return;
-        if (pattern.get().isBlank() || (diagram.nodes.stream().anyMatch(node -> "RESPONSE".equals(node.type))
-                && response.get().isBlank())) {
-            status.set("Informe o comando e o texto da resposta, quando houver."); return;
-        }
         try {
             diagram.name = name.get().isBlank() ? "start" : name.get().trim();
-            saveSelectedName();
-            diagram.nodes.stream().filter(node -> "CALLBACK".equals(node.type)).findFirst().orElseThrow()
-                    .settings = Map.of("event", "COMMAND", "pattern", pattern.get().trim());
-            diagram.nodes.stream().filter(node -> "RESPONSE".equals(node.type)).findFirst()
-                    .ifPresent(node -> node.settings = Map.of("text", response.get()));
-            diagram.enabled = true;
+            saveSelectedFields();
+            if (diagram.enabled && diagram.nodes.stream().filter(node -> "CALLBACK".equals(node.type))
+                    .anyMatch(node -> String.valueOf(node.settings.getOrDefault("pattern", "")).isBlank())) {
+                status.set("Informe o comando do componente de início antes de salvar."); return;
+            }
+            if (diagram.enabled && diagram.edges.stream().anyMatch(edge -> diagram.nodes.stream()
+                    .anyMatch(node -> node.id.equals(edge.to) && "RESPONSE".equals(node.type)
+                            && String.valueOf(node.settings.getOrDefault("text", "")).isBlank()))) {
+                status.set("Informe o texto de cada resposta conectada antes de salvar."); return;
+            }
             DiagramStore.write(directory, project);
             updateSummaries();
-            status.set("Diagrama salvo e ativo: " + pattern.get().trim());
+            status.set("Diagrama salvo. Componentes adicionados sem conexão não são executados.");
             refresh();
         } catch (Exception error) { status.set("Não foi possível salvar o diagrama: " + error.getMessage()); }
     }
@@ -183,8 +216,11 @@ final class DiagramViewModel {
     private void refresh() {
         if (diagram == null) { canvas.current().show(java.util.List.of(), java.util.List.of()); return; }
         canvas.current().show(diagram.nodes.stream().map(node -> new DiagramCanvas.Node(
-                        node.id, node.name, "CALLBACK".equals(node.type) ? "INÍCIO"
-                                : "JAVA".equals(node.type) ? "JAVA" : "RESPOSTA",
+                        node.id, node.name, switch (node.type) {
+                            case "CALLBACK", "TIMER", "ITEM" -> "INÍCIO";
+                            case "RESPONSE" -> "RESPOSTA";
+                            default -> node.type;
+                        },
                         node.x, node.y)).toList(),
                 diagram.edges.stream().map(edge -> new DiagramCanvas.Edge(edge.from, edge.to, edge.kind)).toList());
     }

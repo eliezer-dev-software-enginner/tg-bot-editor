@@ -100,6 +100,29 @@ class DiagramStoreTest {
         assertTrue(DiagramExecutor.find(project, "COMMAND", "/start").isEmpty());
     }
 
+    @Test void unconnectedPaletteNodePersistsWithoutChangingActiveResponse() throws Exception {
+        var project = new DiagramProject();
+        var diagram = diagram("start", "start");
+        diagram.enabled = true;
+        var trigger = node("trigger", "CALLBACK");
+        trigger.settings = Map.of("event", "COMMAND", "pattern", "/start");
+        var response = node("response", "RESPONSE");
+        response.settings = Map.of("text", "Resposta existente");
+        var pending = node("new-jsondb", "JSON_DB");
+        pending.x = 235.5; pending.y = 182.0;
+        diagram.nodes.add(trigger); diagram.nodes.add(response); diagram.nodes.add(pending);
+        diagram.edges.add(edge("link", trigger.id, response.id, "ALWAYS"));
+        project.diagrams.add(diagram);
+        DiagramStore.write(directory, project);
+
+        var restored = DiagramStore.read(directory);
+        var saved = restored.diagrams.getFirst();
+        assertTrue(saved.enabled);
+        assertEquals(235.5, saved.nodes.get(2).x);
+        assertEquals(182.0, saved.nodes.get(2).y);
+        assertEquals("Resposta existente", DiagramExecutor.run(saved));
+    }
+
     private static DiagramProject.Diagram diagram(String id, String name) {
         var value = new DiagramProject.Diagram(); value.id = id; value.name = name; return value;
     }

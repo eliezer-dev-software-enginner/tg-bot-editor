@@ -145,6 +145,7 @@ public final class HomeScreen implements ScreenComponent {
                         new Button("Prévia").onClick(model.diagrams::preview),
                         new Button("Fechar").onClick(() -> model.diagrams.open.set(false))),
                 new Row(new RowProps().spacingOf(10).fillHeight()).children(
+                        diagramPalette(),
                         model.diagrams.canvas.current(),
                         new Scroll(new Container(new ContainerProps().paddingAll(12).spacingOf(8)
                                 .width(350).themeSurface()).children(
@@ -152,6 +153,25 @@ public final class HomeScreen implements ScreenComponent {
                                 new Text(model.diagrams.selectedLabel),
                                 new StateList<>(model.diagrams.selectedTypes, this::componentProperties, 0),
                                 new Text(model.diagrams.status))).fillAvailableHeight()));
+    }
+
+    private Component diagramPalette() {
+        return new Container(new ContainerProps().paddingAll(8).spacingOf(8).width(175).themeSurface()).children(
+                new Text("Componentes", new TextProps().fontSize(18)),
+                new Text("Arraste para o diagrama"),
+                new Scroll(new Container(new ContainerProps().spacingOf(7)).children(
+                        new Text("Início"),
+                        new DiagramPaletteItem("Callback", "CALLBACK"),
+                        new DiagramPaletteItem("Timer", "TIMER"),
+                        new Text("Etapas"),
+                        new DiagramPaletteItem("Converter", "CONVERTER"),
+                        new DiagramPaletteItem("Java", "JAVA"),
+                        new DiagramPaletteItem("Generator", "GENERATOR"),
+                        new DiagramPaletteItem("Resposta síncrona", "RESPONSE"),
+                        new DiagramPaletteItem("JDBC", "JDBC"),
+                        new DiagramPaletteItem("JsonDB", "JSON_DB"),
+                        new DiagramPaletteItem("Splitter", "SPLITTER")
+                )).fillAvailableHeight());
     }
 
     private Component componentProperties(String type) {

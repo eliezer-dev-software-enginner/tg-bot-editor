@@ -16,6 +16,10 @@ O `/start` é o primeiro percurso simples: **Callback de comando → Resposta s�
 
 Um nó Java pode apontar para um fluxo de `bot.json` por `flowId` e executar a action existente. O painel mostra o script e, quando identificada, sua classe em `scripts/` para consulta. Isso preserva o comportamento, mas não conclui a migração visual: navegação, decisões e construção de mensagens ainda podem estar no código legado.
 
+## Paleta e inclusão de componentes
+
+A paleta lista os componentes planejados e permite arrastá-los ao canvas. Os nós adicionados ficam inicialmente sem conexão: sua presença não altera o percurso já executado. O editor ainda precisa oferecer criação de conexões e configuração dos novos tipos antes que esses nós sejam executáveis. Um diagrama admite somente um componente de início.
+
 ## Direção da arquitetura
 
 A meta é configurar navegação, condições, mensagens, imagens e botões visualmente. Scripts Java devem realizar operações pontuais sobre dados e retornar resultados; não devem concentrar roteamento de comandos, navegação ou construção da interface do bot. A proposta de componentes, incluindo JsonDB, JDBC e Splitter, está em [proposta do editor de diagramas](proposta-editor-diagramas.md).

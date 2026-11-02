@@ -6,6 +6,7 @@ O TG-bot Editor cria e executa projetos de bots Telegram. O editor fornece mecan
 
 - A tela inicial lista os diagramas de `diagrams.json` em cards. Cada card abre seu diagrama; **Editar comandos antigos** mantém acesso aos fluxos de `bot.json` que ainda não foram migrados.
 - O diagrama `start` contém um início `CALLBACK` configurado como comando `/start` e uma `RESPONSE` com texto editável. Selecionar um nó mostra seu nome e apenas suas propriedades: comando no início e texto na resposta.
+- A paleta à esquerda permite arrastar Callback, Timer, Converter, Java, Generator, Resposta síncrona, JDBC, JsonDB e Splitter para o canvas. O diagrama admite um único início. Os novos nós são salvos sem conexão e não alteram o percurso executado; criação de conexões e configuração/execução dos novos tipos continuam pendentes.
 - Os nós `JAVA` existentes apresentam a action, o script em `bot.json` e a classe em `scripts/` para consulta. A action legada continua responsável pela resposta dinâmica.
 - No projeto do bot mencionado acima existem nove diagramas habilitados: `/start`, `/testeg1`, `/topic`, `/destinos`, `/whoami`, `/actions`, `/bindings`, `/youtube_list` e `/youtube_check`. Oito delegam à action Java anterior; eles não representam ainda a lógica completa visualmente.
 - O runner prioriza um diagrama habilitado compatível com o evento; os demais fluxos continuam em `bot.json`. A implementação atual executa uma conexão incondicional para uma resposta textual ou uma action Java existente.
