@@ -91,6 +91,13 @@ public final class DiagramExecutor {
                         combined.append(result);
                     }
                     output = combined.toString();
+                } else if ("flatten".equals(string(current, "aggregation"))) {
+                    var flattened = new java.util.ArrayList<Object>();
+                    for (Object result : results) {
+                        if (result instanceof Iterable<?> batch) batch.forEach(flattened::add);
+                        else flattened.add(result);
+                    }
+                    output = flattened;
                 } else output = results;
                 String splitterId = current.id;
                 if (diagram.edges.stream().noneMatch(edge -> splitterId.equals(edge.from))) return output;

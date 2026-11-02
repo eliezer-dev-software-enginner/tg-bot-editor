@@ -204,6 +204,10 @@ public final class HomeScreen implements ScreenComponent {
             case "SPLITTER" -> new Container(new ContainerProps().spacingOf(8)).children(
                     new Text("Lista de entrada"), Components.input(diagram.splitterArray, "{{output}}"),
                     new Text("Use {{output}} para percorrer a lista retornada pela etapa anterior."),
+                    new Text("Agrupamento das respostas"),
+                    new Select<String>().items(diagram.splitterAggregations).value(diagram.splitterAggregation),
+                    new Text("list: lista · concat: junta textos"),
+                    new Text("flatten: reúne itens de listas retornadas"),
                     new Text("Na primeira action do subfluxo, input é o item atual."),
                     new Text("index indica a posição do item, a partir de 0."),
                     new Button("Criar ou abrir subfluxo").tooltip("Abre o fluxo de cada item: use input e index na action Java.")

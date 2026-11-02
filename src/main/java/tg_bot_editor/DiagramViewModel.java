@@ -26,6 +26,8 @@ final class DiagramViewModel {
     final State<String> timerInterval = State.of("10");
     final State<String> response = State.of("");
     final State<String> splitterArray = State.of("{{output}}");
+    final State<String> splitterAggregation = State.of("list");
+    final State<List<String>> splitterAggregations = State.of(List.of("list", "concat", "flatten"));
     final State<String> selectedLabel = State.of("Selecione um componente para ver seu papel.");
     final State<List<String>> selectedTypes = State.of(List.of());
     final State<List<String>> actionHints = State.of(List.of());
@@ -76,7 +78,10 @@ final class DiagramViewModel {
         }
         if ("TIMER".equals(node.type)) timerInterval.set(String.valueOf(node.settings.getOrDefault("intervalMinutes", "10")));
         if ("RESPONSE".equals(node.type)) response.set(String.valueOf(node.settings.getOrDefault("text", "")));
-        if ("SPLITTER".equals(node.type)) splitterArray.set(String.valueOf(node.settings.getOrDefault("array", "{{output}}")));
+        if ("SPLITTER".equals(node.type)) {
+            splitterArray.set(String.valueOf(node.settings.getOrDefault("array", "{{output}}")));
+            splitterAggregation.set(String.valueOf(node.settings.getOrDefault("aggregation", "list")));
+        }
         selectedLabel.set("CALLBACK".equals(node.type) ? "Início · comando recebido"
                 : "TIMER".equals(node.type) ? "Início · agendamento"
                 : "JAVA".equals(node.type) ? "Java · action"
@@ -97,7 +102,10 @@ final class DiagramViewModel {
             }
             if ("TIMER".equals(node.type)) values.put("intervalMinutes", timerInterval.get().trim());
             if ("RESPONSE".equals(node.type)) values.put("text", response.get());
-            if ("SPLITTER".equals(node.type)) values.put("array", splitterArray.get().trim());
+            if ("SPLITTER".equals(node.type)) {
+                values.put("array", splitterArray.get().trim());
+                values.put("aggregation", splitterAggregation.get());
+            }
             if ("JAVA".equals(node.type)) {
                 values.put("action", javaScript.get());
                 values.remove("flowId");

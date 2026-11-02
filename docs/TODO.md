@@ -7,7 +7,7 @@ Esta lista registra trabalho pendente; itens propostos não são funcionalidades
 - [ ] Implementar teste local e prévia das actions Java a partir do diagrama; a interface inicial já não expõe o editor de comandos antigos.
 - [ ] Permitir conectar, configurar, duplicar e excluir componentes no diagrama, com operações de salvamento e reabertura confiáveis. A paleta já adiciona nós por arraste, inicialmente sem conexão.
 - [ ] Implementar e validar condições nas conexões, incluindo grupos, comparações e ramo alternativo; diferenciá-las visualmente conforme as referências.
-- [ ] Implementar JsonDB, JDBC, Converter e Generator; ampliar o Splitter para caminhos de dados estruturados, configuração visual das opções de agregação e tratamento de erros.
+- [ ] Implementar JsonDB, JDBC, Converter e Generator; ampliar o Splitter para caminhos de dados estruturados e tratamento de erros.
 - [ ] Permitir compor visualmente mensagens, imagens e botões do Telegram, incluindo o encaminhamento dos cliques para outros fluxos.
 - [ ] Criar o componente **Button** na paleta e exibir, no painel de propriedades à direita, uma prévia de como o Telegram apresentará os componentes de saída, incluindo **Resposta síncrona** e **Button**. A prévia deve acompanhar os valores configurados.
 - [ ] Definir o modelo dos gatilhos restantes, dos agendamentos e das interações entre diagramas, preservando os tipos existentes no runner.
