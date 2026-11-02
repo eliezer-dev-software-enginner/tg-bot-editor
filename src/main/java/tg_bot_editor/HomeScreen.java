@@ -40,18 +40,13 @@ public final class HomeScreen implements ScreenComponent {
                         new Button(model.botActionLabel, new ButtonProps().primary()).onClick(model::toggleBot),
                         new Button("Exportar comandos").onClick(model::exportCommands)),
                 new Row(new RowProps().spacingOf(7)).children(
-                        new Button("+ Novo comando").onClick(() -> {
-                            model.add(); model.legacyOpen.set(true);
-                        }),
-                        new Button("Editar comandos antigos").tooltip("Abre o editor dos fluxos legados em bot.json.")
-                                .onClick(() -> model.legacyOpen.set(true)),
                         new Button("+ Script").onClick(model::openNewScript)));
     }
 
     private Component diagramCards() {
         return new Container(new ContainerProps().paddingAll(16).spacingOf(12).themeBackground()).children(
                 new Text("Diagramas do projeto", new TextProps().fontSize(21)),
-                new Text("Cada card abre um fluxo visual independente. Os comandos ainda sem diagrama ficam no editor antigo."),
+                new Text("Cada card abre um fluxo visual independente."),
                 new FlowRow(new FlowRowProps().spacingOf(12).verticalSpacing(12).fillWidth())
                         .items(new ForEachState<DiagramViewModel.Summary, Card>() {
                             @Override public ReadableState<List<DiagramViewModel.Summary>> getState() {
@@ -187,6 +182,9 @@ public final class HomeScreen implements ScreenComponent {
 
     private Component specificProperties(DiagramViewModel diagram, String type) {
         return switch (type) {
+            case "TIMER" -> new Container(new ContainerProps().spacingOf(8)).children(
+                    new Text("Intervalo em minutos"), Components.input(diagram.timerInterval, "10"),
+                    new Text("Executa ao iniciar e depois de cada intervalo."));
             case "CALLBACK" -> new Container(new ContainerProps().spacingOf(8)).children(
                     new Text("Comando"), Components.input(diagram.pattern, "/start"));
             case "RESPONSE" -> new Container(new ContainerProps().spacingOf(8)).children(

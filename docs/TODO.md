@@ -4,7 +4,7 @@ Esta lista registra trabalho pendente; itens propostos não são funcionalidades
 
 - [ ] Migrar progressivamente os fluxos que ainda vivem no editor legado, preservando respostas, permissões, estado e comportamento do bot.
 - [ ] Substituir chamadas de classes legadas contidas nas actions Java por etapas visuais de dados, decisões e respostas, mantendo Java para operações pontuais. A orquestração compartilhada de `YouTubeAction.check` ainda atende ao comando e ao agendamento.
-- [ ] Implementar teste local e prévia das actions Java a partir do diagrama; o teste dos comandos antigos executa o fluxo legado.
+- [ ] Implementar teste local e prévia das actions Java a partir do diagrama; a interface inicial já não expõe o editor de comandos antigos.
 - [ ] Permitir conectar, configurar, duplicar e excluir componentes no diagrama, com operações de salvamento e reabertura confiáveis. A paleta já adiciona nós por arraste, inicialmente sem conexão.
 - [ ] Implementar e validar condições nas conexões, incluindo grupos, comparações e ramo alternativo; diferenciá-las visualmente conforme as referências.
 - [ ] Implementar JsonDB, JDBC, Converter e Generator; ampliar o Splitter para caminhos de dados estruturados, configuração visual das opções de agregação e tratamento de erros.
@@ -14,3 +14,6 @@ Esta lista registra trabalho pendente; itens propostos não são funcionalidades
 - [ ] Estudar a documentação pública do TOTVS iPaaS indicada na proposta e confrontá-la com os requisitos do bot antes de assumir comportamentos não observados.
 - [ ] Validar os percursos migrados em execução real no Telegram quando houver autorização e configuração para isso; os testes locais não comprovam entregas reais.
 - [ ] Atualizar [CONTEXT.md](CONTEXT.md), [DECISIONS.md](DECISIONS.md) e esta lista conforme as próximas alterações forem concluídas ou decisões forem tomadas.
+
+- [ ] Criar e conectar diagramas visualmente; criar componentes de mensagens, botões, condições e persistência para substituir a lógica ainda concentrada em scripts.
+- [ ] Migrar a lógica interna das tarefas de anúncios e YouTube hoje delegadas a `GenshinAdsAction.tick()` e `YouTubeAction.check()`.

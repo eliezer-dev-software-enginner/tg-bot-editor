@@ -21,6 +21,7 @@ final class DiagramViewModel {
     final State<String> chosen = State.of("start");
     final State<String> componentName = State.of("");
     final State<String> pattern = State.of("/start");
+    final State<String> timerInterval = State.of("10");
     final State<String> response = State.of("");
     final State<String> splitterArray = State.of("{{output}}");
     final State<String> selectedLabel = State.of("Selecione um componente para ver seu papel.");
@@ -68,9 +69,11 @@ final class DiagramViewModel {
         }
         componentName.set(node.name);
         if ("CALLBACK".equals(node.type)) pattern.set(String.valueOf(node.settings.getOrDefault("pattern", "")));
+        if ("TIMER".equals(node.type)) timerInterval.set(String.valueOf(node.settings.getOrDefault("intervalMinutes", "10")));
         if ("RESPONSE".equals(node.type)) response.set(String.valueOf(node.settings.getOrDefault("text", "")));
         if ("SPLITTER".equals(node.type)) splitterArray.set(String.valueOf(node.settings.getOrDefault("array", "{{output}}")));
         selectedLabel.set("CALLBACK".equals(node.type) ? "Início · comando recebido"
+                : "TIMER".equals(node.type) ? "Início · agendamento"
                 : "JAVA".equals(node.type) ? "Java · action"
                 : "RESPONSE".equals(node.type) ? "Resposta síncrona"
                 : "ITEM".equals(node.type) ? "Início · item do Splitter" : node.type);
@@ -84,6 +87,7 @@ final class DiagramViewModel {
             if (!componentName.get().isBlank()) node.name = componentName.get().trim();
             var values = new java.util.HashMap<>(node.settings);
             if ("CALLBACK".equals(node.type)) values.put("pattern", pattern.get().trim());
+            if ("TIMER".equals(node.type)) values.put("intervalMinutes", timerInterval.get().trim());
             if ("RESPONSE".equals(node.type)) values.put("text", response.get());
             if ("SPLITTER".equals(node.type)) values.put("array", splitterArray.get().trim());
             if ("JAVA".equals(node.type)) {
@@ -113,6 +117,7 @@ final class DiagramViewModel {
         node.id = java.util.UUID.randomUUID().toString(); node.name = label; node.type = type;
         node.x = x; node.y = y;
         if ("CALLBACK".equals(type)) node.settings = Map.of("event", "COMMAND", "pattern", "");
+        if ("TIMER".equals(type)) node.settings = Map.of("intervalMinutes", "10");
         if ("RESPONSE".equals(type)) node.settings = Map.of("text", "");
         diagram.nodes.add(node);
         refresh(); canvas.current().select(node.id); selectNode(node.id);
@@ -243,6 +248,10 @@ final class DiagramViewModel {
             savePending();
             diagram.name = name.get().isBlank() ? "start" : name.get().trim();
             saveSelectedFields();
+            if (diagram.enabled && diagram.nodes.stream().filter(node -> "TIMER".equals(node.type))
+                    .anyMatch(node -> !String.valueOf(node.settings.getOrDefault("intervalMinutes", "")).matches("[1-9][0-9]*"))) {
+                status.set("Informe um intervalo inteiro maior que zero, em minutos."); return;
+            }
             if (diagram.enabled && diagram.nodes.stream().filter(node -> "CALLBACK".equals(node.type))
                     .anyMatch(node -> String.valueOf(node.settings.getOrDefault("pattern", "")).isBlank())) {
                 status.set("Informe o comando do componente de início antes de salvar."); return;
@@ -304,7 +313,9 @@ final class DiagramViewModel {
         summaries.set(project.diagrams.stream().filter(item -> !subflows.contains(item.id)).map(item -> {
             String trigger = item.nodes.stream().filter(node -> "CALLBACK".equals(node.type))
                     .findFirst().map(node -> String.valueOf(node.settings.getOrDefault("pattern", "")))
-                    .orElse("Sem gatilho");
+                    .orElseGet(() -> item.nodes.stream().filter(node -> "TIMER".equals(node.type))
+                            .findFirst().map(node -> "A cada " + node.settings.getOrDefault("intervalMinutes", "?") + " min")
+                            .orElse("Sem gatilho"));
             return new Summary(item.id, item.name, trigger, item.nodes.size(), item.enabled);
         }).toList());
     }

@@ -46,8 +46,8 @@ public final class DiagramExecutor {
         if (!active.add(diagram.id)) throw new IllegalArgumentException("Ciclo de subfluxos: " + diagram.name);
         try {
         DiagramProject.Node current = diagram.nodes.stream()
-                .filter(node -> (subflow ? "ITEM" : "CALLBACK").equals(node.type)).findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Diagrama sem início " + (subflow ? "Item" : "Callback")));
+                .filter(node -> subflow ? "ITEM".equals(node.type) : ("CALLBACK".equals(node.type) || "TIMER".equals(node.type))).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Diagrama sem início " + (subflow ? "Item" : "Callback ou Timer")));
         Object output = input;
         for (int steps = 0; steps <= diagram.nodes.size(); steps++) {
             if ("RESPONSE".equals(current.type)) {

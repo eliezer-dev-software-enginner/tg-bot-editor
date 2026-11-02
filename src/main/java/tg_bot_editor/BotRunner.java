@@ -77,8 +77,7 @@ public final class BotRunner {
 
     private void startSchedules() throws java.io.IOException {
         schedules = Executors.newSingleThreadScheduledExecutor();
-        for (var flow : project.flows) {
-            if (!scheduled(flow.trigger)) continue;
+        for (var flow : scheduledFlows(project, diagrams)) {
             long chat = 0;
             if (flow.targetChatEnv != null && !flow.targetChatEnv.isBlank()) {
                 String target = ProjectEnvironment.get(flow.targetChatEnv);
@@ -98,6 +97,26 @@ public final class BotRunner {
                 for (String value : flow.pattern.split(",")) scheduleDaily(schedules, flow, targetChat, LocalTime.parse(value.trim()));
             }
         }
+    }
+
+    static java.util.List<FlowProject.Flow> scheduledFlows(FlowProject project, DiagramProject diagrams) {
+        var result = new java.util.LinkedHashMap<String, FlowProject.Flow>();
+        for (var flow : project.flows) if (scheduled(flow.trigger)) result.put(flow.id, flow);
+        for (var diagram : diagrams.diagrams) {
+            var timer = diagram.nodes.stream().filter(node -> "TIMER".equals(node.type)).findFirst().orElse(null);
+            if (timer == null) continue;
+            if (!diagram.enabled) { result.remove(diagram.id); continue; }
+            String interval = String.valueOf(timer.settings.getOrDefault("intervalMinutes", ""));
+            long minutes;
+            try { minutes = Long.parseLong(interval); }
+            catch (NumberFormatException e) { throw new IllegalArgumentException("Intervalo inválido em " + diagram.name, e); }
+            if (minutes < 1) throw new IllegalArgumentException("Intervalo deve ser maior que zero em " + diagram.name);
+            var flow = new FlowProject.Flow();
+            flow.id = diagram.id; flow.title = diagram.name; flow.trigger = "INTERVAL"; flow.pattern = interval;
+            flow.targetChatEnv = String.valueOf(timer.settings.getOrDefault("targetChatEnv", ""));
+            result.put(flow.id, flow);
+        }
+        return java.util.List.copyOf(result.values());
     }
 
     private static boolean scheduled(String trigger) {
@@ -171,13 +190,13 @@ public final class BotRunner {
             var destinations = new ActionBindings(projectDirectory).destinations(flow.id);
             boolean delivered = false;
             if (destinations.isEmpty()) {
-                Object reply = actions.get(flow.id).run(new BotContext(chat, 0, "", "scheduler"));
+                Object reply = runProjectAction(flow.id, new BotContext(chat, 0, "", "scheduler"));
                 send(chat, reply);
                 delivered = !(reply instanceof java.util.Collection<?> batch && batch.isEmpty());
             } else {
                 for (int i = 0; i < destinations.size(); i++) {
                     var destination = destinations.get(i);
-                    Object reply = actions.get(flow.id).run(new BotContext(destination.chatId(), 0, "", "scheduler",
+                    Object reply = runProjectAction(flow.id, new BotContext(destination.chatId(), 0, "", "scheduler",
                             null, destination.threadId()));
                     send(destination.chatId(), destination.threadId(), reply);
                     delivered |= !(reply instanceof java.util.Collection<?> batch && batch.isEmpty());
@@ -284,6 +303,10 @@ public final class BotRunner {
     }
 
     private Object runProjectAction(String actionId, BotContext context) throws Exception {
+        var scheduledDiagram = diagrams.diagrams.stream().filter(diagram -> diagram.enabled
+                && diagram.id.equals(actionId) && diagram.nodes.stream().anyMatch(node -> "TIMER".equals(node.type)))
+                .findFirst();
+        if (scheduledDiagram.isPresent()) return DiagramExecutor.run(diagrams, scheduledDiagram.get(), context, actions);
         BotAction action = actions.get(actionId);
         if (action == null) throw new IllegalArgumentException("Action não encontrada: " + actionId);
         return action.run(context);

@@ -29,3 +29,7 @@ O editor abre cada subfluxo em um popup sobre seu diagrama de origem, com estado
 ## Direção da arquitetura
 
 A meta é configurar navegação, condições, mensagens, imagens e botões visualmente. Scripts Java devem realizar operações pontuais sobre dados e retornar resultados; não devem concentrar roteamento de comandos, navegação ou construção da interface do bot. A proposta de componentes, incluindo JsonDB, JDBC e Splitter, está em [proposta do editor de diagramas](proposta-editor-diagramas.md).
+
+## Timers na transição
+
+O Timer de intervalo configurado no diagrama tem prioridade sobre o agendamento legado de mesmo ID. Diagramas desabilitados suspendem o agendamento correspondente; intervalos devem ser inteiros positivos. A execução, inclusive por `/runaction`, usa o diagrama habilitado. O runner conserva agendamentos legados sem diagrama.

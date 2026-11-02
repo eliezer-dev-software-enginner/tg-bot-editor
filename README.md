@@ -22,7 +22,7 @@ Por padrão, o Gradle inclui os checkouts de `megalodonte-components` e `megalod
 ## Criar e executar um projeto
 
 1. Clique em **Novo projeto**, informe o nome e a pasta de destino. O editor cria `bot.json`, `diagrams.json`, `scripts/`, o código do runner, o Gradle Wrapper e `.env.example`.
-2. Clique em **+ Novo comando**. Selecione o cartão e defina o tipo de gatilho, o padrão e o script Java em **Propriedades**. Use **+ Script** quando a ação precisar de uma classe própria.
+2. Abra um card de diagrama e edite seus componentes em **Propriedades**. Use **+ Script** quando a ação precisar de uma classe própria. A criação visual de novos diagramas ainda está em desenvolvimento.
 3. Clique em **Aplicar** para atualizar o fluxo e em **Salvar projeto** para gravá-lo. **Executar teste** roda a ação selecionada localmente com a entrada de exemplo, sem enviar mensagem ao Telegram.
 4. Preencha `TG_BOT_TOKEN` em **Variáveis de ambiente do projeto** ou no `.env` do projeto. Clique em **Executar** para iniciar o bot; o mesmo botão passa a **Parar** enquanto ele estiver ativo. A saída fica em `data/bot-runner.log` na pasta do projeto.
 
@@ -42,7 +42,7 @@ meu-bot/
 └── data/                    # estado e logs locais, ignorados pelo Git
 ```
 
-A tela inicial mostra os diagramas do projeto em cards. Clique em **Abrir diagrama** para editar o fluxo visual; os comandos ainda sem diagrama ficam em **Editar comandos antigos**. Ao selecionar um componente no canvas, o painel mostra seu nome e suas propriedades: **Comando** para o início ou **Texto da resposta** para a resposta síncrona. No diagrama `start`, selecione cada um dos dois componentes para editar esses campos e depois clique em **Salvar diagrama**. Ao selecionar um nó **Java**, edite sua **Action** no próprio diagrama. Para passar seu retorno à resposta síncrona, use `{{output}}` no campo de texto; isolado, ele também encaminha mensagens ou listas sem convertê-las em texto. A action pode chamar classes existentes em `scripts/`. Ao salvar, um diagrama habilitado tem prioridade sobre o fluxo legado do mesmo comando. O formato e as decisões em aberto estão em [proposta do editor de diagramas](docs/proposta-editor-diagramas.md).
+A tela inicial mostra os diagramas do projeto em cards. Clique em **Abrir diagrama** para editar o fluxo visual; fluxos ainda não migrados continuam no `bot.json` e são executados pelo runner. Ao selecionar um componente no canvas, o painel mostra seu nome e suas propriedades: **Comando** para o início ou **Texto da resposta** para a resposta síncrona. No componente **Timer**, informe o intervalo em minutos; o fluxo inicia com o bot e é repetido após cada intervalo. No diagrama `start`, selecione cada um dos dois componentes para editar esses campos e depois clique em **Salvar diagrama**. Ao selecionar um nó **Java**, edite sua **Action** no próprio diagrama. Para passar seu retorno à resposta síncrona, use `{{output}}` no campo de texto; isolado, ele também encaminha mensagens ou listas sem convertê-las em texto. A action pode chamar classes existentes em `scripts/`. Ao salvar, um diagrama habilitado tem prioridade sobre o fluxo legado do mesmo comando. O formato e as decisões em aberto estão em [proposta do editor de diagramas](docs/proposta-editor-diagramas.md).
 
 O [contexto e andamento](docs/CONTEXT.md), as [decisões](docs/DECISIONS.md) e as [próximas etapas](docs/TODO.md) acompanham a evolução do projeto.
 
