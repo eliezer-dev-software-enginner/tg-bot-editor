@@ -87,6 +87,14 @@ class DiagramSubflowWindowTest {
             assertEquals("POST", rest.settings.get("method"));
             assertEquals("{} ", rest.settings.get("body"));
             assertEquals(rest.id, restored.edges.getFirst().to);
+            editor.addComponent("JSON_DB", 420, 100);
+            editor.jsonSection.set("records"); editor.jsonOperation.set("UPSERT");
+            editor.jsonKey.set("{{output.group}}"); editor.jsonRecord.set("{{output.item}}");
+            editor.jsonIdentity.set("id"); editor.save();
+            var json = DiagramStore.read(directory).diagrams.getFirst().nodes.stream()
+                    .filter(node -> node.type.equals("JSON_DB")).findFirst().orElseThrow();
+            assertEquals("records", json.settings.get("section"));
+            assertEquals("id", json.settings.get("identity"));
             return null;
         });
         Platform.runLater(check); check.get(30, TimeUnit.SECONDS);

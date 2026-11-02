@@ -48,6 +48,14 @@ final class DiagramViewModel {
     final State<String> restUrlEnv = State.of("");
     final State<String> restMethod = State.of("GET");
     final State<String> restBody = State.of("");
+    final State<String> jsonSection = State.of("");
+    final State<String> jsonOperation = State.of("UPSERT");
+    final State<List<String>> jsonOperations = State.of(List.of("LIST", "UPSERT", "DELETE"));
+    final State<String> jsonLegacy = State.of("");
+    final State<String> jsonKey = State.of("{{output.key}}");
+    final State<String> jsonRecord = State.of("{{output.record}}");
+    final State<String> jsonIdentity = State.of("");
+    final State<String> jsonResult = State.of("{{output}}");
     final State<List<String>> restMethods = State.of(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"));
     final State<String> splitterArray = State.of("{{output}}");
     final State<String> splitterAggregation = State.of("list");
@@ -122,6 +130,15 @@ final class DiagramViewModel {
             restUrlEnv.set(String.valueOf(node.settings.getOrDefault("urlEnv", "")));
             restMethod.set(String.valueOf(node.settings.getOrDefault("method", "GET")));
             restBody.set(String.valueOf(node.settings.getOrDefault("body", "")));
+        }
+        if ("JSON_DB".equals(node.type)) {
+            jsonSection.set(String.valueOf(node.settings.getOrDefault("section", "")));
+            jsonOperation.set(String.valueOf(node.settings.getOrDefault("operation", "UPSERT")));
+            jsonLegacy.set(String.valueOf(node.settings.getOrDefault("legacy", "")));
+            jsonKey.set(String.valueOf(node.settings.getOrDefault("key", "{{output.key}}")));
+            jsonRecord.set(String.valueOf(node.settings.getOrDefault("record", "{{output.record}}")));
+            jsonIdentity.set(String.valueOf(node.settings.getOrDefault("identity", "")));
+            jsonResult.set(String.valueOf(node.settings.getOrDefault("result", "{{output}}")));
         }
         updateActionHints(node);
         if ("TIMER".equals(node.type)) timerInterval.set(String.valueOf(node.settings.getOrDefault("intervalMinutes", "10")));
@@ -207,6 +224,12 @@ final class DiagramViewModel {
                 values.put("method", restMethod.get());
                 values.put("body", restBody.get());
             }
+            if ("JSON_DB".equals(node.type)) {
+                values.put("section", jsonSection.get().trim()); values.put("operation", jsonOperation.get());
+                values.put("legacy", jsonLegacy.get().trim()); values.put("key", jsonKey.get().trim());
+                values.put("record", jsonRecord.get().trim()); values.put("identity", jsonIdentity.get().trim());
+                values.put("result", jsonResult.get().trim());
+            }
             if ("TIMER".equals(node.type)) values.put("intervalMinutes", timerInterval.get().trim());
             if ("RESPONSE".equals(node.type)) values.put("text", response.get());
             if ("SPLITTER".equals(node.type)) {
@@ -242,6 +265,7 @@ final class DiagramViewModel {
         if ("CALLBACK".equals(type)) node.settings = Map.of("event", "COMMAND", "pattern", "");
         if ("COMPOSITION".equals(type)) node.settings = Map.of("items", List.of());
         if ("REST_HTTP".equals(type)) node.settings = Map.of("url", "", "method", "GET", "body", "");
+        if ("JSON_DB".equals(type)) node.settings = Map.of("section", "", "operation", "UPSERT");
         if ("TIMER".equals(type)) node.settings = Map.of("intervalMinutes", "10");
         if ("RESPONSE".equals(type)) node.settings = Map.of("text", "");
         diagram.nodes.add(node);

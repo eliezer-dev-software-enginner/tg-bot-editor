@@ -15,7 +15,7 @@ public final class ProjectWorkspace {
             "BotRunner", "BotCommands", "ActionBindings", "BotCommandService", "BotDatabase",
             "BotDocument", "BotFileService", "ProjectActionBindings", "FlowProject", "FlowRouter",
             "FlowStore", "FlowValidator", "ProjectEnvironment", "DiagramProject", "DiagramStore",
-            "DiagramValidator", "DiagramExecutor", "RestHttp", "FlowStop", "DiagramComposition");
+            "DiagramValidator", "DiagramExecutor", "RestHttp", "JsonDb", "FlowStop", "DiagramComposition");
     private ProjectWorkspace() { }
 
     public static Path defaultProjectsDirectory() {

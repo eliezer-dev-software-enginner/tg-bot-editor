@@ -215,6 +215,14 @@ public final class HomeScreen implements ScreenComponent {
                     new Text("Corpo opcional (UTF-8)"), new TextAreaInput(diagram.restBody,
                             new InputProps().height(100).width(320)),
                     new Text("Resposta: status, body e headers na próxima action."));
+            case "JSON_DB" -> new Container(new ContainerProps().spacingOf(8)).children(
+                    new Text("Operação"), new Select<String>().items(diagram.jsonOperations).value(diagram.jsonOperation),
+                    new Text("Seção"), Components.input(diagram.jsonSection, "Nome da seção"),
+                    new Text("Arquivo legado relativo (opcional)"), Components.input(diagram.jsonLegacy, "data/arquivo.json"),
+                    new Text("Chave"), Components.input(diagram.jsonKey, "{{output.key}}"),
+                    new Text("Registro"), Components.input(diagram.jsonRecord, "{{output.record}}"),
+                    new Text("Campos de identificação"), Components.input(diagram.jsonIdentity, "id, outroCampo"),
+                    new Text("Valor retornado"), Components.input(diagram.jsonResult, "{{output}}"));
             case "TIMER" -> new Container(new ContainerProps().spacingOf(8)).children(
                     new Text("Intervalo em minutos"), Components.input(diagram.timerInterval, "10"),
                     new Text("Executa ao iniciar e depois de cada intervalo."));

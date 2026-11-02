@@ -61,7 +61,13 @@ public final class DiagramExecutor {
             if ("RESPONSE".equals(current.type)) {
                 String response = string(current, "text");
                 if ("{{output}}".equals(response)) return output;
+                if (response.startsWith("{{") && response.endsWith("}}")) return value(response, input, output);
                 return response.replace("{{output}}", output == null ? "" : String.valueOf(output));
+            }
+            if ("JSON_DB".equals(current.type)) {
+                output = JsonDb.execute(current.settings, input, output);
+                String jsonId = current.id;
+                if (diagram.edges.stream().noneMatch(edge -> jsonId.equals(edge.from))) return output;
             }
             if ("COMPOSITION".equals(current.type)) {
                 output = DiagramComposition.compose(current.settings, input, output);
@@ -154,7 +160,7 @@ public final class DiagramExecutor {
                 : conditions.stream().anyMatch(Boolean::booleanValue);
     }
 
-    private static Object value(String expression, Object input, Object output) {
+    static Object value(String expression, Object input, Object output) {
         if (expression == null) return null;
         String raw = expression.trim();
         if (raw.equals("\"\"") || raw.equals("''")) return "";
