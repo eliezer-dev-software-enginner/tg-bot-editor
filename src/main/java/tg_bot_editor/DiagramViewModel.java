@@ -49,6 +49,7 @@ final class DiagramViewModel {
     final State<String> restMethod = State.of("GET");
     final State<String> restBody = State.of("");
     final State<String> jsonSection = State.of("");
+    final State<String> jsonPath = State.of("${TG_BOT_DATABASE_FILE}");
     final State<String> jsonOperation = State.of("UPSERT");
     final State<List<String>> jsonOperations = State.of(List.of("LIST", "UPSERT", "DELETE"));
     final State<String> jsonLegacy = State.of("");
@@ -132,6 +133,7 @@ final class DiagramViewModel {
             restBody.set(String.valueOf(node.settings.getOrDefault("body", "")));
         }
         if ("JSON_DB".equals(node.type)) {
+            jsonPath.set(String.valueOf(node.settings.getOrDefault("path", "${TG_BOT_DATABASE_FILE}")));
             jsonSection.set(String.valueOf(node.settings.getOrDefault("section", "")));
             jsonOperation.set(String.valueOf(node.settings.getOrDefault("operation", "UPSERT")));
             jsonLegacy.set(String.valueOf(node.settings.getOrDefault("legacy", "")));
@@ -225,6 +227,7 @@ final class DiagramViewModel {
                 values.put("body", restBody.get());
             }
             if ("JSON_DB".equals(node.type)) {
+                values.put("path", jsonPath.get().trim());
                 values.put("section", jsonSection.get().trim()); values.put("operation", jsonOperation.get());
                 values.put("legacy", jsonLegacy.get().trim()); values.put("key", jsonKey.get().trim());
                 values.put("record", jsonRecord.get().trim()); values.put("identity", jsonIdentity.get().trim());
@@ -265,7 +268,7 @@ final class DiagramViewModel {
         if ("CALLBACK".equals(type)) node.settings = Map.of("event", "COMMAND", "pattern", "");
         if ("COMPOSITION".equals(type)) node.settings = Map.of("items", List.of());
         if ("REST_HTTP".equals(type)) node.settings = Map.of("url", "", "method", "GET", "body", "");
-        if ("JSON_DB".equals(type)) node.settings = Map.of("section", "", "operation", "UPSERT");
+        if ("JSON_DB".equals(type)) node.settings = Map.of("section", "", "operation", "UPSERT", "path", "${TG_BOT_DATABASE_FILE}");
         if ("TIMER".equals(type)) node.settings = Map.of("intervalMinutes", "10");
         if ("RESPONSE".equals(type)) node.settings = Map.of("text", "");
         diagram.nodes.add(node);

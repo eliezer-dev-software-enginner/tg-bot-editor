@@ -32,12 +32,17 @@ public final class BotDatabase {
 
     public static synchronized <T> T read(String section, Path legacy, TypeReference<T> type,
                                           Supplier<T> empty) throws IOException {
-        ObjectNode root = root();
+        return read(file(), section, legacy, type, empty);
+    }
+
+    public static synchronized <T> T read(Path database, String section, Path legacy, TypeReference<T> type,
+                                          Supplier<T> empty) throws IOException {
+        ObjectNode root = root(database);
         JsonNode value = root.get(section);
         if (value != null) return JSON.convertValue(value, type);
         if (legacy != null && Files.isRegularFile(legacy)) {
             T imported = JSON.readValue(legacy.toFile(), type);
-            write(section, imported);
+            write(database, section, imported);
             return imported;
         }
         return empty.get();
@@ -53,9 +58,12 @@ public final class BotDatabase {
     }
 
     public static synchronized <T> void write(String section, T value) throws IOException {
-        ObjectNode root = root();
+        write(file(), section, value);
+    }
+
+    public static synchronized <T> void write(Path file, String section, T value) throws IOException {
+        ObjectNode root = root(file);
         root.set(section, JSON.valueToTree(value));
-        Path file = file();
         Files.createDirectories(file.getParent());
         Path temporary = Files.createTempFile(file.getParent(), ".bot-database-", ".tmp");
         try {
@@ -68,7 +76,10 @@ public final class BotDatabase {
     }
 
     private static ObjectNode root() throws IOException {
-        Path file = file();
+        return root(file());
+    }
+
+    private static ObjectNode root(Path file) throws IOException {
         if (!Files.isRegularFile(file)) return JSON.createObjectNode();
         JsonNode parsed = JSON.readTree(file.toFile());
         if (!(parsed instanceof ObjectNode object))

@@ -19,12 +19,13 @@ public final class JsonDb {
             throw new IllegalArgumentException("Informe uma seção JSON válida.");
         Path project = ProjectEnvironment.directory();
         if (project == null) throw new IllegalStateException("Abra um projeto para acessar o JsonDB.");
+        Path database = databasePath(settings, project);
         String legacy = String.valueOf(settings.getOrDefault("legacy", "")).trim();
         Path old = legacy.isEmpty() ? null : project.resolve(legacy).normalize();
         if (old != null && !old.startsWith(project.normalize()))
             throw new IllegalArgumentException("O arquivo legado deve estar dentro do projeto.");
         synchronized (BotDatabase.class) {
-            Map<String, List<Map<String, Object>>> data = BotDatabase.read(section, old,
+            Map<String, List<Map<String, Object>>> data = BotDatabase.read(database, section, old,
                     new TypeReference<Map<String, List<Map<String, Object>>>>() { }, LinkedHashMap::new);
             if ("LIST".equals(operation)) return data;
             if (!List.of("UPSERT", "DELETE").contains(operation)) throw new IllegalArgumentException("Operação JsonDB não suportada: " + operation);
@@ -44,9 +45,29 @@ public final class JsonDb {
             record.forEach((field, value) -> copy.put(String.valueOf(field), value));
             if ("UPSERT".equals(operation)) entries.add(copy);
             if (entries.isEmpty()) data.remove(key); else data.put(key, entries);
-            BotDatabase.write(section, data);
+            BotDatabase.write(database, section, data);
             return DiagramExecutor.value(String.valueOf(settings.getOrDefault("result", "{{output}}")), input, output);
         }
+    }
+
+    private static Path databasePath(Map<String, Object> settings, Path project) {
+        String path = String.valueOf(settings.getOrDefault("path", "")).trim();
+        if (path.isEmpty()) return BotDatabase.file();
+        if (path.matches("\\$\\{[A-Za-z_][A-Za-z0-9_]*}")) {
+            String variable = path.substring(2, path.length() - 1);
+            String configured = ProjectEnvironment.get(variable);
+            if (configured == null || configured.isBlank()) {
+                if ("TG_BOT_DATABASE_FILE".equals(variable)) return BotDatabase.file();
+                throw new IllegalArgumentException("Variável de caminho não definida: " + variable);
+            }
+            path = configured.trim();
+        }
+        Path result = Path.of(path);
+        if (!result.isAbsolute()) result = project.resolve(result);
+        result = result.toAbsolutePath().normalize();
+        if (result.getFileName() == null || !result.getFileName().toString().endsWith(".json"))
+            throw new IllegalArgumentException("O caminho do JsonDB deve apontar para um arquivo .json.");
+        return result;
     }
 
     private static Object normalize(Object value) {

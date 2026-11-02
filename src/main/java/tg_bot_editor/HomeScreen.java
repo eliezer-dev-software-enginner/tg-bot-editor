@@ -217,6 +217,8 @@ public final class HomeScreen implements ScreenComponent {
                     new Text("Resposta: status, body e headers na próxima action."));
             case "JSON_DB" -> new Container(new ContainerProps().spacingOf(8)).children(
                     new Text("Operação"), new Select<String>().items(diagram.jsonOperations).value(diagram.jsonOperation),
+                    new Text("Caminho do JSON"), Components.input(diagram.jsonPath, "${TG_BOT_DATABASE_FILE}"),
+                    new Text("Arquivo .json ou ${VARIÁVEL} do ambiente."),
                     new Text("Seção"), Components.input(diagram.jsonSection, "Nome da seção"),
                     new Text("Arquivo legado relativo (opcional)"), Components.input(diagram.jsonLegacy, "data/arquivo.json"),
                     new Text("Chave"), Components.input(diagram.jsonKey, "{{output.key}}"),
