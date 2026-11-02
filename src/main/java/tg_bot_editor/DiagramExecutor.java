@@ -8,7 +8,12 @@ import java.util.Optional;
 public final class DiagramExecutor {
     private DiagramExecutor() { }
 
-    public static Optional<DiagramProject.Diagram> find( DiagramProject project, String kind, String value) {
+    public static Object run(DiagramProject.Diagram diagram) {
+        try { return run(diagram, null, java.util.Map.of()); }
+        catch (Exception error) { throw new IllegalArgumentException(error); }
+    }
+
+    public static Optional<DiagramProject.Diagram> find(DiagramProject project, String kind, String value) {
         if (project == null || value == null) return Optional.empty();
         String normalized = value.trim();
         return project.diagrams.stream().filter(diagram -> diagram.enabled && diagram.nodes.stream().anyMatch(node -> {
@@ -23,12 +28,19 @@ public final class DiagramExecutor {
         })).findFirst();
     }
 
-    public static Object run(DiagramProject.Diagram diagram) {
+    public static Object run(DiagramProject.Diagram diagram, BotContext context,
+                             java.util.Map<String, BotAction> actions) throws Exception {
         DiagramProject.Node current = diagram.nodes.stream()
                 .filter(node -> "CALLBACK".equals(node.type)).findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Diagrama sem início Callback"));
         for (int steps = 0; steps <= diagram.nodes.size(); steps++) {
             if ("RESPONSE".equals(current.type)) return string(current, "text");
+            if ("JAVA".equals(current.type)) {
+                String flowId = string(current, "flowId");
+                BotAction action = actions.get(flowId);
+                if (action == null) throw new IllegalArgumentException("Ação ausente: " + flowId);
+                return action.run(context);
+            }
             String from = current.id;
             List<DiagramProject.Edge> outgoing = diagram.edges.stream()
                     .filter(edge -> from.equals(edge.from)).toList();

@@ -270,7 +270,7 @@ public final class BotRunner {
                     this::runProjectAction);
             try {
                 send(chat, context.threadId(), diagram.isPresent()
-                        ? DiagramExecutor.run(diagram.get()) : actions.get(match.get().id).run(context));
+                        ? DiagramExecutor.run(diagram.get(), context, actions) : actions.get(match.get().id).run(context));
             } catch (Exception error) {
                 System.err.println("Ação falhou: " + (diagram.isPresent() ? diagram.get().name : match.get().title)
                         + ": " + safeMessage(error));

@@ -6,11 +6,15 @@ import megalodonte.components.DiagramCanvas;
 
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.List;
 
 /** First diagram editor slice: /start event connected to a visual text response. */
 final class DiagramViewModel {
     final State<Boolean> open = State.of(false);
     final State<String> name = State.of("start");
+    final State<List<String>> available = State.of(List.of());
+    final State<String> chosen = State.of("start");
+    final State<String> componentName = State.of("");
     final State<String> pattern = State.of("/start");
     final State<String> response = State.of("");
     final State<String> selectedLabel = State.of("Selecione um componente para ver seu papel.");
@@ -18,11 +22,20 @@ final class DiagramViewModel {
     final Ref<DiagramCanvas> canvas = new Ref<>(new DiagramCanvas());
     private DiagramProject project = new DiagramProject();
     private DiagramProject.Diagram diagram;
+    private String selectedNodeId;
     private Path directory;
 
     DiagramViewModel() {
-        canvas.current().onSelect(id -> selectedLabel.set("start-trigger".equals(id)
-                ? "Início · comando recebido" : "Resposta síncrona · texto enviado ao Telegram"));
+        canvas.current().onSelect(id -> {
+            selectedNodeId = id;
+            if (diagram != null) diagram.nodes.stream().filter(node -> node.id.equals(id)).findFirst()
+                    .ifPresent(node -> {
+                        componentName.set(node.name);
+                        selectedLabel.set("CALLBACK".equals(node.type) ? "Início · comando recebido"
+                                : "JAVA".equals(node.type) ? "Java · ação existente: " + node.settings.get("flowId")
+                                : "Resposta síncrona · texto enviado ao Telegram");
+                    });
+        });
         canvas.current().onMove(move -> {
             if (diagram == null) return;
             diagram.nodes.stream().filter(node -> node.id.equals(move.id())).findFirst().ifPresent(node -> {
@@ -34,11 +47,28 @@ final class DiagramViewModel {
     void load(Path projectDirectory) throws Exception {
         directory = projectDirectory;
         project = directory == null ? new DiagramProject() : DiagramStore.read(directory);
+        available.set(project.diagrams.stream().map(item -> item.id).toList());
         diagram = project.diagrams.stream().filter(item -> "start".equals(item.id)).findFirst().orElse(null);
+        chosen.set(diagram == null ? null : diagram.id);
+        showSelected();
+    }
+
+    void selectDiagram() {
+        if (chosen.get() == null) return;
+        diagram = project.diagrams.stream().filter(item -> item.id.equals(chosen.get())).findFirst().orElse(null);
+        showSelected();
+        canvas.current().resetView();
+    }
+
+    private void showSelected() {
+        selectedNodeId = null;
+        componentName.set("");
         if (diagram != null) {
             name.set(diagram.name);
+            selectedLabel.set("Selecione um componente para editar seu nome.");
             diagram.nodes.stream().filter(node -> "CALLBACK".equals(node.type)).findFirst()
                     .ifPresent(node -> pattern.set(String.valueOf(node.settings.getOrDefault("pattern", "/start"))));
+            response.set("");
             diagram.nodes.stream().filter(node -> "RESPONSE".equals(node.type)).findFirst()
                     .ifPresent(node -> response.set(String.valueOf(node.settings.getOrDefault("text", ""))));
         }
@@ -63,23 +93,29 @@ final class DiagramViewModel {
             diagram.nodes.add(trigger); diagram.nodes.add(reply); diagram.edges.add(edge);
             project.diagrams.add(diagram);
         }
-        refresh(); canvas.current().resetView(); open.set(true);
+        available.set(project.diagrams.stream().map(item -> item.id).toList());
+        chosen.set(diagram.id);
+        showSelected(); canvas.current().resetView(); open.set(true);
     }
 
     void save() {
         if (diagram == null || directory == null) return;
-        if (!"/start".equals(pattern.get().trim()) || response.get().isBlank()) {
-            status.set("O primeiro diagrama deve usar /start e conter uma resposta."); return;
+        if (pattern.get().isBlank() || (diagram.nodes.stream().anyMatch(node -> "RESPONSE".equals(node.type))
+                && response.get().isBlank())) {
+            status.set("Informe o comando e o texto da resposta, quando houver."); return;
         }
         try {
             diagram.name = name.get().isBlank() ? "start" : name.get().trim();
+            if (selectedNodeId != null && !componentName.get().isBlank())
+                diagram.nodes.stream().filter(node -> node.id.equals(selectedNodeId)).findFirst()
+                        .ifPresent(node -> node.name = componentName.get().trim());
             diagram.nodes.stream().filter(node -> "CALLBACK".equals(node.type)).findFirst().orElseThrow()
                     .settings = Map.of("event", "COMMAND", "pattern", pattern.get().trim());
-            diagram.nodes.stream().filter(node -> "RESPONSE".equals(node.type)).findFirst().orElseThrow()
-                    .settings = Map.of("text", response.get());
+            diagram.nodes.stream().filter(node -> "RESPONSE".equals(node.type)).findFirst()
+                    .ifPresent(node -> node.settings = Map.of("text", response.get()));
             diagram.enabled = true;
             DiagramStore.write(directory, project);
-            status.set("Diagrama salvo e ativo: /start → resposta síncrona.");
+            status.set("Diagrama salvo e ativo: " + pattern.get().trim());
             refresh();
         } catch (Exception error) { status.set("Não foi possível salvar o diagrama: " + error.getMessage()); }
     }

@@ -33,7 +33,7 @@ Um projeto criado pelo editor tem esta estrutura:
 ```text
 meu-bot/
 ├── bot.json                 # gatilhos, padrões e ações
-├── diagrams.json            # rascunhos de diagramas; ainda não executados pelo bot
+├── diagrams.json            # diagramas visuais; os habilitados têm prioridade sobre bot.json
 ├── scripts/                 # classes Java do projeto
 ├── runtime/                 # runner e API genérica do bot
 ├── gradlew                  # build independente do editor
@@ -42,7 +42,7 @@ meu-bot/
 └── data/                    # estado e logs locais, ignorados pelo Git
 ```
 
-A evolução para diagramas com componentes e conexões está em desenvolvimento. O primeiro percurso funcional é **Diagrama start**: no editor, abra esse painel, ajuste o texto da resposta e clique em **Salvar diagrama**. O runner usa o diagrama habilitado para `/start` antes do fluxo legado em `bot.json`; os demais comandos continuam em `bot.json`. O formato e as decisões em aberto estão em [proposta do editor de diagramas](docs/proposta-editor-diagramas.md).
+O painel **Diagramas** permite escolher um fluxo, editar o nome do diagrama e, ao selecionar um componente no canvas, seu nome. O diagrama `start` contém o texto de resposta editável. Diagramas cujo nó é **Java** indicam a ação existente em `bot.json` que ainda produz a resposta dinâmica. Ao salvar, um diagrama habilitado tem prioridade sobre o fluxo legado do mesmo comando. O formato e as decisões em aberto estão em [proposta do editor de diagramas](docs/proposta-editor-diagramas.md).
 
 ![Diagrama start no editor, com entrada e resposta ligadas](docs/images/diagrama-start-editor.png)
 
