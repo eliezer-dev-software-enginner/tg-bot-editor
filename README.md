@@ -21,7 +21,7 @@ Por padrão, o Gradle inclui os checkouts de `megalodonte-components` e `megalod
 
 ## Criar e executar um projeto
 
-1. Clique em **Novo projeto**, informe o nome e a pasta de destino. O editor cria `bot.json`, `scripts/`, o código do runner, o Gradle Wrapper e `.env.example`.
+1. Clique em **Novo projeto**, informe o nome e a pasta de destino. O editor cria `bot.json`, `diagrams.json`, `scripts/`, o código do runner, o Gradle Wrapper e `.env.example`.
 2. Clique em **+ Novo comando**. Selecione o cartão e defina o tipo de gatilho, o padrão e o script Java em **Propriedades**. Use **+ Script** quando a ação precisar de uma classe própria.
 3. Clique em **Aplicar** para atualizar o fluxo e em **Salvar projeto** para gravá-lo. **Executar teste** roda a ação selecionada localmente com a entrada de exemplo, sem enviar mensagem ao Telegram.
 4. Preencha `TG_BOT_TOKEN` em **Variáveis de ambiente do projeto** ou no `.env` do projeto. Clique em **Executar** para iniciar o bot; o mesmo botão passa a **Parar** enquanto ele estiver ativo. A saída fica em `data/bot-runner.log` na pasta do projeto.
@@ -33,6 +33,7 @@ Um projeto criado pelo editor tem esta estrutura:
 ```text
 meu-bot/
 ├── bot.json                 # gatilhos, padrões e ações
+├── diagrams.json            # rascunhos de diagramas; ainda não executados pelo bot
 ├── scripts/                 # classes Java do projeto
 ├── runtime/                 # runner e API genérica do bot
 ├── gradlew                  # build independente do editor
@@ -40,6 +41,8 @@ meu-bot/
 ├── .env                     # configuração local, ignorada pelo Git
 └── data/                    # estado e logs locais, ignorados pelo Git
 ```
+
+A evolução para diagramas com componentes e conexões está em desenvolvimento. O formato inicial de rascunho e as decisões em aberto estão em [proposta do editor de diagramas](docs/proposta-editor-diagramas.md); por enquanto, apenas `bot.json` é editado e executado pela interface.
 
 Para validar ou executar o projeto sem abrir o editor, use JDK 21 ou superior dentro da pasta criada:
 

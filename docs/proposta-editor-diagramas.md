@@ -1,6 +1,10 @@
 # Proposta: editor de diagramas para bots Telegram
 
-> Registro de ideia, sem decisão de implementação. A análise de requisitos, a pesquisa sobre o TOTVS iPaaS e a refatoração ficam para uma próxima sessão ou autorização explícita.
+> A implementação começou pelo formato versionado e pela persistência dos rascunhos. Os diagramas ainda não são editáveis na interface nem executados pelo bot. A análise detalhada do TOTVS iPaaS segue pendente.
+
+## Estado da implementação
+
+Projetos novos agora recebem `diagrams.json` ao lado de `bot.json`. O arquivo tem uma lista de diagramas com componentes, posições, configurações e conexões. As conexões podem guardar condições `IF`, um ramo `ELSE` e grupos de comparações; o Splitter pode referenciar um diagrama de subfluxo. A leitura e a gravação são validadas, e a gravação é atômica. O formato legado `bot.json` continua responsável pela execução atual e não é reescrito ao salvar um rascunho de diagramas. Ainda faltam editor visual, execução dos componentes, migração dos fluxos existentes, configuração da UI de resposta e testes completos de ponta a ponta antes de publicar diagramas.
 
 ## Objetivo
 
@@ -18,19 +22,48 @@ Evoluir a edição atual de gatilhos e ações isolados para diagramas visuais c
 - [Condição `if` preenchida](images/ipaas-condicao-if.png)
 - [Condição alternativa (`else`)](images/ipaas-condicao-alternativa.png)
 - [Ramos condicionais no canvas](images/ipaas-ramos-if-else.png)
+- [JDBC seguido de Splitter](images/ipaas-jdbc-splitter-canvas.png)
+- [Consulta configurada no componente JDBC](images/ipaas-jdbc-query.png)
+- [Configurações reutilizáveis do JDBC](images/ipaas-jdbc-configuracoes.png)
+- [Fluxo que entrega uma lista ao Splitter](images/ipaas-splitter-fluxo.png)
+- [Splitter no canvas](images/ipaas-splitter-canvas.png)
+- [Caminho do array de entrada do Splitter](images/ipaas-splitter-configuracao.png)
+- [Ações contextuais do Splitter](images/ipaas-splitter-acoes.png)
+- [Ação Criar subfluxo](images/ipaas-splitter-criar-subfluxo.png)
+- [Subfluxo aberto para processamento dos itens](images/ipaas-splitter-subfluxo.png)
+- [Splitter configurado com o caminho do array](images/ipaas-splitter-caminho-array.png)
+- [Script anterior que prepara a lista para o Splitter](images/ipaas-script-transformacao-lista.png)
+
+As capturas que expõem configuração de conexão e caminho particular do computador não foram copiadas para a documentação versionada.
 
 ## Vocabulário proposto
 
 | Área | Ideia inicial | Questão a resolver depois |
 | --- | --- | --- |
 | Início | **Timer** para execuções agendadas; **Callback** para eventos do Telegram | O runtime atual também recebe `COMMAND`, `TEXT`, `PHOTO` e `DOCUMENT`. É preciso definir se todos entram pelo componente Callback, se viram filtros nele ou se exigem outros inícios. Não eliminar esses gatilhos sem preservar os fluxos existentes. |
-| Etapas | **Converter**, **Java**, **Generator** e **Resposta síncrona** | Definir entradas, saídas, contratos de dados, erros e o efeito de cada etapa no bot. Os nomes são candidatos, não APIs confirmadas. |
+| Etapas | **Converter**, **Java**, **Generator**, **Resposta síncrona**, **JDBC**, **JsonDB** e **Splitter** | Definir entradas, saídas, contratos de dados, erros e o efeito de cada etapa no bot. Os nomes são candidatos, não APIs confirmadas. |
 | Canvas | Inserir e conectar componentes; no hover, oferecer informação, configuração, duplicação e exclusão | Definir regras de conexão, ramificações, ciclo, ordenação e validação. |
 | Conexões condicionais | Ao clicar na seta de uma conexão, abrir a configuração de uma condição. O ramo `if` aparece com tracejado mais leve; o ramo alternativo (`else`) usa traços mais longos e densos. | Definir precedência entre condições, comportamento quando nenhuma corresponde, limites de ramos e como apresentar essas diferenças também por texto/ícone, além do tracejado. |
 | Configuração | Árvore das etapas do diagrama à esquerda e formulário à direita; permitir preencher ou arrastar dados de etapas anteriores | Definir tipagem, escopo, representação das referências e atualização ao renomear ou excluir uma etapa. |
 | Projeto | Permitir múltiplos diagramas no mesmo projeto | Definir como cada diagrama é acionado, identificado, chamado por outro diagrama e publicado sem conflito de comandos/callbacks. |
 
 Uma hipótese útil para o bot é tratar cada diagrama como um fluxo de entrada independente, composto por um início e etapas subsequentes. Essa hipótese ainda precisa ser confrontada com os fluxos atuais, especialmente respostas a botões, ações reutilizáveis e agendamentos.
+
+## Meta: reduzir a lógica nos scripts Java
+
+O editor visual deve assumir a navegação e a orquestração do bot: reconhecer entradas e padrões de callback, escolher caminhos, avaliar condições, ligar etapas, montar respostas e determinar qual ação vem depois. A composição da interface enviada ao Telegram também deve ser visual: texto, imagens, botões, rótulos, dados de callback e outras opções de resposta devem ser configuráveis no diagrama, inclusive com valores retornados pelas etapas anteriores. Scripts não devem instanciar ou manipular `Button`, `Image`, `BotButton`, `BotReply` ou componentes equivalentes para montar a interação. O componente **Java** deve ficar reservado a uma operação pequena sobre os dados recebidos, retornando seu resultado para o diagrama. Não deve precisar interpretar famílias de comandos, decidir telas ou encadear a conversa.
+
+O projeto canônico ilustra a necessidade dessa mudança: vários fluxos de `bot.json` chamam `GenshinAdsAction.run(context)`, inclusive o padrão `ads:*`. A classe `GenshinAdsAction` examina o prefixo `ads:`, resolve os diferentes callbacks e também cria os botões e conduz a navegação dos anúncios. A meta é representar esse roteamento, as escolhas, as transições e a composição das mensagens no diagrama, deixando em Java apenas operações pontuais que precisem de código. Por exemplo: o fluxo visual reconhece `ads:edit:<id>`, extrai o identificador, decide a etapa seguinte e configura a mensagem, a imagem e os botões; uma etapa Java, se necessária, recebe o identificador, consulta ou altera os dados do anúncio e devolve um resultado estruturado.
+
+Isso é uma direção de arquitetura, não uma migração já implementada. Na análise futura, será preciso decidir quais operações de dados merecem componentes próprios e quais ainda justificam Java, de modo que a redução de scripts não apenas transfira lógica complexa para outro arquivo invisível no editor. A migração deverá preservar o comportamento dos anúncios e demais fluxos existentes.
+
+## Dados e processamento de listas
+
+**JDBC** seria a etapa para bancos relacionais, inspirada no componente mostrado nas capturas: uma configuração de conexão reutilizável e, no diagrama, a operação que usa essa configuração. **JsonDB** seria a opção nativa para os projetos que já persistem e fazem CRUD em JSON, permitindo manter esses dados e comportamentos durante a evolução do bot, sem exigir a criação de um banco relacional. Sua configuração visual poderia seguir a lógica de selecionar um serviço/operação: **Listar**, **Criar**, **Consultar**, **Atualizar** ou **Deletar**, com campos próprios para coleção/caminho, filtro, identificador e valores recebidos das etapas anteriores. Esses nomes e campos são uma proposta inicial; formato, concorrência, gravação atômica, erros e compatibilidade com o JSON atual precisam ser definidos depois.
+
+O **Splitter** recebe uma lista produzida por uma etapa anterior e executa um subfluxo para cada item. A captura mostra a escolha do caminho do array a partir da árvore de dados e uma ação contextual **Criar subfluxo**, que também deve permitir abrir um subfluxo já associado. O subfluxo é um diagrama visual próprio para o processamento individual do item; por exemplo, `JsonDB Listar anúncios → Splitter → subfluxo que prepara e envia cada anúncio`. Isso evita escrever um laço e a navegação em Java. Na análise futura, definir o contexto de cada item, ordem de execução, tratamento de falhas, agregação de resultados e relação entre subfluxos e os vários diagramas do projeto.
+
+As capturas adicionais deixam explícito o contrato entre etapas no exemplo do iPaaS: o script **validar csv** recebe `id-ftp1.result`, normaliza a resposta JSON, filtra arquivos temporários, não CSV, vazios ou maiores que 5 MB, ordena os válidos e devolve um objeto com `total`, `arquivos` e `ignorados`. O Splitter recebe especificamente `id-javascript2.output.arquivos`, e cada elemento dessa lista entra em seu subfluxo. O código fornecido pelo usuário é referência de comportamento e de passagem de dados, não uma instrução para usar JavaScript no bot nem para copiar toda essa lógica para um script Java. Na nossa proposta, o contrato de saída deve ser visível e selecionável na árvore; operações comuns de conversão, filtro e ordenação devem ser avaliadas para configuração visual, reservando **Java** apenas para transformações pontuais que não tenham componente apropriado. Também será necessário definir como acessar os demais dados do objeto, como `total` e `ignorados`, nas etapas seguintes.
 
 ## Condições nas conexões
 

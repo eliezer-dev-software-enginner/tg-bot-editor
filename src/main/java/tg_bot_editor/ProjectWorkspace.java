@@ -32,6 +32,7 @@ public final class ProjectWorkspace {
         var project = new FlowProject();
         project.name = trimmed;
         FlowStore.write(directory.resolve("bot.json"), project);
+        DiagramStore.write(directory, new DiagramProject());
         Files.writeString(directory.resolve(".gitignore"), ".env\n/data/\n/build/\n/target/\n/.gradle/\n/.idea/\n");
         Files.writeString(directory.resolve(".env.example"), "# Copy to .env and set your Telegram bot token locally.\nTG_BOT_TOKEN=\nTG_BOT_ADMIN_ID=\nYOUTUBE_API_KEY=\n");
         ensureGradleBuild(directory);
