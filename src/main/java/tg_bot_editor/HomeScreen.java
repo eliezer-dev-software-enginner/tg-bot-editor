@@ -246,7 +246,7 @@ public final class HomeScreen implements ScreenComponent {
                             model.javaKeywords, List.of("context")));
             case "SPLITTER" -> new Container(new ContainerProps().spacingOf(8)).children(
                     new Text("Lista de entrada"), Components.input(diagram.splitterArray, "{{output}}"),
-                    new Text("Use {{output}} para percorrer a lista retornada pela etapa anterior."),
+                    new Text("Use {{output}} ou {{output.campo}} para a lista."),
                     new Text("Agrupamento das respostas"),
                     new Select<String>().items(diagram.splitterAggregations).value(diagram.splitterAggregation),
                     new Text("list: lista · concat: junta textos"),

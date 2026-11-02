@@ -91,9 +91,10 @@ public final class DiagramExecutor {
             }
             if ("SPLITTER".equals(current.type)) {
                 String path = string(current, "array");
-                if (!path.isBlank() && !"{{output}}".equals(path))
-                    throw new IllegalArgumentException("Caminho do Splitter ainda não suportado: " + path);
-                if (!(output instanceof Iterable<?> items))
+                if (!path.isBlank() && !(path.startsWith("{{") && path.endsWith("}}")))
+                    throw new IllegalArgumentException("Informe uma referência de lista no Splitter: " + path);
+                Object list = path.isBlank() ? output : value(path, input, output);
+                if (!(list instanceof Iterable<?> items))
                     throw new IllegalArgumentException("O Splitter precisa receber uma lista: " + current.name);
                 String subflowId = current.subflowId;
                 var nested = project.diagrams.stream().filter(item -> item.id.equals(subflowId)).findFirst()

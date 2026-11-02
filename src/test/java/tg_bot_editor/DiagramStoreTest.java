@@ -170,6 +170,13 @@ class DiagramStoreTest {
                 DiagramExecutor.run(restored, restored.diagrams.getFirst(), null, actions));
         restored.diagrams.getFirst().nodes.getLast().settings = Map.of("array", "{{output}}", "aggregation", "concat");
         assertEquals("0: um1: dois", DiagramExecutor.run(restored, restored.diagrams.getFirst(), null, actions));
+        var nestedActions = new java.util.HashMap<>(actions);
+        nestedActions.put(ActionCompiler.diagramActionKey("main", "java"), context ->
+                Map.of("result", Map.of("items", java.util.List.of("um", "dois"))));
+        restored.diagrams.getFirst().nodes.getLast().settings = Map.of("array", "{{output.result.items}}");
+        assertEquals(java.util.List.of("0: um", "1: dois"),
+                DiagramExecutor.run(restored, restored.diagrams.getFirst(), null, nestedActions));
+        restored.diagrams.getFirst().nodes.getLast().settings = Map.of("array", "{{output}}", "aggregation", "concat");
         var emptyActions = new java.util.HashMap<>(actions);
         emptyActions.put(ActionCompiler.diagramActionKey("main", "java"), context -> java.util.List.of());
         assertEquals("", DiagramExecutor.run(restored, restored.diagrams.getFirst(), null, emptyActions));
