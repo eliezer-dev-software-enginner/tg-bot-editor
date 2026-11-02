@@ -49,8 +49,6 @@ final class DiagramViewModel {
     final State<String> restMethod = State.of("GET");
     final State<String> restBody = State.of("");
     final State<List<String>> restMethods = State.of(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"));
-    final State<List<String>> connectionTargets = State.of(List.of());
-    final State<String> connectionTarget = State.of("");
     final State<String> splitterArray = State.of("{{output}}");
     final State<String> splitterAggregation = State.of("list");
     final State<List<String>> splitterAggregations = State.of(List.of("list", "concat", "flatten"));
@@ -88,6 +86,7 @@ final class DiagramViewModel {
         edgeKind.subscribe(kind -> edgeConditionForm.set("IF".equals(kind) ? List.of("IF") : List.of()));
         canvas.current().onSelect(this::selectNode).onEdgeSelect(this::selectEdge);
         canvas.current().onDrop(drop -> addComponent(drop.type(), drop.x(), drop.y()));
+        canvas.current().onConnect(connection -> connect(connection.from(), connection.to()));
         canvas.current().onMove(move -> {
             if (diagram == null) return;
             diagram.nodes.stream().filter(node -> node.id.equals(move.id())).findFirst().ifPresent(node -> {
@@ -125,9 +124,6 @@ final class DiagramViewModel {
             restBody.set(String.valueOf(node.settings.getOrDefault("body", "")));
         }
         updateActionHints(node);
-        connectionTargets.set(diagram.nodes.stream().filter(item -> !item.id.equals(node.id))
-                .map(item -> item.name + " [" + item.id + "]").toList());
-        connectionTarget.set(connectionTargets.get().isEmpty() ? "" : connectionTargets.get().getFirst());
         if ("TIMER".equals(node.type)) timerInterval.set(String.valueOf(node.settings.getOrDefault("intervalMinutes", "10")));
         if ("RESPONSE".equals(node.type)) response.set(String.valueOf(node.settings.getOrDefault("text", "")));
         if ("SPLITTER".equals(node.type)) {
@@ -277,13 +273,15 @@ final class DiagramViewModel {
                         "index é a posição do item (a partir de 0).", "Exemplo: return input;") : List.of());
     }
 
-    void connectSelected() {
-        if (diagram == null || selectedNodeId == null) return;
-        String chosenLabel = connectionTarget.get();
-        var target = diagram.nodes.stream().filter(item -> (item.name + " [" + item.id + "]").equals(chosenLabel))
-                .findFirst().orElse(null);
-        if (target == null || target.id.equals(selectedNodeId)) { status.set("Escolha outro componente para conectar."); return; }
-        var outgoing = diagram.edges.stream().filter(edge -> edge.from.equals(selectedNodeId)).toList();
+    void connect(String sourceId, String targetId) {
+        if (diagram == null) return;
+        var source = diagram.nodes.stream().filter(item -> item.id.equals(sourceId)).findFirst().orElse(null);
+        var target = diagram.nodes.stream().filter(item -> item.id.equals(targetId)).findFirst().orElse(null);
+        if (source == null || target == null || sourceId.equals(targetId) || "RESPONSE".equals(source.type)
+                || List.of("CALLBACK", "TIMER", "ITEM").contains(target.type)) {
+            status.set("Conecte a saída de um componente à entrada de outro componente válido."); return;
+        }
+        var outgoing = diagram.edges.stream().filter(edge -> edge.from.equals(sourceId)).toList();
         if (outgoing.stream().anyMatch(edge -> "ALWAYS".equals(edge.kind))) {
             status.set("Transforme a saída existente em IF antes de adicionar outro ramo."); return;
         }
@@ -296,13 +294,13 @@ final class DiagramViewModel {
         while (!pending.isEmpty()) {
             String current = pending.removeFirst();
             if (!reachable.add(current)) continue;
-            if (current.equals(selectedNodeId)) { status.set("A conexão criaria um ciclo no diagrama."); return; }
+            if (current.equals(sourceId)) { status.set("A conexão criaria um ciclo no diagrama."); return; }
             diagram.edges.stream().filter(existing -> existing.from.equals(current)).map(existing -> existing.to)
                     .forEach(pending::addLast);
         }
         saveSelectedFields();
         var edge = new DiagramProject.Edge(); edge.id = java.util.UUID.randomUUID().toString();
-        edge.from = selectedNodeId; edge.to = target.id;
+        edge.from = sourceId; edge.to = target.id;
         if (!outgoing.isEmpty()) {
             if (outgoing.stream().noneMatch(existing -> "ELSE".equals(existing.kind))) edge.kind = "ELSE";
             else {
@@ -313,16 +311,6 @@ final class DiagramViewModel {
             }
         }
         diagram.edges.add(edge); refresh(); status.set("Componentes conectados. Salve o diagrama.");
-    }
-
-    void disconnectSelected() {
-        if (diagram == null || selectedNodeId == null) return;
-        var outgoing = diagram.edges.stream().filter(edge -> edge.from.equals(selectedNodeId)).toList();
-        if (outgoing.size() > 1 || outgoing.stream().anyMatch(edge -> !"ALWAYS".equals(edge.kind))) {
-            status.set("Conexões condicionais ainda não podem ser removidas aqui."); return;
-        }
-        boolean changed = diagram.edges.removeIf(edge -> edge.from.equals(selectedNodeId));
-        refresh(); status.set(changed ? "Conexão removida. Salve o diagrama." : "Este componente não tem saída.");
     }
 
     void load(Path projectDirectory) throws Exception {
@@ -509,7 +497,8 @@ final class DiagramViewModel {
                             case "RESPONSE" -> "RESPOSTA";
                             default -> node.type;
                         },
-                        node.x, node.y)).toList(),
+                        node.x, node.y, !List.of("CALLBACK", "TIMER", "ITEM").contains(node.type),
+                        !"RESPONSE".equals(node.type))).toList(),
                 diagram.edges.stream().map(edge -> new DiagramCanvas.Edge(edge.id, edge.from, edge.to, edge.kind)).toList());
     }
 

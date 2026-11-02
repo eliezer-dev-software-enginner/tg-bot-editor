@@ -77,9 +77,10 @@ class DiagramSubflowWindowTest {
             var editor = new DiagramViewModel(); editor.load(directory); editor.openDiagram("main");
             editor.addComponent("REST_HTTP", 200, 100);
             editor.restUrl.set("https://example.com/api"); editor.restMethod.set("POST"); editor.restBody.set("{} ");
-            editor.selectNode("start");
-            editor.connectionTarget.set(editor.connectionTargets.get().stream().filter(label -> label.startsWith("Rest HTTP [")).findFirst().orElseThrow());
-            editor.connectSelected(); editor.save();
+            editor.save();
+            String restId = DiagramStore.read(directory).diagrams.getFirst().nodes.stream()
+                    .filter(node -> node.type.equals("REST_HTTP")).findFirst().orElseThrow().id;
+            editor.connect("start", restId); editor.save();
             assertTrue(editor.status.get().startsWith("Diagrama salvo"), editor.status.get());
             var restored = DiagramStore.read(directory).diagrams.getFirst();
             var rest = restored.nodes.stream().filter(node -> node.type.equals("REST_HTTP")).findFirst().orElseThrow();
@@ -111,7 +112,14 @@ class DiagramSubflowWindowTest {
             var editor = new DiagramViewModel(); editor.load(directory); editor.openDiagram("main");
             editor.selectEdge("existing"); editor.edgeKind.set("IF"); editor.edgeLeft.set("{{output.image}}");
             editor.edgeOperator.set("NE"); editor.edgeRight.set("''"); editor.applyEdge();
-            editor.selectNode("start"); editor.connectionTarget.set("Não [no]"); editor.connectSelected(); editor.save();
+            editor.connect("start", "no");
+            editor.connect("yes", "no");
+            assertTrue(editor.status.get().contains("válido"), editor.status.get());
+            editor.connect("no", "start");
+            assertTrue(editor.status.get().contains("válido"), editor.status.get());
+            editor.connect("start", "yes");
+            assertTrue(editor.status.get().contains("já está conectado"), editor.status.get());
+            editor.save();
             assertTrue(editor.status.get().startsWith("Diagrama salvo"), editor.status.get());
             var edges = DiagramStore.read(directory).diagrams.getFirst().edges;
             assertEquals("IF", edges.getFirst().kind); assertEquals("{{output.image}}", edges.getFirst().groups.getFirst().comparisons.getFirst().left);

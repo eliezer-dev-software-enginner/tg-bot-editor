@@ -180,12 +180,7 @@ public final class HomeScreen implements ScreenComponent {
         if ("EDGE".equals(type)) return edgeProperties(diagram);
         return new Container(new ContainerProps().spacingOf(8)).children(
                 new Text("Nome do componente"), Components.input(diagram.componentName, "Nome do componente"),
-                specificProperties(diagram, type),
-                new Text("Conectar a"),
-                new Select<String>().items(diagram.connectionTargets).value(diagram.connectionTarget),
-                new Row(new RowProps().spacingOf(6)).children(
-                        new Button("Conectar").tooltip("Liga este componente ao selecionado.").onClick(diagram::connectSelected),
-                        new Button("Remover conexão").tooltip("Remove as saídas deste componente.").onClick(diagram::disconnectSelected)));
+                specificProperties(diagram, type));
     }
 
     private Component edgeProperties(DiagramViewModel diagram) {
