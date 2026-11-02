@@ -131,7 +131,7 @@ class DiagramStoreTest {
         var start = node("start", "CALLBACK");
         start.settings = Map.of("event", "COMMAND", "pattern", "/whoami");
         var javaNode = node("java", "JAVA");
-        javaNode.settings = Map.of("action", "return java.util.List.of(\"um\", \"dois\");");
+        javaNode.settings = Map.of("action", "String input = \"um\"; int index = 2; return java.util.List.of(input, \"dois\");");
         var response = node("response", "RESPONSE");
         response.settings = Map.of("text", "{{output}}");
         diagram.nodes.add(start); diagram.nodes.add(javaNode); diagram.nodes.add(response);
@@ -145,6 +145,38 @@ class DiagramStoreTest {
                 DiagramExecutor.run(restored.diagrams.getFirst(), null, actions));
         restored.diagrams.getFirst().nodes.getLast().settings = Map.of("text", "Resultado: {{output}}");
         assertEquals("Resultado: [um, dois]", DiagramExecutor.run(restored.diagrams.getFirst(), null, actions));
+    }
+
+    @Test void splitterRunsSubflowForEachItemAndRejectsInvalidInput() throws Exception {
+        Files.createDirectories(directory.resolve("scripts"));
+        var project = new DiagramProject();
+        var parent = diagram("main", "Principal"); parent.enabled = true;
+        var start = node("start", "CALLBACK"); start.settings = Map.of("event", "COMMAND", "pattern", "/items");
+        var javaNode = node("java", "JAVA"); javaNode.settings = Map.of("action", "return java.util.List.of(\"um\", \"dois\");");
+        var splitter = node("split", "SPLITTER"); splitter.subflowId = "each"; splitter.settings = Map.of("array", "{{output}}");
+        parent.nodes.addAll(java.util.List.of(start, javaNode, splitter));
+        parent.edges.add(edge("a", "start", "java", "ALWAYS")); parent.edges.add(edge("b", "java", "split", "ALWAYS"));
+        var child = diagram("each", "Cada item");
+        var item = node("item", "ITEM");
+        var formatter = node("formatter", "JAVA"); formatter.settings = Map.of("action", "return index + \": \" + input;");
+        var reply = node("reply", "RESPONSE"); reply.settings = Map.of("text", "{{output}}");
+        child.nodes.addAll(java.util.List.of(item, formatter, reply));
+        child.edges.add(edge("c", "item", "formatter", "ALWAYS")); child.edges.add(edge("d", "formatter", "reply", "ALWAYS"));
+        project.diagrams.add(parent); project.diagrams.add(child);
+        DiagramStore.write(directory, project);
+        var restored = DiagramStore.read(directory);
+        var actions = ActionCompiler.compileProject(directory, new FlowProject(), restored);
+        assertEquals(java.util.List.of("0: um", "1: dois"),
+                DiagramExecutor.run(restored, restored.diagrams.getFirst(), null, actions));
+        restored.diagrams.getFirst().nodes.getLast().settings = Map.of("array", "{{output}}", "aggregation", "concat");
+        assertEquals("0: um1: dois", DiagramExecutor.run(restored, restored.diagrams.getFirst(), null, actions));
+        var emptyActions = new java.util.HashMap<>(actions);
+        emptyActions.put(ActionCompiler.diagramActionKey("main", "java"), context -> java.util.List.of());
+        assertEquals("", DiagramExecutor.run(restored, restored.diagrams.getFirst(), null, emptyActions));
+        actions = new java.util.HashMap<>(actions);
+        actions.put(ActionCompiler.diagramActionKey("main", "java"), context -> "not a list");
+        var finalActions = actions;
+        assertThrows(IllegalArgumentException.class, () -> DiagramExecutor.run(restored, restored.diagrams.getFirst(), null, finalActions));
     }
 
     private static DiagramProject.Diagram diagram(String id, String name) {

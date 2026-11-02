@@ -20,6 +20,7 @@ final class DiagramViewModel {
     final State<String> componentName = State.of("");
     final State<String> pattern = State.of("/start");
     final State<String> response = State.of("");
+    final State<String> splitterArray = State.of("{{output}}");
     final State<String> selectedLabel = State.of("Selecione um componente para ver seu papel.");
     final State<List<String>> selectedTypes = State.of(List.of());
     final State<String> javaScript = State.of("");
@@ -30,6 +31,7 @@ final class DiagramViewModel {
     private String selectedNodeId;
     private Path directory;
     private FlowProject flows = new FlowProject();
+    private final java.util.Deque<String> parents = new java.util.ArrayDeque<>();
 
     DiagramViewModel() {
         canvas.current().onSelect(this::selectNode);
@@ -56,6 +58,7 @@ final class DiagramViewModel {
         componentName.set(node.name);
         if ("CALLBACK".equals(node.type)) pattern.set(String.valueOf(node.settings.getOrDefault("pattern", "")));
         if ("RESPONSE".equals(node.type)) response.set(String.valueOf(node.settings.getOrDefault("text", "")));
+        if ("SPLITTER".equals(node.type)) splitterArray.set(String.valueOf(node.settings.getOrDefault("array", "{{output}}")));
         selectedLabel.set("CALLBACK".equals(node.type) ? "Início · comando recebido"
                 : "JAVA".equals(node.type) ? "Java · action"
                 : "RESPONSE".equals(node.type) ? "Resposta síncrona" : node.type);
@@ -70,6 +73,7 @@ final class DiagramViewModel {
             var values = new java.util.HashMap<>(node.settings);
             if ("CALLBACK".equals(node.type)) values.put("pattern", pattern.get().trim());
             if ("RESPONSE".equals(node.type)) values.put("text", response.get());
+            if ("SPLITTER".equals(node.type)) values.put("array", splitterArray.get().trim());
             if ("JAVA".equals(node.type)) {
                 values.put("action", javaScript.get());
                 values.remove("flowId");
@@ -105,6 +109,7 @@ final class DiagramViewModel {
 
     void load(Path projectDirectory) throws Exception {
         directory = projectDirectory;
+        parents.clear();
         project = directory == null ? new DiagramProject() : DiagramStore.read(directory);
         flows = directory == null ? new FlowProject() : FlowStore.read(directory.resolve("bot.json"));
         updateSummaries();
@@ -122,9 +127,39 @@ final class DiagramViewModel {
     }
 
     void openDiagram(String id) {
+        parents.clear();
         chosen.set(id);
         selectDiagram();
         if (diagram != null) open.set(true);
+    }
+
+    void openSubflow() {
+        if (diagram == null || selectedNodeId == null) return;
+        saveSelectedFields();
+        var splitter = diagram.nodes.stream().filter(node -> node.id.equals(selectedNodeId)
+                && "SPLITTER".equals(node.type)).findFirst().orElse(null);
+        if (splitter == null) return;
+        if (splitter.subflowId == null) {
+            var child = new DiagramProject.Diagram();
+            child.id = "subflow-" + java.util.UUID.randomUUID();
+            child.name = "Subfluxo de " + splitter.name;
+            var start = new DiagramProject.Node();
+            start.id = java.util.UUID.randomUUID().toString(); start.name = "Item atual"; start.type = "ITEM";
+            start.x = 55; start.y = 130;
+            child.nodes.add(start); project.diagrams.add(child); splitter.subflowId = child.id;
+            available.set(project.diagrams.stream().map(item -> item.id).toList());
+        }
+        String parent = diagram.id;
+        diagram.name = name.get().isBlank() ? diagram.name : name.get().trim();
+        chosen.set(splitter.subflowId); selectDiagram(); parents.push(parent);
+        status.set("Subfluxo aberto. Salve o diagrama para guardar as alterações.");
+    }
+
+    void backToParent() {
+        if (parents.isEmpty()) { status.set("Este diagrama não foi aberto por um subfluxo."); return; }
+        saveSelectedFields();
+        if (diagram != null && !name.get().isBlank()) diagram.name = name.get().trim();
+        chosen.set(parents.pop()); selectDiagram();
     }
 
     private void showSelected() {
@@ -229,7 +264,9 @@ final class DiagramViewModel {
     }
 
     private void updateSummaries() {
-        summaries.set(project.diagrams.stream().map(item -> {
+        var subflows = project.diagrams.stream().flatMap(item -> item.nodes.stream())
+                .filter(node -> node.subflowId != null).map(node -> node.subflowId).collect(java.util.stream.Collectors.toSet());
+        summaries.set(project.diagrams.stream().filter(item -> !subflows.contains(item.id)).map(item -> {
             String trigger = item.nodes.stream().filter(node -> "CALLBACK".equals(node.type))
                     .findFirst().map(node -> String.valueOf(node.settings.getOrDefault("pattern", "")))
                     .orElse("Sem gatilho");

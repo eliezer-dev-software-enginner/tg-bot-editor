@@ -8,6 +8,8 @@ Projetos novos recebem `diagrams.json` ao lado de `bot.json`. O arquivo tem uma 
 
 A paleta à esquerda agora permite arrastar componentes para o canvas e salvar suas posições. Eles são adicionados sem conexão; a edição de conexões e a configuração e execução dos novos tipos continuam pendentes. O editor impede a inclusão de um segundo componente de início.
 
+O Splitter já executa um subfluxo por item para a lista retornada pela etapa anterior. O item e sua posição estão disponíveis na action do subfluxo como `input` e `index`; o diagrama `/youtube_list` usa esse recurso. A configuração de caminhos estruturados, conexão visual e agregação pela interface ainda precisa evoluir.
+
 ## Objetivo
 
 Evoluir a edição atual de gatilhos e ações isolados para diagramas visuais compostos por etapas conectadas. As capturas fornecidas por Eliezer mostram uma paleta lateral, um canvas com conexões, ações contextuais no componente, configuração com árvore das etapas e um projeto contendo vários diagramas. São referências de interação, não uma especificação do comportamento interno do TOTVS iPaaS.

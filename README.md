@@ -48,6 +48,8 @@ O [contexto e andamento](docs/CONTEXT.md), as [decisões](docs/DECISIONS.md) e a
 
 Na tela de um diagrama, arraste um item da paleta **Componentes** para posicioná-lo no canvas e clique em **Salvar diagrama** para guardá-lo. Cada diagrama admite um início. Os novos componentes ficam sem conexão; a criação de conexões e a configuração e execução dos novos tipos ainda estão em desenvolvimento.
 
+Para inspecionar um Splitter existente, selecione-o e clique em **Criar ou abrir subfluxo**; o botão **Voltar ao diagrama anterior** retorna ao fluxo que o contém. O caminho `{{output}}` percorre a lista devolvida pela etapa anterior; no subfluxo, a action Java recebe cada item em `input` e sua posição (começando em zero) em `index`. O Splitter devolve as respostas em ordem; a opção `concat` reúne resultados textuais e está configurada no arquivo do diagrama. Conexões e opções de agregação ainda não são editáveis visualmente.
+
 Os editores Java destacam os tipos comuns, a API do bot e as classes encontradas pelos nomes dos arquivos `.java` em `scripts/`. Ao criar um script pelo editor ou abrir novamente o diagrama, a lista é atualizada para o projeto atual.
 
 ![Diagrama start no editor, com entrada e resposta ligadas](docs/images/diagrama-start-editor.png)

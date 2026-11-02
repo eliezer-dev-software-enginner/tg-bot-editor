@@ -143,6 +143,8 @@ public final class HomeScreen implements ScreenComponent {
                         new Text("Nome do diagrama"), Components.input(model.diagrams.name, "Nome do diagrama")),
                 new Row(new RowProps().spacingOf(8)).children(
                         new Button("Salvar diagrama").onClick(model.diagrams::save),
+                        new Button("Voltar ao diagrama anterior").tooltip("Volta do subfluxo para o diagrama que contém o Splitter.")
+                                .onClick(model.diagrams::backToParent),
                         new Button("Prévia").onClick(model.diagrams::preview),
                         new Button("Fechar").onClick(() -> model.diagrams.open.set(false))),
                 new Row(new RowProps().spacingOf(10).fillHeight()).children(
@@ -196,6 +198,11 @@ public final class HomeScreen implements ScreenComponent {
                                     .onClick(() -> model.diagrams.expandedActionOpen.set(true))),
                     new JavaCodeEditor(model.diagrams.javaScript, 230,
                             model.javaKeywords, List.of("context")));
+            case "SPLITTER" -> new Container(new ContainerProps().spacingOf(8)).children(
+                    new Text("Lista de entrada"), Components.input(model.diagrams.splitterArray, "{{output}}"),
+                    new Text("Use {{output}} para percorrer a lista retornada pela etapa anterior."),
+                    new Button("Criar ou abrir subfluxo").tooltip("Abre o fluxo executado para cada item da lista.")
+                            .onClick(model.diagrams::openSubflow));
             default -> new Container(new ContainerProps());
         };
     }

@@ -4,4 +4,10 @@ package tg_bot_editor;
 @FunctionalInterface
 public interface BotAction {
     Object run(BotContext context) throws Exception;
+
+    /** Input is supplied by the previous diagram component, including each Splitter item. */
+    default Object run(BotContext context, Object input) throws Exception { return run(context); }
+
+    /** Index is zero-based within a Splitter, or -1 outside a subflow. */
+    default Object run(BotContext context, Object input, int index) throws Exception { return run(context, input); }
 }

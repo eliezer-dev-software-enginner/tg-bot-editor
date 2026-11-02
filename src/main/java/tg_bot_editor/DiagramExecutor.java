@@ -30,10 +30,25 @@ public final class DiagramExecutor {
 
     public static Object run(DiagramProject.Diagram diagram, BotContext context,
                              java.util.Map<String, BotAction> actions) throws Exception {
+        var project = new DiagramProject();
+        project.diagrams.add(diagram);
+        return run(project, diagram, context, actions);
+    }
+
+    public static Object run(DiagramProject project, DiagramProject.Diagram diagram, BotContext context,
+                             java.util.Map<String, BotAction> actions) throws Exception {
+        return execute(project, diagram, context, actions, null, -1, false, new java.util.HashSet<>());
+    }
+
+    private static Object execute(DiagramProject project, DiagramProject.Diagram diagram, BotContext context,
+                                  java.util.Map<String, BotAction> actions, Object input, int index, boolean subflow,
+                                  java.util.Set<String> active) throws Exception {
+        if (!active.add(diagram.id)) throw new IllegalArgumentException("Ciclo de subfluxos: " + diagram.name);
+        try {
         DiagramProject.Node current = diagram.nodes.stream()
-                .filter(node -> "CALLBACK".equals(node.type)).findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Diagrama sem início Callback"));
-        Object output = null;
+                .filter(node -> (subflow ? "ITEM" : "CALLBACK").equals(node.type)).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Diagrama sem início " + (subflow ? "Item" : "Callback")));
+        Object output = input;
         for (int steps = 0; steps <= diagram.nodes.size(); steps++) {
             if ("RESPONSE".equals(current.type)) {
                 String response = string(current, "text");
@@ -45,9 +60,32 @@ public final class DiagramExecutor {
                         : ActionCompiler.diagramActionKey(diagram.id, current.id);
                 BotAction action = actions.get(key);
                 if (action == null) throw new IllegalArgumentException("Ação ausente: " + key);
-                output = action.run(context);
+                output = action.run(context, output, index);
                 String javaId = current.id;
                 if (diagram.edges.stream().noneMatch(edge -> javaId.equals(edge.from))) return output;
+            }
+            if ("SPLITTER".equals(current.type)) {
+                String path = string(current, "array");
+                if (!path.isBlank() && !"{{output}}".equals(path))
+                    throw new IllegalArgumentException("Caminho do Splitter ainda não suportado: " + path);
+                if (!(output instanceof Iterable<?> items))
+                    throw new IllegalArgumentException("O Splitter precisa receber uma lista: " + current.name);
+                String subflowId = current.subflowId;
+                var nested = project.diagrams.stream().filter(item -> item.id.equals(subflowId)).findFirst()
+                        .orElseThrow(() -> new IllegalArgumentException("Subfluxo do Splitter ausente: " + currentName(diagram, subflowId)));
+                var results = new java.util.ArrayList<Object>();
+                int itemIndex = 0;
+                for (Object item : items) results.add(execute(project, nested, context, actions, item, itemIndex++, true, active));
+                if ("concat".equals(string(current, "aggregation"))) {
+                    var combined = new StringBuilder();
+                    for (Object result : results) {
+                        if (!(result instanceof String)) throw new IllegalArgumentException("Concatenação exige respostas de texto");
+                        combined.append(result);
+                    }
+                    output = combined.toString();
+                } else output = results;
+                String splitterId = current.id;
+                if (diagram.edges.stream().noneMatch(edge -> splitterId.equals(edge.from))) return output;
             }
             String from = current.id;
             List<DiagramProject.Edge> outgoing = diagram.edges.stream()
@@ -59,6 +97,11 @@ public final class DiagramExecutor {
                     .orElseThrow(() -> new IllegalArgumentException("Componente de destino ausente"));
         }
         throw new IllegalArgumentException("Ciclo no diagrama: " + diagram.name);
+        } finally { active.remove(diagram.id); }
+    }
+
+    private static String currentName(DiagramProject.Diagram diagram, String subflowId) {
+        return diagram.name + " / " + subflowId;
     }
 
     private static String string(DiagramProject.Node node, String key) {

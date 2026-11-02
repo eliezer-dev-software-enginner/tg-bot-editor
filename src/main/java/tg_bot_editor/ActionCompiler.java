@@ -50,14 +50,19 @@ public final class ActionCompiler {
             classes.put(flow.id, name);
         }
         for (var diagram : diagrams.diagrams) {
+            boolean itemSubflow = diagram.nodes.stream().anyMatch(node -> "ITEM".equals(node.type));
             for (var node : diagram.nodes) {
                 if (!"JAVA".equals(node.type) || !(node.settings.get("action") instanceof String body)
                         || body.isBlank()) continue;
                 String name = "Action_" + java.util.UUID.randomUUID().toString().replace("-", "");
                 Path source = directory.resolve(name + ".java");
+                String method = itemSubflow
+                        ? " public Object run(BotContext context) throws Exception { return run(context, null, -1); }"
+                          + " public Object run(BotContext context, Object input) throws Exception { return run(context, input, -1); }"
+                          + " public Object run(BotContext context, Object input, int index) throws Exception {\n"
+                        : " public Object run(BotContext context) throws Exception {\n";
                 Files.writeString(source, "import tg_bot_editor.*; public final class " + name
-                        + " implements BotAction { public Object run(BotContext context) throws Exception {\n"
-                        + body + "\n}}", StandardCharsets.UTF_8);
+                        + " implements BotAction {" + method + body + "\n}}", StandardCharsets.UTF_8);
                 sources.add(source);
                 classes.put(diagramActionKey(diagram.id, node.id), name);
             }

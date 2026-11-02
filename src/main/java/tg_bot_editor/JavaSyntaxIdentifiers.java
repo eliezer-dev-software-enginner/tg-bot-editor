@@ -9,7 +9,7 @@ import java.util.TreeSet;
 /** Identifiers exposed by the runtime and the currently opened project's scripts. */
 final class JavaSyntaxIdentifiers {
     private static final List<String> COMMON = List.of(
-            "context", "ProjectEnvironment", "ProjectActionBindings", "FlowStore",
+            "context", "input", "index", "ProjectEnvironment", "ProjectActionBindings", "FlowStore",
             "BotContext", "BotReply", "BotButton", "BotDelivery", "BotDatabase", "BotCommandService",
             "String", "StringBuilder", "Long", "Integer", "Boolean", "Double", "Object", "List", "Map", "Set");
 
