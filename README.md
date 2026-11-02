@@ -42,7 +42,7 @@ meu-bot/
 └── data/                    # estado e logs locais, ignorados pelo Git
 ```
 
-O painel **Diagramas** permite escolher um fluxo, editar o nome do diagrama e, ao selecionar um componente no canvas, seu nome. O diagrama `start` contém o texto de resposta editável. Diagramas cujo nó é **Java** indicam a ação existente em `bot.json` que ainda produz a resposta dinâmica. Ao salvar, um diagrama habilitado tem prioridade sobre o fluxo legado do mesmo comando. O formato e as decisões em aberto estão em [proposta do editor de diagramas](docs/proposta-editor-diagramas.md).
+O painel **Diagramas** permite escolher um fluxo, editar o nome do diagrama e, ao selecionar um componente no canvas, seu nome. O diagrama `start` contém o texto de resposta editável. Ao selecionar um nó **Java**, o painel mostra a action vinculada, o script de `bot.json` e o código da classe em `scripts/` para consulta. Essa action existente ainda produz a resposta dinâmica. Ao salvar, um diagrama habilitado tem prioridade sobre o fluxo legado do mesmo comando. O formato e as decisões em aberto estão em [proposta do editor de diagramas](docs/proposta-editor-diagramas.md).
 
 ![Diagrama start no editor, com entrada e resposta ligadas](docs/images/diagrama-start-editor.png)
 

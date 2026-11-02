@@ -118,6 +118,13 @@ public final class HomeScreen implements ScreenComponent {
                                 new Text("Texto da resposta (nó Resposta; vazio nos diagramas com ação Java)"),
                                 new TextAreaInput(model.diagrams.response,
                                         new InputProps().height(230).width(320)),
+                                new Text("Action vinculada ao nó Java"), new Text(model.diagrams.action),
+                                new Text("Script Java em bot.json"),
+                                new TextAreaInput(model.diagrams.javaScript,
+                                        new InputProps().height(95).width(320).editable(false)),
+                                new Text("Código da action em scripts/"),
+                                new TextAreaInput(model.diagrams.javaSource,
+                                        new InputProps().height(260).width(320).editable(false)),
                                 new Text(model.diagrams.status))).fillAvailableHeight()));
     }
 }

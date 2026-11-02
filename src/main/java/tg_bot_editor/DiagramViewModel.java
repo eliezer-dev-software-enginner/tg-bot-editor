@@ -5,6 +5,7 @@ import megalodonte.base.state.State;
 import megalodonte.components.DiagramCanvas;
 
 import java.nio.file.Path;
+import java.nio.file.Files;
 import java.util.Map;
 import java.util.List;
 
@@ -18,12 +19,16 @@ final class DiagramViewModel {
     final State<String> pattern = State.of("/start");
     final State<String> response = State.of("");
     final State<String> selectedLabel = State.of("Selecione um componente para ver seu papel.");
+    final State<String> action = State.of("");
+    final State<String> javaScript = State.of("");
+    final State<String> javaSource = State.of("");
     final State<String> status = State.of("");
     final Ref<DiagramCanvas> canvas = new Ref<>(new DiagramCanvas());
     private DiagramProject project = new DiagramProject();
     private DiagramProject.Diagram diagram;
     private String selectedNodeId;
     private Path directory;
+    private FlowProject flows = new FlowProject();
 
     DiagramViewModel() {
         canvas.current().onSelect(id -> {
@@ -34,6 +39,7 @@ final class DiagramViewModel {
                         selectedLabel.set("CALLBACK".equals(node.type) ? "Início · comando recebido"
                                 : "JAVA".equals(node.type) ? "Java · ação existente: " + node.settings.get("flowId")
                                 : "Resposta síncrona · texto enviado ao Telegram");
+                        showAction(node);
                     });
         });
         canvas.current().onMove(move -> {
@@ -47,6 +53,7 @@ final class DiagramViewModel {
     void load(Path projectDirectory) throws Exception {
         directory = projectDirectory;
         project = directory == null ? new DiagramProject() : DiagramStore.read(directory);
+        flows = directory == null ? new FlowProject() : FlowStore.read(directory.resolve("bot.json"));
         available.set(project.diagrams.stream().map(item -> item.id).toList());
         diagram = project.diagrams.stream().filter(item -> "start".equals(item.id)).findFirst().orElse(null);
         chosen.set(diagram == null ? null : diagram.id);
@@ -63,6 +70,7 @@ final class DiagramViewModel {
     private void showSelected() {
         selectedNodeId = null;
         componentName.set("");
+        action.set(""); javaScript.set(""); javaSource.set("");
         if (diagram != null) {
             name.set(diagram.name);
             selectedLabel.set("Selecione um componente para editar seu nome.");
@@ -122,13 +130,35 @@ final class DiagramViewModel {
 
     void preview() {
         if (diagram == null) return;
-        status.set("Prévia: " + response.get());
+        status.set(diagram.nodes.stream().anyMatch(node -> "RESPONSE".equals(node.type))
+                ? "Prévia: " + response.get()
+                : "Esta resposta depende da ação Java. Use o teste local do fluxo para executá-la.");
+    }
+
+    private void showAction(DiagramProject.Node node) {
+        action.set(""); javaScript.set(""); javaSource.set("");
+        if (!"JAVA".equals(node.type)) return;
+        String flowId = String.valueOf(node.settings.getOrDefault("flowId", ""));
+        var flow = flows.flows.stream().filter(item -> flowId.equals(item.id)).findFirst().orElse(null);
+        if (flow == null) { action.set("Ação não encontrada em bot.json: " + flowId); return; }
+        action.set(flow.title + " (" + flow.id + ") · bot.json");
+        javaScript.set(flow.script);
+        var reference = java.util.regex.Pattern.compile("\\b([A-Za-z_$][\\w$]*)\\.[A-Za-z_$][\\w$]*\\s*\\(")
+                .matcher(flow.script);
+        if (reference.find() && directory != null) {
+            Path source = directory.resolve("scripts").resolve(reference.group(1) + ".java");
+            try {
+                javaSource.set(Files.isRegularFile(source) ? "scripts/" + source.getFileName() + "\n\n"
+                        + Files.readString(source) : "Fonte da action não encontrada: " + source.getFileName());
+            } catch (Exception error) { javaSource.set("Não foi possível ler a action: " + error.getMessage()); }
+        } else javaSource.set("Script Java inline: não há classe de action separada.");
     }
 
     private void refresh() {
         if (diagram == null) { canvas.current().show(java.util.List.of(), java.util.List.of()); return; }
         canvas.current().show(diagram.nodes.stream().map(node -> new DiagramCanvas.Node(
-                        node.id, node.name, "CALLBACK".equals(node.type) ? "INÍCIO" : "RESPOSTA",
+                        node.id, node.name, "CALLBACK".equals(node.type) ? "INÍCIO"
+                                : "JAVA".equals(node.type) ? "JAVA" : "RESPOSTA",
                         node.x, node.y)).toList(),
                 diagram.edges.stream().map(edge -> new DiagramCanvas.Edge(edge.from, edge.to, edge.kind)).toList());
     }
