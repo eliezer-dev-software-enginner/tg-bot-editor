@@ -261,9 +261,15 @@ public final class BotRunner {
         String kind = callback.isMissingNode() ? (!document.isMissingNode() ? "DOCUMENT" : photoRef != null ? "PHOTO"
                 : value.startsWith("/") ? "COMMAND" : "TEXT") : "CALLBACK";
         Integer threadId = message.hasNonNull("message_thread_id") ? message.path("message_thread_id").asInt() : null;
-        var diagram = DiagramExecutor.find(diagrams, kind, value);
-        var match = diagram.isPresent() ? java.util.Optional.<FlowProject.Flow>empty()
-                : FlowRouter.find(project, kind, kind.equals("DOCUMENT") ? "*" : value);
+        String routeValue = kind.equals("DOCUMENT") ? "*" : value;
+        var diagram = DiagramExecutor.find(diagrams, kind, routeValue);
+        var match = FlowRouter.find(project, kind, routeValue);
+        if (diagram.isPresent() && match.isPresent()) {
+            int visualRank = DiagramExecutor.matchRank(diagram.get(), kind, routeValue);
+            int legacyRank = DiagramExecutor.patternRank(kind, match.get().pattern, routeValue);
+            if (visualRank >= legacyRank) match = java.util.Optional.empty();
+            else diagram = java.util.Optional.empty();
+        }
         if (diagram.isEmpty() && match.isEmpty()) {
             answerCallback(callback);
             return;

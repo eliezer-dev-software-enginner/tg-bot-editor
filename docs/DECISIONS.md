@@ -33,3 +33,7 @@ A meta é configurar navegação, condições, mensagens, imagens e botões visu
 ## Timers na transição
 
 O Timer de intervalo configurado no diagrama tem prioridade sobre o agendamento legado de mesmo ID. Diagramas desabilitados suspendem o agendamento correspondente; intervalos devem ser inteiros positivos. A execução, inclusive por `/runaction`, usa o diagrama habilitado. O runner conserva agendamentos legados sem diagrama.
+
+## Gatilhos de eventos
+
+O componente de início permite selecionar o tipo e o padrão do evento. O runner compara especificidade entre diagramas e fluxos legados, com prioridade do diagrama em empate, para que um curinga visual não oculte um padrão legado mais específico.

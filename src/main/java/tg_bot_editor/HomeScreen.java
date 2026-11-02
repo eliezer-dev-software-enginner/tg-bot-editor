@@ -186,7 +186,9 @@ public final class HomeScreen implements ScreenComponent {
                     new Text("Intervalo em minutos"), Components.input(diagram.timerInterval, "10"),
                     new Text("Executa ao iniciar e depois de cada intervalo."));
             case "CALLBACK" -> new Container(new ContainerProps().spacingOf(8)).children(
-                    new Text("Comando"), Components.input(diagram.pattern, "/start"));
+                    new Text("Tipo de evento"), new Select<String>().items(diagram.eventTypes).value(diagram.event),
+                    new Text("Padrão"), Components.input(diagram.pattern, "/start ou ads:*"),
+                    new Text("Use * para todos ou prefixo:* para filtrar callbacks."));
             case "RESPONSE" -> new Container(new ContainerProps().spacingOf(8)).children(
                     new Text("Texto da resposta"), new TextAreaInput(diagram.response,
                             new InputProps().height(230).width(320)),

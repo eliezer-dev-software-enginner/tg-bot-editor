@@ -18,3 +18,5 @@ O TG-bot Editor cria e executa projetos de bots Telegram. O editor fornece mecan
 Os detalhes e referências visuais estão em [proposta do editor de diagramas](proposta-editor-diagramas.md). Registre mudanças de direção em [DECISIONS.md](DECISIONS.md) e mantenha as próximas entregas em [TODO.md](TODO.md).
 
 - Timers visuais usam `intervalMinutes`, iniciam com o bot e substituem agendamentos legados de mesmo ID, sem duplicação. Os diagramas `g1-news`, `ads-tick` e `youtube-new-videos` do bot canônico usam Timer → Java → Splitter. O arquivo `bot.json` permanece como fallback para outros fluxos.
+
+- Gatilhos visuais aceitam `COMMAND`, `CALLBACK`, `TEXT`, `PHOTO` e `DOCUMENT`, com padrão configurável. A disputa com fluxos legados preserva a prioridade de padrão exato, prefixo mais longo e curinga.

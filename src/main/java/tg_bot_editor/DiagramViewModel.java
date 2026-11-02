@@ -21,6 +21,8 @@ final class DiagramViewModel {
     final State<String> chosen = State.of("start");
     final State<String> componentName = State.of("");
     final State<String> pattern = State.of("/start");
+    final State<String> event = State.of("COMMAND");
+    final State<List<String>> eventTypes = State.of(List.of("COMMAND", "CALLBACK", "TEXT", "PHOTO", "DOCUMENT"));
     final State<String> timerInterval = State.of("10");
     final State<String> response = State.of("");
     final State<String> splitterArray = State.of("{{output}}");
@@ -68,7 +70,10 @@ final class DiagramViewModel {
             return;
         }
         componentName.set(node.name);
-        if ("CALLBACK".equals(node.type)) pattern.set(String.valueOf(node.settings.getOrDefault("pattern", "")));
+        if ("CALLBACK".equals(node.type)) {
+            pattern.set(String.valueOf(node.settings.getOrDefault("pattern", "")));
+            event.set(String.valueOf(node.settings.getOrDefault("event", "COMMAND")));
+        }
         if ("TIMER".equals(node.type)) timerInterval.set(String.valueOf(node.settings.getOrDefault("intervalMinutes", "10")));
         if ("RESPONSE".equals(node.type)) response.set(String.valueOf(node.settings.getOrDefault("text", "")));
         if ("SPLITTER".equals(node.type)) splitterArray.set(String.valueOf(node.settings.getOrDefault("array", "{{output}}")));
@@ -86,7 +91,10 @@ final class DiagramViewModel {
         diagram.nodes.stream().filter(node -> node.id.equals(selectedNodeId)).findFirst().ifPresent(node -> {
             if (!componentName.get().isBlank()) node.name = componentName.get().trim();
             var values = new java.util.HashMap<>(node.settings);
-            if ("CALLBACK".equals(node.type)) values.put("pattern", pattern.get().trim());
+            if ("CALLBACK".equals(node.type)) {
+                values.put("pattern", pattern.get().trim());
+                values.put("event", event.get());
+            }
             if ("TIMER".equals(node.type)) values.put("intervalMinutes", timerInterval.get().trim());
             if ("RESPONSE".equals(node.type)) values.put("text", response.get());
             if ("SPLITTER".equals(node.type)) values.put("array", splitterArray.get().trim());
@@ -254,7 +262,7 @@ final class DiagramViewModel {
             }
             if (diagram.enabled && diagram.nodes.stream().filter(node -> "CALLBACK".equals(node.type))
                     .anyMatch(node -> String.valueOf(node.settings.getOrDefault("pattern", "")).isBlank())) {
-                status.set("Informe o comando do componente de início antes de salvar."); return;
+                status.set("Informe o padrão do componente de início antes de salvar."); return;
             }
             if (diagram.enabled && diagram.edges.stream().anyMatch(edge -> diagram.nodes.stream()
                     .anyMatch(node -> node.id.equals(edge.to) && "RESPONSE".equals(node.type)

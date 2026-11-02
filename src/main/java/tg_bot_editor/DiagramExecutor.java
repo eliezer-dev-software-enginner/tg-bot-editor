@@ -15,17 +15,25 @@ public final class DiagramExecutor {
 
     public static Optional<DiagramProject.Diagram> find(DiagramProject project, String kind, String value) {
         if (project == null || value == null) return Optional.empty();
+        return project.diagrams.stream().filter(diagram -> diagram.enabled && matchRank(diagram, kind, value) >= 0)
+                .max(java.util.Comparator.comparingInt(diagram -> matchRank(diagram, kind, value)));
+    }
+
+    static int matchRank(DiagramProject.Diagram diagram, String kind, String value) {
+        return diagram.nodes.stream().filter(node -> "CALLBACK".equals(node.type))
+                .filter(node -> kind.equalsIgnoreCase(string(node, "event")))
+                .mapToInt(node -> patternRank(kind, string(node, "pattern"), value)).max().orElse(-1);
+    }
+
+    static int patternRank(String kind, String pattern, String value) {
+        if (value == null || pattern == null || pattern.isBlank()) return -1;
         String normalized = value.trim();
-        return project.diagrams.stream().filter(diagram -> diagram.enabled && diagram.nodes.stream().anyMatch(node -> {
-            if (!"CALLBACK".equals(node.type)) return false;
-            String event = string(node, "event");
-            String pattern = string(node, "pattern");
-            if (!kind.equalsIgnoreCase(event) || pattern.isBlank()) return false;
-            if ("COMMAND".equalsIgnoreCase(event))
-                return normalized.equals(pattern) || normalized.startsWith(pattern + " ")
-                        || normalized.startsWith(pattern + "@");
-            return normalized.toLowerCase(Locale.ROOT).equals(pattern.toLowerCase(Locale.ROOT));
-        })).findFirst();
+        if ("COMMAND".equalsIgnoreCase(kind))
+            return normalized.equals(pattern) || normalized.startsWith(pattern + " ")
+                    || normalized.startsWith(pattern + "@") ? Integer.MAX_VALUE : -1;
+        if (pattern.endsWith("*"))
+            return normalized.regionMatches(true, 0, pattern, 0, pattern.length() - 1) ? pattern.length() - 1 : -1;
+        return normalized.equalsIgnoreCase(pattern) ? Integer.MAX_VALUE : -1;
     }
 
     public static Object run(DiagramProject.Diagram diagram, BotContext context,
