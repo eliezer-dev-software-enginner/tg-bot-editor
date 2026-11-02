@@ -100,7 +100,6 @@ public final class HomeScreen implements ScreenComponent {
                 new Text("Diagramas", new TextProps().fontSize(22)),
                 new Row(new RowProps().spacingOf(8)).children(
                         new Select<String>().items(model.diagrams.available).value(model.diagrams.chosen),
-                        new Text(model.diagrams.chosen),
                         new Button("Abrir diagrama").onClick(model.diagrams::selectDiagram)),
                 new Row(new RowProps().spacingOf(8)).children(
                         new Button("Salvar diagrama").onClick(model.diagrams::save),
