@@ -17,6 +17,41 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 class DiagramSubflowWindowTest {
     @TempDir Path directory;
 
+    @Test void createsDraftAndActivatesConfiguredDiagram() throws Exception {
+        assumeTrue(System.getenv("DISPLAY") != null, "Requer ambiente gráfico JavaFX");
+        var started = new CountDownLatch(1);
+        try { Platform.startup(started::countDown); } catch (IllegalStateException alreadyStarted) { started.countDown(); }
+        assertTrue(started.await(10, TimeUnit.SECONDS));
+        var check = new FutureTask<Void>(() -> {
+            java.nio.file.Files.createDirectories(directory.resolve("scripts"));
+            FlowStore.write(directory.resolve("bot.json"), new FlowProject());
+            var editor = new DiagramViewModel(); editor.load(directory); editor.createDiagram();
+            assertTrue(editor.open.get()); assertFalse(editor.enabled.get());
+            editor.name.set("Meu comando"); editor.save();
+            var draft = DiagramStore.read(directory).diagrams.getFirst();
+            assertEquals("Meu comando", draft.name); assertFalse(draft.enabled);
+            editor.enabled.set(true); editor.save();
+            assertTrue(editor.status.get().contains("componente de início"));
+            assertFalse(DiagramStore.read(directory).diagrams.getFirst().enabled);
+            editor.addComponent("CALLBACK", 50, 100); editor.pattern.set("/novo-teste");
+            editor.addComponent("RESPONSE", 300, 100); editor.response.set("Olá!");
+            editor.enabled.set(false); editor.save();
+            var restored = DiagramStore.read(directory).diagrams.getFirst();
+            String start = restored.nodes.stream().filter(n -> "CALLBACK".equals(n.type)).findFirst().orElseThrow().id;
+            String response = restored.nodes.stream().filter(n -> "RESPONSE".equals(n.type)).findFirst().orElseThrow().id;
+            editor.connect(start, response); editor.enabled.set(true); editor.save();
+            var project = DiagramStore.read(directory);
+            var active = DiagramExecutor.find(project, "COMMAND", "/novo-teste").orElseThrow();
+            assertEquals("Olá!", DiagramExecutor.run(active));
+            editor.createDiagram(); editor.save();
+            var both = DiagramStore.read(directory).diagrams;
+            assertEquals(2, both.size()); assertNotEquals(both.getFirst().id, both.getLast().id);
+            assertFalse(both.getLast().enabled);
+            return null;
+        });
+        Platform.runLater(check); check.get(30, TimeUnit.SECONDS);
+    }
+
     @Test void openingAndClosingSubflowPreservesParentAndPersistsEdits() throws Exception {
         assumeTrue(System.getenv("DISPLAY") != null, "Requer ambiente gráfico JavaFX");
         var started = new CountDownLatch(1);

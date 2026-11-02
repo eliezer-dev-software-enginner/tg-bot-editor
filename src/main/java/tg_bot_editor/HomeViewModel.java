@@ -80,6 +80,12 @@ final class HomeViewModel {
         diagrams.openDiagram(id);
     }
 
+    void createDiagram() {
+        if (file == null) { status.set("Abra um projeto antes de criar diagramas."); return; }
+        refreshJavaKeywords();
+        diagrams.createDiagram();
+    }
+
     void selectDiagram() {
         refreshJavaKeywords();
         diagrams.selectDiagram();

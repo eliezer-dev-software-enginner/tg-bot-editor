@@ -47,6 +47,7 @@ public final class HomeScreen implements ScreenComponent {
         return new Container(new ContainerProps().paddingAll(16).spacingOf(12).themeBackground()).children(
                 new Text("Diagramas do projeto", new TextProps().fontSize(21)),
                 new Text("Cada card abre um fluxo visual independente."),
+                new Button("+ Novo diagrama").tooltip("Cria um diagrama em rascunho no projeto aberto.").onClick(model::createDiagram),
                 new FlowRow(new FlowRowProps().spacingOf(12).verticalSpacing(12).fillWidth())
                         .items(new ForEachState<DiagramViewModel.Summary, Card>() {
                             @Override public ReadableState<List<DiagramViewModel.Summary>> getState() {
@@ -137,7 +138,8 @@ public final class HomeScreen implements ScreenComponent {
                                 : new Row(new RowProps().spacingOf(8)).children(
                                 new Select<String>().items(diagram.available).value(diagram.chosen),
                                 new Button("Abrir diagrama").onClick(model::selectDiagram),
-                                new Text("Nome do diagrama"), Components.input(diagram.name, "Nome do diagrama")),
+                                new Text("Nome do diagrama"), Components.input(diagram.name, "Nome do diagrama"),
+                                new Checkbox("Diagrama ativo", diagram.enabled)),
                         new Row(new RowProps().spacingOf(8)).children(
                                 new Button("Salvar diagrama").onClick(diagram::save),
                                 new Button("Prévia").onClick(diagram::preview),

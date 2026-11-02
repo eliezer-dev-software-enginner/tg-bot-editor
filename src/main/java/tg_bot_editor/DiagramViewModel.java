@@ -33,6 +33,7 @@ final class DiagramViewModel {
     final State<List<DiagramViewModel>> subflowWindows = State.of(List.of());
     final State<List<Summary>> summaries = State.of(List.of());
     final State<String> name = State.of("start");
+    final State<Boolean> enabled = State.of(false);
     final State<List<String>> available = State.of(List.of());
     final State<String> chosen = State.of("start");
     final State<String> componentName = State.of("");
@@ -78,6 +79,7 @@ final class DiagramViewModel {
     final State<String> status = State.of("");
     final Ref<DiagramCanvas> canvas = new Ref<>(new DiagramCanvas());
     private DiagramProject project = new DiagramProject();
+    private final java.util.Set<String> initiallyEnabled = new java.util.HashSet<>();
     private DiagramProject.Diagram diagram;
     private String selectedNodeId;
     private String selectedEdgeId;
@@ -347,6 +349,8 @@ final class DiagramViewModel {
     void load(Path projectDirectory) throws Exception {
         directory = projectDirectory;
         project = directory == null ? new DiagramProject() : DiagramStore.read(directory);
+        initiallyEnabled.clear();
+        project.diagrams.stream().filter(item -> item.enabled).map(item -> item.id).forEach(initiallyEnabled::add);
         flows = directory == null ? new FlowProject() : FlowStore.read(directory.resolve("bot.json"));
         updateSummaries();
         available.set(project.diagrams.stream().map(item -> item.id).toList());
@@ -357,6 +361,7 @@ final class DiagramViewModel {
 
     void selectDiagram() {
         if (chosen.get() == null) return;
+        savePending();
         diagram = project.diagrams.stream().filter(item -> item.id.equals(chosen.get())).findFirst().orElse(null);
         showSelected();
         canvas.current().resetView();
@@ -366,6 +371,20 @@ final class DiagramViewModel {
         chosen.set(id);
         selectDiagram();
         if (diagram != null) open.set(true);
+    }
+
+    void createDiagram() {
+        if (directory == null) { status.set("Abra um projeto antes de criar diagramas."); return; }
+        savePending();
+        var created = new DiagramProject.Diagram();
+        created.id = "diagram-" + java.util.UUID.randomUUID();
+        created.name = "Novo diagrama";
+        created.enabled = false;
+        project.diagrams.add(created);
+        available.set(project.diagrams.stream().map(item -> item.id).toList());
+        updateSummaries();
+        openDiagram(created.id);
+        status.set("Novo rascunho criado. Adicione um início e salve o diagrama.");
     }
 
     void openSubflow() {
@@ -387,6 +406,7 @@ final class DiagramViewModel {
         diagram.name = name.get().isBlank() ? diagram.name : name.get().trim();
         var child = new DiagramViewModel();
         child.project = project;
+        child.initiallyEnabled.addAll(initiallyEnabled);
         child.directory = directory;
         child.flows = flows;
         child.available.set(available.get());
@@ -408,7 +428,10 @@ final class DiagramViewModel {
     private void savePending() {
         for (var child : subflowWindows.get()) child.savePending();
         saveSelectedFields();
-        if (diagram != null && !name.get().isBlank()) diagram.name = name.get().trim();
+        if (diagram != null) {
+            if (!name.get().isBlank()) diagram.name = name.get().trim();
+            diagram.enabled = enabled.get();
+        }
     }
 
     void close() {
@@ -429,6 +452,7 @@ final class DiagramViewModel {
                         "Exemplo: return input;") : List.of());
         if (diagram != null) {
             name.set(diagram.name);
+            enabled.set(diagram.enabled);
             selectedLabel.set("Selecione um componente para editar seu nome.");
             diagram.nodes.stream().filter(node -> "CALLBACK".equals(node.type)).findFirst()
                     .ifPresent(node -> pattern.set(String.valueOf(node.settings.getOrDefault("pattern", "/start"))));
@@ -469,6 +493,16 @@ final class DiagramViewModel {
             savePending();
             diagram.name = name.get().isBlank() ? "start" : name.get().trim();
             saveSelectedFields();
+            for (var candidate : project.diagrams) {
+                if (!candidate.enabled || initiallyEnabled.contains(candidate.id)) continue;
+                if (candidate.nodes.stream().noneMatch(node -> "CALLBACK".equals(node.type) || "TIMER".equals(node.type))) {
+                    status.set("Adicione um componente de início antes de ativar " + candidate.name + "."); return;
+                }
+                if (candidate.nodes.stream().filter(node -> "CALLBACK".equals(node.type) || "TIMER".equals(node.type))
+                        .noneMatch(node -> candidate.edges.stream().anyMatch(edge -> edge.from.equals(node.id)))) {
+                    status.set("Conecte o componente de início antes de ativar " + candidate.name + "."); return;
+                }
+            }
             if (diagram.enabled && diagram.nodes.stream().filter(node -> "REST_HTTP".equals(node.type))
                     .anyMatch(node -> String.valueOf(node.settings.getOrDefault("url", "")).isBlank())) {
                 status.set("Informe a URL do componente Rest HTTP antes de salvar."); return;
@@ -494,6 +528,8 @@ final class DiagramViewModel {
             }
             ActionCompiler.compileProject(directory, flows, project);
             DiagramStore.write(directory, project);
+            initiallyEnabled.clear();
+            project.diagrams.stream().filter(item -> item.enabled).map(item -> item.id).forEach(initiallyEnabled::add);
             updateSummaries();
             status.set("Diagrama salvo. Componentes adicionados sem conexão não são executados.");
             refresh();
