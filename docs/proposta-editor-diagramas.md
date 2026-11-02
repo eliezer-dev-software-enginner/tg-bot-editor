@@ -13,6 +13,11 @@ Evoluir a edição atual de gatilhos e ações isolados para diagramas visuais c
 - [Seleção de componente de início](images/ipaas-componentes-inicio.png)
 - [Ações contextuais ao passar o mouse](images/ipaas-acoes-contextuais.png)
 - [Múltiplos diagramas em um projeto](images/ipaas-multiplos-diagramas.png)
+- [Formulário de condição aberto pela seta da conexão](images/ipaas-condicao-formulario.png)
+- [Operadores de comparação da condição](images/ipaas-condicao-operadores.png)
+- [Condição `if` preenchida](images/ipaas-condicao-if.png)
+- [Condição alternativa (`else`)](images/ipaas-condicao-alternativa.png)
+- [Ramos condicionais no canvas](images/ipaas-ramos-if-else.png)
 
 ## Vocabulário proposto
 
@@ -21,10 +26,17 @@ Evoluir a edição atual de gatilhos e ações isolados para diagramas visuais c
 | Início | **Timer** para execuções agendadas; **Callback** para eventos do Telegram | O runtime atual também recebe `COMMAND`, `TEXT`, `PHOTO` e `DOCUMENT`. É preciso definir se todos entram pelo componente Callback, se viram filtros nele ou se exigem outros inícios. Não eliminar esses gatilhos sem preservar os fluxos existentes. |
 | Etapas | **Converter**, **Java**, **Generator** e **Resposta síncrona** | Definir entradas, saídas, contratos de dados, erros e o efeito de cada etapa no bot. Os nomes são candidatos, não APIs confirmadas. |
 | Canvas | Inserir e conectar componentes; no hover, oferecer informação, configuração, duplicação e exclusão | Definir regras de conexão, ramificações, ciclo, ordenação e validação. |
+| Conexões condicionais | Ao clicar na seta de uma conexão, abrir a configuração de uma condição. O ramo `if` aparece com tracejado mais leve; o ramo alternativo (`else`) usa traços mais longos e densos. | Definir precedência entre condições, comportamento quando nenhuma corresponde, limites de ramos e como apresentar essas diferenças também por texto/ícone, além do tracejado. |
 | Configuração | Árvore das etapas do diagrama à esquerda e formulário à direita; permitir preencher ou arrastar dados de etapas anteriores | Definir tipagem, escopo, representação das referências e atualização ao renomear ou excluir uma etapa. |
 | Projeto | Permitir múltiplos diagramas no mesmo projeto | Definir como cada diagrama é acionado, identificado, chamado por outro diagrama e publicado sem conflito de comandos/callbacks. |
 
 Uma hipótese útil para o bot é tratar cada diagrama como um fluxo de entrada independente, composto por um início e etapas subsequentes. Essa hipótese ainda precisa ser confrontada com os fluxos atuais, especialmente respostas a botões, ações reutilizáveis e agendamentos.
+
+## Condições nas conexões
+
+As novas capturas mostram que a seta da conexão permite criar um ramo condicional. O formulário exibe nome, uma opção **Tipo alternativa**, valores e grupos de condições. Em uma condição comum (`if`), cada comparação combina dado de entrada, operador e dado de saída; os operadores visíveis são igual, diferente, menor, maior, menor ou igual e maior ou igual. Há controles para adicionar condições e grupos, inclusive internos. A área de configuração mostra dados de componentes anteriores para referência no formulário. Quando **Tipo alternativa** está ativado, o ramo equivale a `else`: é executado se nenhuma condição configurada for atendida e não recebe comparações próprias. No canvas, os padrões de tracejado distinguem visualmente os ramos `if` e `else`.
+
+Para o bot, isso sugere que a decisão de seguir um caminho pertence à **conexão**, enquanto a etapa executa uma ação. Essa é apenas uma hipótese de modelagem. A semântica de grupos, operadores para tipos não numéricos, dados ausentes, múltiplos ramos verdadeiros e convergência de caminhos ainda precisa ser definida antes de implementação.
 
 ## Estado atual a preservar
 
