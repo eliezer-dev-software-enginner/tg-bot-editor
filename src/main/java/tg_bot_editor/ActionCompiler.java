@@ -56,10 +56,10 @@ public final class ActionCompiler {
                         || body.isBlank()) continue;
                 String name = "Action_" + java.util.UUID.randomUUID().toString().replace("-", "");
                 Path source = directory.resolve(name + ".java");
-                boolean receivesRest = diagram.edges.stream().anyMatch(edge -> node.id.equals(edge.to)
+                boolean receivesPrevious = diagram.edges.stream().anyMatch(edge -> node.id.equals(edge.to)
                         && diagram.nodes.stream().anyMatch(previous -> previous.id.equals(edge.from)
-                        && "REST_HTTP".equals(previous.type)));
-                String method = itemSubflow || receivesRest
+                        && java.util.Set.of("REST_HTTP", "COMPOSITION").contains(previous.type)));
+                String method = itemSubflow || receivesPrevious
                         ? " public Object run(BotContext context) throws Exception { return run(context, null, -1); }"
                           + " public Object run(BotContext context, Object input) throws Exception { return run(context, input, -1); }"
                           + " public Object run(BotContext context, Object input, int index) throws Exception {\n"

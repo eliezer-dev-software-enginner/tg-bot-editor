@@ -46,7 +46,7 @@ A tela inicial mostra os diagramas do projeto em cards. Clique em **Abrir diagra
 
 O [contexto e andamento](docs/CONTEXT.md), as [decisões](docs/DECISIONS.md) e as [próximas etapas](docs/TODO.md) acompanham a evolução do projeto.
 
-Na tela de um diagrama, arraste um item da paleta **Componentes** para posicioná-lo no canvas e clique em **Salvar diagrama** para guardá-lo. Cada diagrama admite um início. Os novos componentes começam sem conexão. Selecione o componente de origem, escolha o destino em **Conectar a** e clique em **Conectar**; use **Remover conexão** para desfazer uma saída simples. Condições nas setas ainda não são editáveis.
+Na tela de um diagrama, arraste um item da paleta **Componentes** para posicioná-lo no canvas e clique em **Salvar diagrama** para guardá-lo. Cada diagrama admite um início. Os novos componentes começam sem conexão. Selecione o componente de origem, escolha o destino em **Conectar a** e clique em **Conectar**; use **Remover conexão** para desfazer uma saída simples. Clique em uma seta para escolher ALWAYS, IF ou ELSE e editar uma comparação simples. Para criar outro ramo, primeiro configure a saída existente como IF, selecione o componente de origem e conecte outro destino; a nova saída será ELSE.
 
 O **Rest HTTP** permite configurar URL, método (GET, POST, PUT, PATCH, DELETE ou HEAD) e corpo opcional em UTF-8. Opcionalmente, informe uma variável de ambiente que substitui a URL quando estiver preenchida. Conecte-o diretamente a um componente Java: a action recebe `input` como um mapa com `status` (inteiro), `body` (texto) e `headers` (mapa de listas). Exemplo:
 
@@ -56,6 +56,10 @@ return resposta.get("body");
 ```
 
 Respostas HTTP de erro também são retornadas com seu status; falhas de conexão e URLs inválidas interrompem o fluxo. A conexão tem limite de 10 segundos e a requisição, 20 segundos. Cabeçalhos personalizados, autenticação configurável, parâmetros dinâmicos e seleção de codificação ainda não estão disponíveis. Projetos antigos precisam atualizar os arquivos do runtime para executar esse componente.
+
+Condições aceitam `EQ`, `NE`, `LT`, `GT`, `LE` e `GE`. Use `{{input.campo}}` para dados recebidos pelo subfluxo e `{{output.campo}}` para o resultado anterior; `''` representa texto vazio. Por exemplo, `{{input.image}} NE ''` segue o ramo IF quando há imagem; caso contrário, segue ELSE. Se mais de um IF corresponder, o primeiro na ordem do diagrama é escolhido. O editor ainda não altera grupos avançados existentes.
+
+O componente **Composição** monta uma mensagem sem código de apresentação. Em suas propriedades, adicione ou remova elementos `TEXT`, `IMAGE`, `LINK` e `BUTTON`; os valores podem conter referências como `{{input.title}}`. Em um botão, escolha `URL` ou `CALLBACK` e informe o destino. Uma composição aceita uma imagem; a legenda longa é reduzida para caber no Telegram, preservando o último link. A prévia visual e a edição de grupos de botões ainda estão pendentes.
 
 Para inspecionar um Splitter existente, selecione-o e clique em **Criar ou abrir subfluxo**; o subfluxo abre em um popup sobre o diagrama atual. Use **Salvar diagrama** para gravar as alterações e **Fechar** para retornar ao diagrama que o contém. O caminho `{{output}}` percorre a lista devolvida pela etapa anterior; no subfluxo, a primeira action Java recebe cada item em `input` e sua posição (começando em zero) em `index`; nas actions seguintes, `input` recebe o resultado da etapa anterior. O Splitter devolve as respostas em ordem. Nas propriedades, `list` mantém os resultados, `concat` reúne textos e `flatten` reúne os itens das listas retornadas. Ramos condicionais ainda não são editáveis visualmente.
 
@@ -88,22 +92,12 @@ O campo **Padrão** depende do gatilho:
 
 Em `TEXT`, `CALLBACK`, `PHOTO` e `DOCUMENT`, `*` aceita qualquer valor e um asterisco final cria um prefixo, como `menu:*`. Um padrão exato tem prioridade sobre prefixos; `*` serve como fallback. `COMMAND` não usa asterisco.
 
-Uma ação pode devolver texto simples ou um `BotReply`. Este exemplo mostra como um botão aciona outro fluxo:
+Para montar um menu visual, adicione uma **Composição** com um elemento `TEXT` com o valor `Escolha uma opção:` e dois elementos `BUTTON`:
 
-```java
-return BotReply.text("Escolha uma opção:").withButtons(java.util.List.of(
-    BotButton.callback("Detalhes", "menu:detalhes"),
-    BotButton.link("Site", "https://example.com")
-));
-```
+- Para **Detalhes**, informe o texto `Detalhes`, o tipo `CALLBACK` e o destino `menu:detalhes`.
+- Para **Site**, informe o texto `Site`, o tipo `URL` e o destino `https://example.com`.
 
-O botão **Detalhes** envia `menu:detalhes` ao bot. Crie um fluxo `CALLBACK` com esse padrão e, em seu script, retorne uma resposta:
-
-```java
-return "Você clicou em Detalhes.";
-```
-
-Nesse fluxo, `context.text()` contém o dado recebido. Use `menu:*` para tratar vários botões da mesma família e `context.commands().runAction(id, context)` quando um fluxo precisar executar outra ação do projeto. O botão **Site** apenas abre a URL. Cada botão aparece em sua própria linha.
+O clique em **Detalhes** envia `menu:detalhes` ao bot. Crie outro diagrama com início `CALLBACK` e esse padrão e conecte uma resposta com o texto desejado. Use `menu:*` para receber vários callbacks da mesma família; `context.text()` contém o dado recebido. O botão **Site** abre a URL. Cada botão aparece em sua própria linha. Fluxos legados ainda podem retornar `BotReply` enquanto são migrados para a composição.
 
 As respostas, permissões, assinaturas de canais e regras de anúncios pertencem aos scripts do **projeto do bot**. O editor fornece os gatilhos, a persistência e o transporte Telegram; ele não define os comandos particulares de um bot.
 

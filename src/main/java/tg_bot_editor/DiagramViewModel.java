@@ -11,6 +11,22 @@ import java.util.List;
 /** First diagram editor slice: /start event connected to a visual text response. */
 final class DiagramViewModel {
     record Summary(String id, String name, String trigger, int steps, boolean enabled) { }
+    static final class CompositionItem {
+        final State<String> type = State.of("TEXT");
+        final State<String> value = State.of("");
+        final State<String> target = State.of("");
+        final State<String> buttonKind = State.of("URL");
+        final State<List<String>> buttonFields = State.of(List.of());
+        CompositionItem(Map<?, ?> item) {
+            type.set(String.valueOf(item.containsKey("type") ? item.get("type") : "TEXT"));
+            value.set(String.valueOf(item.containsKey("value") ? item.get("value") : ""));
+            target.set(String.valueOf(item.containsKey("target") ? item.get("target") : ""));
+            buttonKind.set(String.valueOf(item.containsKey("buttonKind") ? item.get("buttonKind") : "URL"));
+            type.subscribe(value -> buttonFields.set("BUTTON".equals(value) ? List.of("BUTTON") : List.of()));
+        }
+        Map<String, Object> values() { return Map.of("type", type.get(), "value", value.get(),
+                "target", target.get(), "buttonKind", buttonKind.get()); }
+    }
     final State<Boolean> open = State.of(false);
     final State<Boolean> expandedActionOpen = State.of(false);
     final State<Boolean> subflowOpen = State.of(false);
@@ -25,6 +41,9 @@ final class DiagramViewModel {
     final State<List<String>> eventTypes = State.of(List.of("COMMAND", "CALLBACK", "TEXT", "PHOTO", "DOCUMENT"));
     final State<String> timerInterval = State.of("10");
     final State<String> response = State.of("");
+    final State<List<CompositionItem>> compositionItems = State.of(List.of());
+    final State<List<String>> compositionTypes = State.of(List.of("TEXT", "IMAGE", "LINK", "BUTTON"));
+    final State<List<String>> compositionButtonKinds = State.of(List.of("URL", "CALLBACK"));
     final State<String> restUrl = State.of("");
     final State<String> restUrlEnv = State.of("");
     final State<String> restMethod = State.of("GET");
@@ -35,6 +54,14 @@ final class DiagramViewModel {
     final State<String> splitterArray = State.of("{{output}}");
     final State<String> splitterAggregation = State.of("list");
     final State<List<String>> splitterAggregations = State.of(List.of("list", "concat", "flatten"));
+    final State<String> edgeKind = State.of("ALWAYS");
+    final State<List<String>> edgeKinds = State.of(List.of("ALWAYS", "IF", "ELSE"));
+    final State<String> edgeName = State.of("");
+    final State<String> edgeLeft = State.of("{{output}}");
+    final State<String> edgeOperator = State.of("NE");
+    final State<List<String>> edgeOperators = State.of(List.of("EQ", "NE", "LT", "GT", "LE", "GE"));
+    final State<String> edgeRight = State.of("''");
+    final State<List<String>> edgeConditionForm = State.of(List.of());
     final State<String> selectedLabel = State.of("Selecione um componente para ver seu papel.");
     final State<List<String>> selectedTypes = State.of(List.of());
     final State<List<String>> actionHints = State.of(List.of());
@@ -44,6 +71,7 @@ final class DiagramViewModel {
     private DiagramProject project = new DiagramProject();
     private DiagramProject.Diagram diagram;
     private String selectedNodeId;
+    private String selectedEdgeId;
     private Path directory;
     private FlowProject flows = new FlowProject();
 
@@ -57,7 +85,8 @@ final class DiagramViewModel {
                 refresh();
             }
         });
-        canvas.current().onSelect(this::selectNode);
+        edgeKind.subscribe(kind -> edgeConditionForm.set("IF".equals(kind) ? List.of("IF") : List.of()));
+        canvas.current().onSelect(this::selectNode).onEdgeSelect(this::selectEdge);
         canvas.current().onDrop(drop -> addComponent(drop.type(), drop.x(), drop.y()));
         canvas.current().onMove(move -> {
             if (diagram == null) return;
@@ -69,6 +98,7 @@ final class DiagramViewModel {
 
     void selectNode(String id) {
         saveSelectedFields();
+        selectedEdgeId = null;
         selectedNodeId = id;
         var node = diagram == null ? null : diagram.nodes.stream()
                 .filter(item -> item.id.equals(id)).findFirst().orElse(null);
@@ -82,6 +112,11 @@ final class DiagramViewModel {
         if ("CALLBACK".equals(node.type)) {
             pattern.set(String.valueOf(node.settings.getOrDefault("pattern", "")));
             event.set(String.valueOf(node.settings.getOrDefault("event", "COMMAND")));
+        }
+        if ("COMPOSITION".equals(node.type)) {
+            Object items = node.settings.get("items");
+            compositionItems.set(items instanceof List<?> list ? list.stream()
+                    .filter(Map.class::isInstance).map(item -> new CompositionItem((Map<?, ?>) item)).toList() : List.of());
         }
         if ("REST_HTTP".equals(node.type)) {
             restUrl.set(String.valueOf(node.settings.getOrDefault("url", "")));
@@ -108,6 +143,58 @@ final class DiagramViewModel {
         selectedTypes.set(List.of(node.type));
     }
 
+    void selectEdge(String id) {
+        saveSelectedFields();
+        selectedNodeId = null;
+        selectedEdgeId = id;
+        var edge = diagram == null ? null : diagram.edges.stream().filter(item -> item.id.equals(id)).findFirst().orElse(null);
+        if (edge == null) { selectedTypes.set(List.of()); return; }
+        edgeKind.set(edge.kind); edgeName.set(edge.name == null ? "" : edge.name);
+        edgeLeft.set("{{output}}"); edgeOperator.set("NE"); edgeRight.set("''");
+        if (edge.groups.size() == 1 && edge.groups.getFirst().groups.isEmpty()
+                && edge.groups.getFirst().comparisons.size() == 1) {
+            var comparison = edge.groups.getFirst().comparisons.getFirst();
+            edgeLeft.set(comparison.left); edgeOperator.set(comparison.operator); edgeRight.set(comparison.right);
+        }
+        selectedLabel.set("Conexão · " + edge.from + " → " + edge.to);
+        selectedTypes.set(List.of("EDGE"));
+    }
+
+    void applyEdge() {
+        if (diagram == null || selectedEdgeId == null) return;
+        var edge = diagram.edges.stream().filter(item -> item.id.equals(selectedEdgeId)).findFirst().orElse(null);
+        if (edge == null) return;
+        if (edge.groups.size() > 1 || edge.groups.stream().anyMatch(group -> !group.groups.isEmpty() || group.comparisons.size() > 1)) {
+            status.set("Esta condição contém grupos avançados; a edição visual deles ainda não está disponível."); return;
+        }
+        String kind = edgeKind.get();
+        var siblings = diagram.edges.stream().filter(other -> other != edge && other.from.equals(edge.from)).toList();
+        if ("ALWAYS".equals(kind) && !siblings.isEmpty()
+                || !"ALWAYS".equals(kind) && siblings.stream().anyMatch(other -> "ALWAYS".equals(other.kind))) {
+            status.set("Uma saída incondicional não pode coexistir com outros ramos."); return;
+        }
+        if ("ELSE".equals(kind) && diagram.edges.stream().anyMatch(other -> other != edge && other.from.equals(edge.from) && "ELSE".equals(other.kind))) {
+            status.set("Este componente já possui um ramo alternativo."); return;
+        }
+        if ("IF".equals(kind) && (edgeLeft.get().isBlank() || edgeRight.get().isBlank())) {
+            status.set("Informe os dois valores da condição; use '' para texto vazio."); return;
+        }
+        edge.kind = kind; edge.name = edgeName.get().trim(); edge.groups = new java.util.ArrayList<>();
+        if ("IF".equals(kind)) {
+            var group = new DiagramProject.ConditionGroup(); var comparison = new DiagramProject.Comparison();
+            comparison.left = edgeLeft.get(); comparison.operator = edgeOperator.get(); comparison.right = edgeRight.get();
+            group.comparisons.add(comparison); edge.groups.add(group);
+        }
+        refresh(); status.set("Conexão atualizada. Salve o diagrama.");
+    }
+
+    void deleteEdge() {
+        if (diagram == null || selectedEdgeId == null) return;
+        diagram.edges.removeIf(edge -> edge.id.equals(selectedEdgeId));
+        selectedEdgeId = null; selectedTypes.set(List.of()); refresh();
+        status.set("Conexão removida. Salve o diagrama.");
+    }
+
     private void saveSelectedFields() {
         if (diagram == null || selectedNodeId == null) return;
         diagram.nodes.stream().filter(node -> node.id.equals(selectedNodeId)).findFirst().ifPresent(node -> {
@@ -117,6 +204,7 @@ final class DiagramViewModel {
                 values.put("pattern", pattern.get().trim());
                 values.put("event", event.get());
             }
+            if ("COMPOSITION".equals(node.type)) values.put("items", compositionItems.get().stream().map(CompositionItem::values).toList());
             if ("REST_HTTP".equals(node.type)) {
                 values.put("url", restUrl.get().trim());
                 values.put("urlEnv", restUrlEnv.get().trim());
@@ -143,7 +231,7 @@ final class DiagramViewModel {
             case "CALLBACK" -> "Callback"; case "TIMER" -> "Timer";
             case "CONVERTER" -> "Converter"; case "JAVA" -> "Java";
             case "GENERATOR" -> "Generator"; case "RESPONSE" -> "Resposta síncrona";
-            case "REST_HTTP" -> "Rest HTTP"; case "JDBC" -> "JDBC"; case "JSON_DB" -> "JsonDB"; case "SPLITTER" -> "Splitter";
+            case "COMPOSITION" -> "Composição"; case "REST_HTTP" -> "Rest HTTP"; case "JDBC" -> "JDBC"; case "JSON_DB" -> "JsonDB"; case "SPLITTER" -> "Splitter";
             default -> null;
         };
         if (label == null || !Double.isFinite(x) || !Double.isFinite(y)) return;
@@ -156,6 +244,7 @@ final class DiagramViewModel {
         node.id = java.util.UUID.randomUUID().toString(); node.name = label; node.type = type;
         node.x = x; node.y = y;
         if ("CALLBACK".equals(type)) node.settings = Map.of("event", "COMMAND", "pattern", "");
+        if ("COMPOSITION".equals(type)) node.settings = Map.of("items", List.of());
         if ("REST_HTTP".equals(type)) node.settings = Map.of("url", "", "method", "GET", "body", "");
         if ("TIMER".equals(type)) node.settings = Map.of("intervalMinutes", "10");
         if ("RESPONSE".equals(type)) node.settings = Map.of("text", "");
@@ -164,12 +253,25 @@ final class DiagramViewModel {
         status.set("Componente adicionado sem conexão. A configuração e execução dos novos tipos ainda estão em desenvolvimento.");
     }
 
+    void addCompositionItem() {
+        var items = new java.util.ArrayList<>(compositionItems.get());
+        items.add(new CompositionItem(Map.of())); compositionItems.set(List.copyOf(items));
+    }
+
+    void removeCompositionItem(CompositionItem item) {
+        var items = new java.util.ArrayList<>(compositionItems.get());
+        items.remove(item); compositionItems.set(List.copyOf(items));
+    }
+
     private void updateActionHints(DiagramProject.Node node) {
         boolean inSubflow = diagram.nodes.stream().anyMatch(item -> "ITEM".equals(item.type));
         boolean afterRest = diagram.edges.stream().anyMatch(edge -> edge.to.equals(node.id)
                 && diagram.nodes.stream().anyMatch(item -> item.id.equals(edge.from) && "REST_HTTP".equals(item.type)));
+        boolean afterComposition = diagram.edges.stream().anyMatch(edge -> edge.to.equals(node.id)
+                && diagram.nodes.stream().anyMatch(item -> item.id.equals(edge.from) && "COMPOSITION".equals(item.type)));
         actionHints.set(afterRest ? List.of("input contém a resposta do Rest HTTP.",
                 "Map: status, body e headers.", "Exemplo: return ((java.util.Map<?, ?>) input).get(\"body\");")
+                : afterComposition ? List.of("input contém a mensagem da composição anterior.")
                 : inSubflow ? List.of("Na primeira action, input é o item atual.",
                         "Nas seguintes, input é o resultado anterior.",
                         "index é a posição do item (a partir de 0).", "Exemplo: return input;") : List.of());
@@ -181,8 +283,12 @@ final class DiagramViewModel {
         var target = diagram.nodes.stream().filter(item -> (item.name + " [" + item.id + "]").equals(chosenLabel))
                 .findFirst().orElse(null);
         if (target == null || target.id.equals(selectedNodeId)) { status.set("Escolha outro componente para conectar."); return; }
-        if (diagram.edges.stream().anyMatch(edge -> edge.from.equals(selectedNodeId))) {
-            status.set("Este componente já possui saída. Remova a conexão antes de criar outra."); return;
+        var outgoing = diagram.edges.stream().filter(edge -> edge.from.equals(selectedNodeId)).toList();
+        if (outgoing.stream().anyMatch(edge -> "ALWAYS".equals(edge.kind))) {
+            status.set("Transforme a saída existente em IF antes de adicionar outro ramo."); return;
+        }
+        if (outgoing.stream().anyMatch(edge -> edge.to.equals(target.id))) {
+            status.set("Este destino já está conectado."); return;
         }
         var reachable = new java.util.HashSet<String>();
         var pending = new java.util.ArrayDeque<String>();
@@ -197,6 +303,15 @@ final class DiagramViewModel {
         saveSelectedFields();
         var edge = new DiagramProject.Edge(); edge.id = java.util.UUID.randomUUID().toString();
         edge.from = selectedNodeId; edge.to = target.id;
+        if (!outgoing.isEmpty()) {
+            if (outgoing.stream().noneMatch(existing -> "ELSE".equals(existing.kind))) edge.kind = "ELSE";
+            else {
+                edge.kind = "IF";
+                var group = new DiagramProject.ConditionGroup(); var comparison = new DiagramProject.Comparison();
+                comparison.left = "{{output}}"; comparison.operator = "NE"; comparison.right = "''";
+                group.comparisons.add(comparison); edge.groups.add(group);
+            }
+        }
         diagram.edges.add(edge); refresh(); status.set("Componentes conectados. Salve o diagrama.");
     }
 
@@ -284,6 +399,7 @@ final class DiagramViewModel {
 
     private void showSelected() {
         selectedNodeId = null;
+        selectedEdgeId = null;
         selectedTypes.set(List.of());
         componentName.set("");
         javaScript.set("");
@@ -394,7 +510,7 @@ final class DiagramViewModel {
                             default -> node.type;
                         },
                         node.x, node.y)).toList(),
-                diagram.edges.stream().map(edge -> new DiagramCanvas.Edge(edge.from, edge.to, edge.kind)).toList());
+                diagram.edges.stream().map(edge -> new DiagramCanvas.Edge(edge.id, edge.from, edge.to, edge.kind)).toList());
     }
 
     private void updateSummaries() {

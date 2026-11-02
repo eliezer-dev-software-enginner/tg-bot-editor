@@ -164,6 +164,7 @@ public final class HomeScreen implements ScreenComponent {
                         new DiagramPaletteItem("Callback", "CALLBACK"),
                         new DiagramPaletteItem("Timer", "TIMER"),
                         new Text("Etapas"),
+                        new DiagramPaletteItem("Composição", "COMPOSITION"),
                         new DiagramPaletteItem("Rest HTTP", "REST_HTTP"),
                         new DiagramPaletteItem("Converter", "CONVERTER"),
                         new DiagramPaletteItem("Java", "JAVA"),
@@ -176,6 +177,7 @@ public final class HomeScreen implements ScreenComponent {
     }
 
     private Component componentProperties(DiagramViewModel diagram, String type) {
+        if ("EDGE".equals(type)) return edgeProperties(diagram);
         return new Container(new ContainerProps().spacingOf(8)).children(
                 new Text("Nome do componente"), Components.input(diagram.componentName, "Nome do componente"),
                 specificProperties(diagram, type),
@@ -186,8 +188,29 @@ public final class HomeScreen implements ScreenComponent {
                         new Button("Remover conexão").tooltip("Remove as saídas deste componente.").onClick(diagram::disconnectSelected)));
     }
 
+    private Component edgeProperties(DiagramViewModel diagram) {
+        return new Container(new ContainerProps().spacingOf(8)).children(
+                new Text("Nome da condição"), Components.input(diagram.edgeName, "Nome opcional"),
+                new Text("Tipo da conexão"), new Select<String>().items(diagram.edgeKinds).value(diagram.edgeKind),
+                new Text("ALWAYS: sempre · IF: condição · ELSE: alternativa"),
+                new StateList<>(diagram.edgeConditionForm, ignored -> new Container(new ContainerProps().spacingOf(8)).children(
+                        new Text("Dado de entrada"), Components.input(diagram.edgeLeft, "{{output.image}}"),
+                        new Text("Operação"), new Select<String>().items(diagram.edgeOperators).value(diagram.edgeOperator),
+                        new Text("Valor de comparação"), Components.input(diagram.edgeRight, "'' para vazio"),
+                        new Text("Referências: {{input.campo}} ou {{output.campo}}"),
+                        new Text("EQ = igual; NE = diferente; '' = vazio.")), 0),
+                new Row(new RowProps().spacingOf(6)).children(
+                        new Button("Aplicar condição").tooltip("Atualiza a conexão selecionada; salve o diagrama para gravar.").onClick(diagram::applyEdge),
+                        new Button("Excluir conexão").tooltip("Remove a conexão selecionada; salve o diagrama para gravar.").onClick(diagram::deleteEdge)));
+    }
+
     private Component specificProperties(DiagramViewModel diagram, String type) {
         return switch (type) {
+            case "COMPOSITION" -> new Container(new ContainerProps().spacingOf(8)).children(
+                    new Text("Elementos da mensagem"),
+                    new Text("Use {{input.campo}} ou {{output.campo}}."),
+                    new StateList<>(diagram.compositionItems, item -> compositionItem(diagram, item), 8),
+                    new Button("+ Adicionar elemento").tooltip("Adiciona texto, imagem, link ou botão à mensagem.").onClick(diagram::addCompositionItem));
             case "REST_HTTP" -> new Container(new ContainerProps().spacingOf(8)).children(
                     new Text("URL"), Components.input(diagram.restUrl, "https://exemplo.com/api"),
                     new Text("Variável de ambiente da URL (opcional)"),
@@ -232,6 +255,18 @@ public final class HomeScreen implements ScreenComponent {
                     new Text("index indica a posição do item, a partir de 0."));
             default -> new Container(new ContainerProps());
         };
+    }
+
+    private Component compositionItem(DiagramViewModel diagram, DiagramViewModel.CompositionItem item) {
+        return new Container(new ContainerProps().spacingOf(5)).children(
+                new Text("Tipo: TEXT, IMAGE, LINK ou BUTTON"),
+                new Select<String>().items(diagram.compositionTypes).value(item.type),
+                new Text("Valor ou texto"), Components.input(item.value, "Texto ou {{input.campo}}"),
+                new StateList<>(item.buttonFields, ignored -> new Container(new ContainerProps().spacingOf(5)).children(
+                        new Text("Botão: tipo e destino"),
+                        new Select<String>().items(diagram.compositionButtonKinds).value(item.buttonKind),
+                        Components.input(item.target, "URL ou callback")), 0),
+                new Button("− Remover elemento").tooltip("Remove este elemento da composição.").onClick(() -> diagram.removeCompositionItem(item)));
     }
 
     private Component expandedActionDialog(DiagramViewModel diagram) {

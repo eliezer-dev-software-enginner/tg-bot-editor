@@ -63,6 +63,11 @@ public final class DiagramExecutor {
                 if ("{{output}}".equals(response)) return output;
                 return response.replace("{{output}}", output == null ? "" : String.valueOf(output));
             }
+            if ("COMPOSITION".equals(current.type)) {
+                output = DiagramComposition.compose(current.settings, input, output);
+                String compositionId = current.id;
+                if (diagram.edges.stream().noneMatch(edge -> compositionId.equals(edge.from))) return output;
+            }
             if ("REST_HTTP".equals(current.type)) {
                 output = RestHttp.execute(current.settings);
                 String restId = current.id;
@@ -111,14 +116,72 @@ public final class DiagramExecutor {
             String from = current.id;
             List<DiagramProject.Edge> outgoing = diagram.edges.stream()
                     .filter(edge -> from.equals(edge.from)).toList();
-            if (outgoing.size() != 1 || !"ALWAYS".equals(outgoing.getFirst().kind))
-                throw new IllegalArgumentException("O diagrama ainda usa conexões não executáveis: " + diagram.name);
-            String target = outgoing.getFirst().to;
+            DiagramProject.Edge selected = selectEdge(outgoing, input, output, diagram.name);
+            String target = selected.to;
             current = diagram.nodes.stream().filter(node -> target.equals(node.id)).findFirst()
                     .orElseThrow(() -> new IllegalArgumentException("Componente de destino ausente"));
         }
         throw new IllegalArgumentException("Ciclo no diagrama: " + diagram.name);
         } finally { active.remove(diagram.id); }
+    }
+
+    private static DiagramProject.Edge selectEdge(List<DiagramProject.Edge> outgoing, Object input, Object output, String diagramName) {
+        if (outgoing.size() == 1 && "ALWAYS".equals(outgoing.getFirst().kind)) return outgoing.getFirst();
+        if (outgoing.isEmpty() || outgoing.stream().anyMatch(edge -> "ALWAYS".equals(edge.kind)))
+            throw new IllegalArgumentException("Conexões incompatíveis em " + diagramName);
+        for (var edge : outgoing) {
+            if ("IF".equals(edge.kind) && edge.groups.stream().allMatch(group -> matches(group, input, output))) return edge;
+        }
+        return outgoing.stream().filter(edge -> "ELSE".equals(edge.kind)).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Nenhuma condição atendida em " + diagramName));
+    }
+
+    private static boolean matches(DiagramProject.ConditionGroup group, Object input, Object output) {
+        var conditions = new java.util.ArrayList<Boolean>();
+        for (var comparison : group.comparisons) {
+            Object left = value(comparison.left, input, output);
+            Object right = value(comparison.right, input, output);
+            int order = compare(left, right);
+            conditions.add(switch (comparison.operator) {
+                case "EQ" -> order == 0; case "NE" -> order != 0;
+                case "LT" -> order < 0; case "GT" -> order > 0;
+                case "LE" -> order <= 0; case "GE" -> order >= 0;
+                default -> throw new IllegalArgumentException("Operador de condição inválido: " + comparison.operator);
+            });
+        }
+        for (var nested : group.groups) conditions.add(matches(nested, input, output));
+        return "ALL".equals(group.operator) ? conditions.stream().allMatch(Boolean::booleanValue)
+                : conditions.stream().anyMatch(Boolean::booleanValue);
+    }
+
+    private static Object value(String expression, Object input, Object output) {
+        if (expression == null) return null;
+        String raw = expression.trim();
+        if (raw.equals("\"\"") || raw.equals("''")) return "";
+        if (!(raw.startsWith("{{") && raw.endsWith("}}"))) return expression;
+        String path = raw.substring(2, raw.length() - 2).trim();
+        String[] parts = path.split("\\.");
+        Object current = switch (parts[0]) {
+            case "input" -> input; case "output" -> output;
+            default -> throw new IllegalArgumentException("Referência desconhecida: " + raw);
+        };
+        for (int i = 1; i < parts.length; i++) {
+            if (current == null) return null;
+            if (!(current instanceof java.util.Map<?, ?> map))
+                throw new IllegalArgumentException("Caminho não é um objeto: " + raw);
+            current = map.get(parts[i]);
+        }
+        return current;
+    }
+
+    private static int compare(Object left, Object right) {
+        if (left == null || right == null) {
+            if (left == right || left == null && "".equals(right) || right == null && "".equals(left)) return 0;
+            return left == null ? -1 : 1;
+        }
+        String a = String.valueOf(left), b = String.valueOf(right);
+        try { return new java.math.BigDecimal(a).compareTo(new java.math.BigDecimal(b)); }
+        catch (NumberFormatException ignored) { return a.compareTo(b); }
     }
 
     private static String currentName(DiagramProject.Diagram diagram, String subflowId) {

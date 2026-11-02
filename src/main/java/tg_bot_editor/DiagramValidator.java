@@ -8,7 +8,7 @@ import java.util.Set;
 /** Structural checks for saved drafts; execution-specific checks come before publication. */
 public final class DiagramValidator {
     private static final Set<String> TYPES = Set.of("TIMER", "CALLBACK", "ITEM", "CONVERTER", "JAVA",
-            "GENERATOR", "RESPONSE", "JDBC", "JSON_DB", "SPLITTER", "REST_HTTP");
+            "GENERATOR", "RESPONSE", "JDBC", "JSON_DB", "SPLITTER", "REST_HTTP", "COMPOSITION");
     private static final Set<String> COMPARISONS = Set.of("EQ", "NE", "LT", "GT", "LE", "GE");
 
     private DiagramValidator() { }

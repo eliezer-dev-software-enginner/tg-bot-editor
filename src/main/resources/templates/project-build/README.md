@@ -35,6 +35,10 @@ O bot precisa ter permissão de publicar nos canais configurados. O runner
 mostra a descrição de erros da API do Telegram e encerra o polling quando
 recebe um HTTP 4xx permanente, evitando tentativas repetidas sem fim.
 
+## Condições e composição
+
+Em uma conexão, `IF` avalia uma comparação e `ELSE` trata a alternativa. Referências como `{{input.image}}` e `{{output.campo}}` acessam mapas; `''` representa texto vazio. A composição reúne elementos TEXT, IMAGE, LINK e BUTTON e permite usar as mesmas referências para montar a mensagem e os botões.
+
 ## Rest HTTP
 
 O componente Rest HTTP retorna à action Java imediatamente seguinte um mapa em `input` com `status`, `body` e `headers`:
