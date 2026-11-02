@@ -90,7 +90,7 @@ public final class HomeScreen implements ScreenComponent {
                 new Row(new RowProps().spacingOf(6)).children(
                         new Text("Script Java · retorne texto ou BotReply"),
                         new Button("?").tooltip("Exemplo: return BotReply.text(\"Escolha\").withButtons(java.util.List.of(BotButton.callback(\"Abrir\", \"menu:abrir\"))); Crie um fluxo CALLBACK com padrão menu:abrir para tratar o clique.")),
-                new JavaCodeEditor(model.script, 230),
+                new JavaCodeEditor(model.script, 230, List.of("ProjectEnvironment", "context"), List.of("context")),
                 new Row(new RowProps().spacingOf(6)).children(
                         new Button("Aplicar").tooltip("Aplica as alterações da ação selecionada ao projeto. Salve para persistir no disco.").onClick(model::apply),
                         new Button("Excluir").tooltip("Remove a ação selecionada do projeto. Salve para persistir no disco.").onClick(model::remove)),
@@ -189,7 +189,8 @@ public final class HomeScreen implements ScreenComponent {
                             new InputProps().height(230).width(320)),
                     new Text("Use {{output}} para enviar o retorno da etapa Java."));
             case "JAVA" -> new Container(new ContainerProps().spacingOf(8)).children(
-                    new Text("Action"), new JavaCodeEditor(model.diagrams.javaScript, 230));
+                    new Text("Action"), new JavaCodeEditor(model.diagrams.javaScript, 230,
+                            List.of("ProjectEnvironment", "context"), List.of("context")));
             default -> new Container(new ContainerProps());
         };
     }
