@@ -156,7 +156,7 @@ public final class HomeScreen implements ScreenComponent {
     }
 
     private Component diagramPalette() {
-        return new Container(new ContainerProps().paddingAll(8).spacingOf(8).width(175).themeSurface()).children(
+        return new Container(new ContainerProps().paddingAll(8).spacingOf(8).width(175).fillHeight().themeSurface()).children(
                 new Text("Componentes", new TextProps().fontSize(18)),
                 new Text("Arraste para o diagrama"),
                 new Scroll(new Container(new ContainerProps().spacingOf(7)).children(
