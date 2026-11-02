@@ -58,7 +58,7 @@ public final class ActionCompiler {
                 Path source = directory.resolve(name + ".java");
                 boolean receivesPrevious = diagram.edges.stream().anyMatch(edge -> node.id.equals(edge.to)
                         && diagram.nodes.stream().anyMatch(previous -> previous.id.equals(edge.from)
-                        && java.util.Set.of("REST_HTTP", "COMPOSITION", "JSON_DB").contains(previous.type)));
+                        && java.util.Set.of("REST_HTTP", "COMPOSITION", "JSON_DB", "JAVA", "SPLITTER").contains(previous.type)));
                 String method = itemSubflow || receivesPrevious
                         ? " public Object run(BotContext context) throws Exception { return run(context, null, -1); }"
                           + " public Object run(BotContext context, Object input) throws Exception { return run(context, input, -1); }"

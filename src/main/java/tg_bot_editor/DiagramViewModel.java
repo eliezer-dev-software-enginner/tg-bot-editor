@@ -53,7 +53,7 @@ final class DiagramViewModel {
     final State<List<String>> jsonLayouts = State.of(List.of("GROUPED", "ARRAY"));
     final State<String> jsonPath = State.of("${TG_BOT_DATABASE_FILE}");
     final State<String> jsonOperation = State.of("UPSERT");
-    final State<List<String>> jsonOperations = State.of(List.of("LIST", "UPSERT", "DELETE"));
+    final State<List<String>> jsonOperations = State.of(List.of("LIST", "INSERT", "UPSERT", "DELETE"));
     final State<String> jsonLegacy = State.of("");
     final State<String> jsonKey = State.of("{{output.key}}");
     final State<String> jsonRecord = State.of("{{output.record}}");

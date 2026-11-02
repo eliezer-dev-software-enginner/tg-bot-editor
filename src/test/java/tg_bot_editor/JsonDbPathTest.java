@@ -17,6 +17,9 @@ class JsonDbPathTest {
                 "section", "channels", "legacy", "data/legacy.json", "record", "{{output}}", "identity", "id"));
         var initial = (java.util.List<?>) JsonDb.execute(settings, null, null);
         assertEquals(Map.of("-100:7", "video"), ((Map<?, ?>) initial.getFirst()).get("lastSeen"));
+        settings.put("operation", "INSERT");
+        assertEquals(false, ((Map<?, ?>) JsonDb.execute(settings, null, Map.of("id", "a", "lastSeen", Map.of()))).get("inserted"));
+        assertEquals(true, ((Map<?, ?>) JsonDb.execute(settings, null, Map.of("id", "c", "title", "Canal"))).get("inserted"));
         settings.put("operation", "UPSERT");
         JsonDb.execute(settings, null, Map.of("id", "c", "title", "Canal"));
         settings.put("operation", "DELETE");

@@ -35,7 +35,7 @@ public final class JsonDb {
             else groups = BotDatabase.read(database, section, old,
                     new TypeReference<Map<String, List<Map<String, Object>>>>() { }, LinkedHashMap::new);
             if ("LIST".equals(operation)) return array != null ? array : groups;
-            if (!List.of("UPSERT", "DELETE").contains(operation)) throw new IllegalArgumentException("Operação JsonDB não suportada: " + operation);
+            if (!List.of("INSERT", "UPSERT", "DELETE").contains(operation)) throw new IllegalArgumentException("Operação JsonDB não suportada: " + operation);
             Object keyValue = DiagramExecutor.value(String.valueOf(settings.getOrDefault("key", "")), input, output);
             Object recordValue = DiagramExecutor.value(String.valueOf(settings.getOrDefault("record", "")), input, output);
             if (!(recordValue instanceof Map<?, ?> record)) throw new IllegalArgumentException("Informe o registro para o JsonDB.");
@@ -47,18 +47,28 @@ public final class JsonDb {
             if (fields.stream().anyMatch(field -> field.isBlank() || !record.containsKey(field)))
                 throw new IllegalArgumentException("Campos de identificação ausentes no registro.");
             var entries = new ArrayList<>(array != null ? array : groups.getOrDefault((String) keyValue, List.of()));
+            boolean exists = entries.stream().anyMatch(existing -> fields.stream().allMatch(field -> Objects.equals(
+                    normalize(existing.get(field)), normalize(record.get(field)))));
+            if ("INSERT".equals(operation) && exists) return insertResult(false, output);
             entries.removeIf(existing -> fields.stream().allMatch(field -> Objects.equals(
                     normalize(existing.get(field)), normalize(record.get(field)))));
             var copy = new LinkedHashMap<String, Object>();
             record.forEach((field, value) -> copy.put(String.valueOf(field), value));
-            if ("UPSERT".equals(operation)) entries.add(copy);
+            if ("UPSERT".equals(operation) || "INSERT".equals(operation)) entries.add(copy);
             if (groups != null) {
                 String key = (String) keyValue;
                 if (entries.isEmpty()) groups.remove(key); else groups.put(key, entries);
                 BotDatabase.write(database, section, groups);
             } else BotDatabase.write(database, section, entries);
+            if ("INSERT".equals(operation)) return insertResult(true, output);
             return DiagramExecutor.value(String.valueOf(settings.getOrDefault("result", "{{output}}")), input, output);
         }
+    }
+
+    private static Map<String, Object> insertResult(boolean inserted, Object value) {
+        var result = new LinkedHashMap<String, Object>();
+        result.put("inserted", inserted); result.put("value", value);
+        return result;
     }
 
     private static Path databasePath(Map<String, Object> settings, Path project) {
