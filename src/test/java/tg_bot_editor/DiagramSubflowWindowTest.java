@@ -59,4 +59,35 @@ class DiagramSubflowWindowTest {
         Platform.runLater(check);
         check.get(30, TimeUnit.SECONDS);
     }
+    @Test void restPropertiesAndConnectionsPersist() throws Exception {
+        assumeTrue(System.getenv("DISPLAY") != null, "Requer ambiente gráfico JavaFX");
+        var started = new CountDownLatch(1);
+        try { Platform.startup(started::countDown); }
+        catch (IllegalStateException alreadyStarted) { started.countDown(); }
+        assertTrue(started.await(10, TimeUnit.SECONDS));
+        var check = new FutureTask<Void>(() -> {
+            java.nio.file.Files.createDirectories(directory.resolve("scripts"));
+            FlowStore.write(directory.resolve("bot.json"), new FlowProject());
+            var project = new DiagramProject(); var diagram = new DiagramProject.Diagram();
+            diagram.id = "main"; diagram.name = "Main"; diagram.enabled = true;
+            var start = new DiagramProject.Node(); start.id = "start"; start.name = "Comando";
+            start.type = "CALLBACK"; start.settings = Map.of("event", "COMMAND", "pattern", "/test");
+            diagram.nodes.add(start); project.diagrams.add(diagram); DiagramStore.write(directory, project);
+            var editor = new DiagramViewModel(); editor.load(directory); editor.openDiagram("main");
+            editor.addComponent("REST_HTTP", 200, 100);
+            editor.restUrl.set("https://example.com/api"); editor.restMethod.set("POST"); editor.restBody.set("{} ");
+            editor.selectNode("start");
+            editor.connectionTarget.set(editor.connectionTargets.get().stream().filter(label -> label.startsWith("Rest HTTP [")).findFirst().orElseThrow());
+            editor.connectSelected(); editor.save();
+            assertTrue(editor.status.get().startsWith("Diagrama salvo"), editor.status.get());
+            var restored = DiagramStore.read(directory).diagrams.getFirst();
+            var rest = restored.nodes.stream().filter(node -> node.type.equals("REST_HTTP")).findFirst().orElseThrow();
+            assertEquals("POST", rest.settings.get("method"));
+            assertEquals("{} ", rest.settings.get("body"));
+            assertEquals(rest.id, restored.edges.getFirst().to);
+            return null;
+        });
+        Platform.runLater(check); check.get(30, TimeUnit.SECONDS);
+    }
+
 }

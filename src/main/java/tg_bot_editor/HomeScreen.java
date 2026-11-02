@@ -164,6 +164,7 @@ public final class HomeScreen implements ScreenComponent {
                         new DiagramPaletteItem("Callback", "CALLBACK"),
                         new DiagramPaletteItem("Timer", "TIMER"),
                         new Text("Etapas"),
+                        new DiagramPaletteItem("Rest HTTP", "REST_HTTP"),
                         new DiagramPaletteItem("Converter", "CONVERTER"),
                         new DiagramPaletteItem("Java", "JAVA"),
                         new DiagramPaletteItem("Generator", "GENERATOR"),
@@ -177,11 +178,22 @@ public final class HomeScreen implements ScreenComponent {
     private Component componentProperties(DiagramViewModel diagram, String type) {
         return new Container(new ContainerProps().spacingOf(8)).children(
                 new Text("Nome do componente"), Components.input(diagram.componentName, "Nome do componente"),
-                specificProperties(diagram, type));
+                specificProperties(diagram, type),
+                new Text("Conectar a"),
+                new Select<String>().items(diagram.connectionTargets).value(diagram.connectionTarget),
+                new Row(new RowProps().spacingOf(6)).children(
+                        new Button("Conectar").tooltip("Liga este componente ao selecionado.").onClick(diagram::connectSelected),
+                        new Button("Remover conexão").tooltip("Remove as saídas deste componente.").onClick(diagram::disconnectSelected)));
     }
 
     private Component specificProperties(DiagramViewModel diagram, String type) {
         return switch (type) {
+            case "REST_HTTP" -> new Container(new ContainerProps().spacingOf(8)).children(
+                    new Text("URL"), Components.input(diagram.restUrl, "https://exemplo.com/api"),
+                    new Text("Método"), new Select<String>().items(diagram.restMethods).value(diagram.restMethod),
+                    new Text("Corpo opcional (UTF-8)"), new TextAreaInput(diagram.restBody,
+                            new InputProps().height(100).width(320)),
+                    new Text("Resposta: status, body e headers na próxima action."));
             case "TIMER" -> new Container(new ContainerProps().spacingOf(8)).children(
                     new Text("Intervalo em minutos"), Components.input(diagram.timerInterval, "10"),
                     new Text("Executa ao iniciar e depois de cada intervalo."));

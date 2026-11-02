@@ -25,6 +25,12 @@ final class DiagramViewModel {
     final State<List<String>> eventTypes = State.of(List.of("COMMAND", "CALLBACK", "TEXT", "PHOTO", "DOCUMENT"));
     final State<String> timerInterval = State.of("10");
     final State<String> response = State.of("");
+    final State<String> restUrl = State.of("");
+    final State<String> restMethod = State.of("GET");
+    final State<String> restBody = State.of("");
+    final State<List<String>> restMethods = State.of(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"));
+    final State<List<String>> connectionTargets = State.of(List.of());
+    final State<String> connectionTarget = State.of("");
     final State<String> splitterArray = State.of("{{output}}");
     final State<String> splitterAggregation = State.of("list");
     final State<List<String>> splitterAggregations = State.of(List.of("list", "concat", "flatten"));
@@ -76,6 +82,15 @@ final class DiagramViewModel {
             pattern.set(String.valueOf(node.settings.getOrDefault("pattern", "")));
             event.set(String.valueOf(node.settings.getOrDefault("event", "COMMAND")));
         }
+        if ("REST_HTTP".equals(node.type)) {
+            restUrl.set(String.valueOf(node.settings.getOrDefault("url", "")));
+            restMethod.set(String.valueOf(node.settings.getOrDefault("method", "GET")));
+            restBody.set(String.valueOf(node.settings.getOrDefault("body", "")));
+        }
+        updateActionHints(node);
+        connectionTargets.set(diagram.nodes.stream().filter(item -> !item.id.equals(node.id))
+                .map(item -> item.name + " [" + item.id + "]").toList());
+        connectionTarget.set(connectionTargets.get().isEmpty() ? "" : connectionTargets.get().getFirst());
         if ("TIMER".equals(node.type)) timerInterval.set(String.valueOf(node.settings.getOrDefault("intervalMinutes", "10")));
         if ("RESPONSE".equals(node.type)) response.set(String.valueOf(node.settings.getOrDefault("text", "")));
         if ("SPLITTER".equals(node.type)) {
@@ -100,6 +115,11 @@ final class DiagramViewModel {
                 values.put("pattern", pattern.get().trim());
                 values.put("event", event.get());
             }
+            if ("REST_HTTP".equals(node.type)) {
+                values.put("url", restUrl.get().trim());
+                values.put("method", restMethod.get());
+                values.put("body", restBody.get());
+            }
             if ("TIMER".equals(node.type)) values.put("intervalMinutes", timerInterval.get().trim());
             if ("RESPONSE".equals(node.type)) values.put("text", response.get());
             if ("SPLITTER".equals(node.type)) {
@@ -120,7 +140,7 @@ final class DiagramViewModel {
             case "CALLBACK" -> "Callback"; case "TIMER" -> "Timer";
             case "CONVERTER" -> "Converter"; case "JAVA" -> "Java";
             case "GENERATOR" -> "Generator"; case "RESPONSE" -> "Resposta síncrona";
-            case "JDBC" -> "JDBC"; case "JSON_DB" -> "JsonDB"; case "SPLITTER" -> "Splitter";
+            case "REST_HTTP" -> "Rest HTTP"; case "JDBC" -> "JDBC"; case "JSON_DB" -> "JsonDB"; case "SPLITTER" -> "Splitter";
             default -> null;
         };
         if (label == null || !Double.isFinite(x) || !Double.isFinite(y)) return;
@@ -133,11 +153,58 @@ final class DiagramViewModel {
         node.id = java.util.UUID.randomUUID().toString(); node.name = label; node.type = type;
         node.x = x; node.y = y;
         if ("CALLBACK".equals(type)) node.settings = Map.of("event", "COMMAND", "pattern", "");
+        if ("REST_HTTP".equals(type)) node.settings = Map.of("url", "", "method", "GET", "body", "");
         if ("TIMER".equals(type)) node.settings = Map.of("intervalMinutes", "10");
         if ("RESPONSE".equals(type)) node.settings = Map.of("text", "");
         diagram.nodes.add(node);
         refresh(); canvas.current().select(node.id); selectNode(node.id);
         status.set("Componente adicionado sem conexão. A configuração e execução dos novos tipos ainda estão em desenvolvimento.");
+    }
+
+    private void updateActionHints(DiagramProject.Node node) {
+        boolean inSubflow = diagram.nodes.stream().anyMatch(item -> "ITEM".equals(item.type));
+        boolean afterRest = diagram.edges.stream().anyMatch(edge -> edge.to.equals(node.id)
+                && diagram.nodes.stream().anyMatch(item -> item.id.equals(edge.from) && "REST_HTTP".equals(item.type)));
+        actionHints.set(afterRest ? List.of("input contém a resposta do Rest HTTP.",
+                "Map: status, body e headers.", "Exemplo: return ((java.util.Map<?, ?>) input).get(\"body\");")
+                : inSubflow ? List.of("Na primeira action, input é o item atual.",
+                        "Nas seguintes, input é o resultado anterior.",
+                        "index é a posição do item (a partir de 0).", "Exemplo: return input;") : List.of());
+    }
+
+    void connectSelected() {
+        if (diagram == null || selectedNodeId == null) return;
+        String chosenLabel = connectionTarget.get();
+        var target = diagram.nodes.stream().filter(item -> (item.name + " [" + item.id + "]").equals(chosenLabel))
+                .findFirst().orElse(null);
+        if (target == null || target.id.equals(selectedNodeId)) { status.set("Escolha outro componente para conectar."); return; }
+        if (diagram.edges.stream().anyMatch(edge -> edge.from.equals(selectedNodeId))) {
+            status.set("Este componente já possui saída. Remova a conexão antes de criar outra."); return;
+        }
+        var reachable = new java.util.HashSet<String>();
+        var pending = new java.util.ArrayDeque<String>();
+        pending.add(target.id);
+        while (!pending.isEmpty()) {
+            String current = pending.removeFirst();
+            if (!reachable.add(current)) continue;
+            if (current.equals(selectedNodeId)) { status.set("A conexão criaria um ciclo no diagrama."); return; }
+            diagram.edges.stream().filter(existing -> existing.from.equals(current)).map(existing -> existing.to)
+                    .forEach(pending::addLast);
+        }
+        saveSelectedFields();
+        var edge = new DiagramProject.Edge(); edge.id = java.util.UUID.randomUUID().toString();
+        edge.from = selectedNodeId; edge.to = target.id;
+        diagram.edges.add(edge); refresh(); status.set("Componentes conectados. Salve o diagrama.");
+    }
+
+    void disconnectSelected() {
+        if (diagram == null || selectedNodeId == null) return;
+        var outgoing = diagram.edges.stream().filter(edge -> edge.from.equals(selectedNodeId)).toList();
+        if (outgoing.size() > 1 || outgoing.stream().anyMatch(edge -> !"ALWAYS".equals(edge.kind))) {
+            status.set("Conexões condicionais ainda não podem ser removidas aqui."); return;
+        }
+        boolean changed = diagram.edges.removeIf(edge -> edge.from.equals(selectedNodeId));
+        refresh(); status.set(changed ? "Conexão removida. Salve o diagrama." : "Este componente não tem saída.");
     }
 
     void load(Path projectDirectory) throws Exception {
@@ -264,6 +331,10 @@ final class DiagramViewModel {
             savePending();
             diagram.name = name.get().isBlank() ? "start" : name.get().trim();
             saveSelectedFields();
+            if (diagram.enabled && diagram.nodes.stream().filter(node -> "REST_HTTP".equals(node.type))
+                    .anyMatch(node -> String.valueOf(node.settings.getOrDefault("url", "")).isBlank())) {
+                status.set("Informe a URL do componente Rest HTTP antes de salvar."); return;
+            }
             if (diagram.enabled && diagram.nodes.stream().filter(node -> "TIMER".equals(node.type))
                     .anyMatch(node -> !String.valueOf(node.settings.getOrDefault("intervalMinutes", "")).matches("[1-9][0-9]*"))) {
                 status.set("Informe um intervalo inteiro maior que zero, em minutos."); return;

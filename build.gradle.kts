@@ -34,7 +34,7 @@ tasks.processResources {
             "tg_bot_editor/FlowRouter.java", "tg_bot_editor/FlowStore.java",
             "tg_bot_editor/FlowValidator.java", "tg_bot_editor/ProjectEnvironment.java",
             "tg_bot_editor/DiagramProject.java", "tg_bot_editor/DiagramStore.java",
-            "tg_bot_editor/DiagramValidator.java", "tg_bot_editor/DiagramExecutor.java"
+            "tg_bot_editor/DiagramValidator.java", "tg_bot_editor/DiagramExecutor.java", "tg_bot_editor/RestHttp.java"
         )
         into("templates/project-runtime")
     }

@@ -35,6 +35,17 @@ O bot precisa ter permissão de publicar nos canais configurados. O runner
 mostra a descrição de erros da API do Telegram e encerra o polling quando
 recebe um HTTP 4xx permanente, evitando tentativas repetidas sem fim.
 
+## Rest HTTP
+
+O componente Rest HTTP retorna à action Java imediatamente seguinte um mapa em `input` com `status`, `body` e `headers`:
+
+```java
+var resposta = (java.util.Map<?, ?>) input;
+return resposta.get("body");
+```
+
+A URL, o método e o corpo opcional são configurados no diagrama. Erros HTTP são retornados em `status`; falhas de conexão interrompem o fluxo.
+
 ## Splitter
 
 No subfluxo de um Splitter, a primeira action Java recebe o item atual em

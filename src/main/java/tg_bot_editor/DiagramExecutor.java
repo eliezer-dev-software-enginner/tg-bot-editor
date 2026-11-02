@@ -63,6 +63,11 @@ public final class DiagramExecutor {
                 if ("{{output}}".equals(response)) return output;
                 return response.replace("{{output}}", output == null ? "" : String.valueOf(output));
             }
+            if ("REST_HTTP".equals(current.type)) {
+                output = RestHttp.execute(current.settings);
+                String restId = current.id;
+                if (diagram.edges.stream().noneMatch(edge -> restId.equals(edge.from))) return output;
+            }
             if ("JAVA".equals(current.type)) {
                 String key = string(current, "action").isBlank() ? string(current, "flowId")
                         : ActionCompiler.diagramActionKey(diagram.id, current.id);

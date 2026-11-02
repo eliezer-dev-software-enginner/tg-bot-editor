@@ -46,9 +46,18 @@ A tela inicial mostra os diagramas do projeto em cards. Clique em **Abrir diagra
 
 O [contexto e andamento](docs/CONTEXT.md), as [decisões](docs/DECISIONS.md) e as [próximas etapas](docs/TODO.md) acompanham a evolução do projeto.
 
-Na tela de um diagrama, arraste um item da paleta **Componentes** para posicioná-lo no canvas e clique em **Salvar diagrama** para guardá-lo. Cada diagrama admite um início. Os novos componentes ficam sem conexão; a criação de conexões e a configuração e execução dos novos tipos ainda estão em desenvolvimento.
+Na tela de um diagrama, arraste um item da paleta **Componentes** para posicioná-lo no canvas e clique em **Salvar diagrama** para guardá-lo. Cada diagrama admite um início. Os novos componentes começam sem conexão. Selecione o componente de origem, escolha o destino em **Conectar a** e clique em **Conectar**; use **Remover conexão** para desfazer uma saída simples. Condições nas setas ainda não são editáveis.
 
-Para inspecionar um Splitter existente, selecione-o e clique em **Criar ou abrir subfluxo**; o subfluxo abre em um popup sobre o diagrama atual. Use **Salvar diagrama** para gravar as alterações e **Fechar** para retornar ao diagrama que o contém. O caminho `{{output}}` percorre a lista devolvida pela etapa anterior; no subfluxo, a primeira action Java recebe cada item em `input` e sua posição (começando em zero) em `index`; nas actions seguintes, `input` recebe o resultado da etapa anterior. O Splitter devolve as respostas em ordem. Nas propriedades, `list` mantém os resultados, `concat` reúne textos e `flatten` reúne os itens das listas retornadas. Conexões ainda não são editáveis visualmente.
+O **Rest HTTP** permite configurar URL, método (GET, POST, PUT, PATCH, DELETE ou HEAD) e corpo opcional em UTF-8. Conecte-o diretamente a um componente Java: a action recebe `input` como um mapa com `status` (inteiro), `body` (texto) e `headers` (mapa de listas). Exemplo:
+
+```java
+var resposta = (java.util.Map<?, ?>) input;
+return resposta.get("body");
+```
+
+Respostas HTTP de erro também são retornadas com seu status; falhas de conexão e URLs inválidas interrompem o fluxo. A conexão tem limite de 10 segundos e a requisição, 20 segundos. Cabeçalhos personalizados, autenticação configurável, parâmetros dinâmicos e seleção de codificação ainda não estão disponíveis. Projetos antigos precisam atualizar os arquivos do runtime para executar esse componente.
+
+Para inspecionar um Splitter existente, selecione-o e clique em **Criar ou abrir subfluxo**; o subfluxo abre em um popup sobre o diagrama atual. Use **Salvar diagrama** para gravar as alterações e **Fechar** para retornar ao diagrama que o contém. O caminho `{{output}}` percorre a lista devolvida pela etapa anterior; no subfluxo, a primeira action Java recebe cada item em `input` e sua posição (começando em zero) em `index`; nas actions seguintes, `input` recebe o resultado da etapa anterior. O Splitter devolve as respostas em ordem. Nas propriedades, `list` mantém os resultados, `concat` reúne textos e `flatten` reúne os itens das listas retornadas. Ramos condicionais ainda não são editáveis visualmente.
 
 Os editores Java destacam os tipos comuns, a API do bot e as classes encontradas pelos nomes dos arquivos `.java` em `scripts/`. Ao criar um script pelo editor ou abrir novamente o diagrama, a lista é atualizada para o projeto atual.
 
