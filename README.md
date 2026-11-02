@@ -48,7 +48,7 @@ O [contexto e andamento](docs/CONTEXT.md), as [decisões](docs/DECISIONS.md) e a
 
 Na tela de um diagrama, arraste um item da paleta **Componentes** para posicioná-lo no canvas e clique em **Salvar diagrama** para guardá-lo. Cada diagrama admite um início. Os novos componentes começam sem conexão. Selecione o componente de origem, escolha o destino em **Conectar a** e clique em **Conectar**; use **Remover conexão** para desfazer uma saída simples. Condições nas setas ainda não são editáveis.
 
-O **Rest HTTP** permite configurar URL, método (GET, POST, PUT, PATCH, DELETE ou HEAD) e corpo opcional em UTF-8. Conecte-o diretamente a um componente Java: a action recebe `input` como um mapa com `status` (inteiro), `body` (texto) e `headers` (mapa de listas). Exemplo:
+O **Rest HTTP** permite configurar URL, método (GET, POST, PUT, PATCH, DELETE ou HEAD) e corpo opcional em UTF-8. Opcionalmente, informe uma variável de ambiente que substitui a URL quando estiver preenchida. Conecte-o diretamente a um componente Java: a action recebe `input` como um mapa com `status` (inteiro), `body` (texto) e `headers` (mapa de listas). Exemplo:
 
 ```java
 var resposta = (java.util.Map<?, ?>) input;

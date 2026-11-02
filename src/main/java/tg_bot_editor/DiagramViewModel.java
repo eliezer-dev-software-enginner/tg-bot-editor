@@ -26,6 +26,7 @@ final class DiagramViewModel {
     final State<String> timerInterval = State.of("10");
     final State<String> response = State.of("");
     final State<String> restUrl = State.of("");
+    final State<String> restUrlEnv = State.of("");
     final State<String> restMethod = State.of("GET");
     final State<String> restBody = State.of("");
     final State<List<String>> restMethods = State.of(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"));
@@ -84,6 +85,7 @@ final class DiagramViewModel {
         }
         if ("REST_HTTP".equals(node.type)) {
             restUrl.set(String.valueOf(node.settings.getOrDefault("url", "")));
+            restUrlEnv.set(String.valueOf(node.settings.getOrDefault("urlEnv", "")));
             restMethod.set(String.valueOf(node.settings.getOrDefault("method", "GET")));
             restBody.set(String.valueOf(node.settings.getOrDefault("body", "")));
         }
@@ -117,6 +119,7 @@ final class DiagramViewModel {
             }
             if ("REST_HTTP".equals(node.type)) {
                 values.put("url", restUrl.get().trim());
+                values.put("urlEnv", restUrlEnv.get().trim());
                 values.put("method", restMethod.get());
                 values.put("body", restBody.get());
             }

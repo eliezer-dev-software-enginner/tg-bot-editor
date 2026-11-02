@@ -21,6 +21,13 @@ public final class RestHttp {
         String method = String.valueOf(settings.getOrDefault("method", "GET")).trim().toUpperCase(Locale.ROOT);
         if (!METHODS.contains(method)) throw new IllegalArgumentException("Método HTTP não suportado: " + method);
         String url = String.valueOf(settings.getOrDefault("url", "")).trim();
+        String variable = String.valueOf(settings.getOrDefault("urlEnv", "")).trim();
+        if (!variable.isEmpty()) {
+            if (!variable.matches("[A-Za-z_][A-Za-z0-9_]*"))
+                throw new IllegalArgumentException("Nome inválido para variável de ambiente da URL.");
+            String configured = ProjectEnvironment.get(variable);
+            if (configured != null && !configured.isBlank()) url = configured.trim();
+        }
         URI uri;
         try { uri = URI.create(url); }
         catch (IllegalArgumentException e) { throw new IllegalArgumentException("URL HTTP inválida", e); }

@@ -74,6 +74,7 @@ public final class DiagramExecutor {
                 BotAction action = actions.get(key);
                 if (action == null) throw new IllegalArgumentException("Ação ausente: " + key);
                 output = action.run(context, output, index);
+                if (output instanceof FlowStop stop) return stop.value();
                 String javaId = current.id;
                 if (diagram.edges.stream().noneMatch(edge -> javaId.equals(edge.from))) return output;
             }

@@ -52,6 +52,10 @@ class RestHttpDiagramTest {
             var result = RestHttp.execute(Map.of("url", rest.settings.get("url"), "method", "GET"));
             assertEquals(201, result.get("status"));
             assertEquals("GET:", result.get("body"));
+            ProjectEnvironment.useDraft(project, "REST_ENDPOINT=" + rest.settings.get("url"));
+            var byEnvironment = RestHttp.execute(Map.of("url", "https://invalid.example", "urlEnv", "REST_ENDPOINT"));
+            assertEquals("GET:", byEnvironment.get("body"));
+            assertThrows(IllegalArgumentException.class, () -> RestHttp.execute(Map.of("url", rest.settings.get("url"), "urlEnv", "BAD-NAME")));
             assertEquals(java.util.List.of("yes"), ((Map<?, ?>) result.get("headers")).get("x-test"));
             assertThrows(IllegalArgumentException.class, () -> RestHttp.execute(Map.of("url", "file:///etc/passwd")));
             assertThrows(IllegalArgumentException.class, () -> RestHttp.execute(Map.of("url", rest.settings.get("url"), "method", "TRACE")));

@@ -190,6 +190,9 @@ public final class HomeScreen implements ScreenComponent {
         return switch (type) {
             case "REST_HTTP" -> new Container(new ContainerProps().spacingOf(8)).children(
                     new Text("URL"), Components.input(diagram.restUrl, "https://exemplo.com/api"),
+                    new Text("Variável de ambiente da URL (opcional)"),
+                    Components.input(diagram.restUrlEnv, "Ex.: API_URL"),
+                    new Text("Quando definida, substitui a URL acima."),
                     new Text("Método"), new Select<String>().items(diagram.restMethods).value(diagram.restMethod),
                     new Text("Corpo opcional (UTF-8)"), new TextAreaInput(diagram.restBody,
                             new InputProps().height(100).width(320)),

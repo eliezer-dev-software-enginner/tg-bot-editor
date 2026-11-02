@@ -44,7 +44,7 @@ var resposta = (java.util.Map<?, ?>) input;
 return resposta.get("body");
 ```
 
-A URL, o método e o corpo opcional são configurados no diagrama. Erros HTTP são retornados em `status`; falhas de conexão interrompem o fluxo.
+A URL, o método e o corpo opcional são configurados no diagrama. Uma variável de ambiente opcional pode substituir a URL quando estiver preenchida. Erros HTTP são retornados em `status`; falhas de conexão interrompem o fluxo.
 
 ## Splitter
 
