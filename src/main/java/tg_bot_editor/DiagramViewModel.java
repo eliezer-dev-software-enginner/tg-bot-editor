@@ -21,6 +21,7 @@ final class DiagramViewModel {
     final State<String> pattern = State.of("/start");
     final State<String> response = State.of("");
     final State<String> selectedLabel = State.of("Selecione um componente para ver seu papel.");
+    final State<List<String>> selectedTypes = State.of(List.of());
     final State<String> action = State.of("");
     final State<String> javaScript = State.of("");
     final State<String> javaSource = State.of("");
@@ -33,23 +34,38 @@ final class DiagramViewModel {
     private FlowProject flows = new FlowProject();
 
     DiagramViewModel() {
-        canvas.current().onSelect(id -> {
-            selectedNodeId = id;
-            if (diagram != null) diagram.nodes.stream().filter(node -> node.id.equals(id)).findFirst()
-                    .ifPresent(node -> {
-                        componentName.set(node.name);
-                        selectedLabel.set("CALLBACK".equals(node.type) ? "Início · comando recebido"
-                                : "JAVA".equals(node.type) ? "Java · ação existente: " + node.settings.get("flowId")
-                                : "Resposta síncrona · texto enviado ao Telegram");
-                        showAction(node);
-                    });
-        });
+        canvas.current().onSelect(this::selectNode);
         canvas.current().onMove(move -> {
             if (diagram == null) return;
             diagram.nodes.stream().filter(node -> node.id.equals(move.id())).findFirst().ifPresent(node -> {
                 node.x = move.x(); node.y = move.y(); refresh();
             });
         });
+    }
+
+    void selectNode(String id) {
+        saveSelectedName();
+        selectedNodeId = id;
+        var node = diagram == null ? null : diagram.nodes.stream()
+                .filter(item -> item.id.equals(id)).findFirst().orElse(null);
+        if (node == null) {
+            selectedTypes.set(List.of());
+            componentName.set("");
+            selectedLabel.set("Selecione um componente para editar suas propriedades.");
+            return;
+        }
+        componentName.set(node.name);
+        selectedLabel.set("CALLBACK".equals(node.type) ? "Início · comando recebido"
+                : "JAVA".equals(node.type) ? "Java · ação existente: " + node.settings.get("flowId")
+                : "RESPONSE".equals(node.type) ? "Resposta síncrona" : node.type);
+        showAction(node);
+        selectedTypes.set(List.of(node.type));
+    }
+
+    private void saveSelectedName() {
+        if (diagram != null && selectedNodeId != null && !componentName.get().isBlank())
+            diagram.nodes.stream().filter(node -> node.id.equals(selectedNodeId)).findFirst()
+                    .ifPresent(node -> node.name = componentName.get().trim());
     }
 
     void load(Path projectDirectory) throws Exception {
@@ -78,6 +94,7 @@ final class DiagramViewModel {
 
     private void showSelected() {
         selectedNodeId = null;
+        selectedTypes.set(List.of());
         componentName.set("");
         action.set(""); javaScript.set(""); javaSource.set("");
         if (diagram != null) {
@@ -124,9 +141,7 @@ final class DiagramViewModel {
         }
         try {
             diagram.name = name.get().isBlank() ? "start" : name.get().trim();
-            if (selectedNodeId != null && !componentName.get().isBlank())
-                diagram.nodes.stream().filter(node -> node.id.equals(selectedNodeId)).findFirst()
-                        .ifPresent(node -> node.name = componentName.get().trim());
+            saveSelectedName();
             diagram.nodes.stream().filter(node -> "CALLBACK".equals(node.type)).findFirst().orElseThrow()
                     .settings = Map.of("event", "COMMAND", "pattern", pattern.get().trim());
             diagram.nodes.stream().filter(node -> "RESPONSE".equals(node.type)).findFirst()

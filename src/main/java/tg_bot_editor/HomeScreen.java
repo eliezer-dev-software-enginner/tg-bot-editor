@@ -138,7 +138,8 @@ public final class HomeScreen implements ScreenComponent {
                 new Text("Diagramas", new TextProps().fontSize(22)),
                 new Row(new RowProps().spacingOf(8)).children(
                         new Select<String>().items(model.diagrams.available).value(model.diagrams.chosen),
-                        new Button("Abrir diagrama").onClick(model.diagrams::selectDiagram)),
+                        new Button("Abrir diagrama").onClick(model.diagrams::selectDiagram),
+                        new Text("Nome do diagrama"), Components.input(model.diagrams.name, "Nome do diagrama")),
                 new Row(new RowProps().spacingOf(8)).children(
                         new Button("Salvar diagrama").onClick(model.diagrams::save),
                         new Button("Prévia").onClick(model.diagrams::preview),
@@ -148,21 +149,31 @@ public final class HomeScreen implements ScreenComponent {
                         new Scroll(new Container(new ContainerProps().paddingAll(12).spacingOf(8)
                                 .width(350).themeSurface()).children(
                                 new Text("Propriedades", new TextProps().fontSize(19)),
-                                new Text("Nome do diagrama"), Components.input(model.diagrams.name, "Nome do diagrama"),
                                 new Text(model.diagrams.selectedLabel),
-                                new Text("Nome do componente selecionado"),
-                                Components.input(model.diagrams.componentName, "Selecione um componente"),
-                                new Text("Comando"), Components.input(model.diagrams.pattern, "/start"),
-                                new Text("Texto da resposta (nó Resposta; vazio nos diagramas com ação Java)"),
-                                new TextAreaInput(model.diagrams.response,
-                                        new InputProps().height(230).width(320)),
-                                new Text("Action vinculada ao nó Java"), new Text(model.diagrams.action),
-                                new Text("Script Java em bot.json"),
-                                new TextAreaInput(model.diagrams.javaScript,
-                                        new InputProps().height(95).width(320).editable(false)),
-                                new Text("Código da action em scripts/"),
-                                new TextAreaInput(model.diagrams.javaSource,
-                                        new InputProps().height(260).width(320).editable(false)),
+                                new StateList<>(model.diagrams.selectedTypes, this::componentProperties, 0),
                                 new Text(model.diagrams.status))).fillAvailableHeight()));
+    }
+
+    private Component componentProperties(String type) {
+        return new Container(new ContainerProps().spacingOf(8)).children(
+                new Text("Nome do componente"), Components.input(model.diagrams.componentName, "Nome do componente"),
+                specificProperties(type));
+    }
+
+    private Component specificProperties(String type) {
+        return switch (type) {
+            case "CALLBACK" -> new Container(new ContainerProps().spacingOf(8)).children(
+                    new Text("Comando"), Components.input(model.diagrams.pattern, "/start"));
+            case "RESPONSE" -> new Container(new ContainerProps().spacingOf(8)).children(
+                    new Text("Texto da resposta"), new TextAreaInput(model.diagrams.response,
+                            new InputProps().height(230).width(320)));
+            case "JAVA" -> new Container(new ContainerProps().spacingOf(8)).children(
+                    new Text("Action vinculada"), new Text(model.diagrams.action),
+                    new Text("Script Java em bot.json"), new TextAreaInput(model.diagrams.javaScript,
+                            new InputProps().height(95).width(320).editable(false)),
+                    new Text("Código da action em scripts/"), new TextAreaInput(model.diagrams.javaSource,
+                            new InputProps().height(260).width(320).editable(false)));
+            default -> new Container(new ContainerProps());
+        };
     }
 }
