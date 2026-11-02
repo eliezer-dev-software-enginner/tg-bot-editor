@@ -13,6 +13,8 @@ final class DiagramViewModel {
     record Summary(String id, String name, String trigger, int steps, boolean enabled) { }
     final State<Boolean> open = State.of(false);
     final State<Boolean> expandedActionOpen = State.of(false);
+    final State<Boolean> subflowOpen = State.of(false);
+    final State<List<DiagramViewModel>> subflowWindows = State.of(List.of());
     final State<List<Summary>> summaries = State.of(List.of());
     final State<String> name = State.of("start");
     final State<List<String>> available = State.of(List.of());
@@ -32,9 +34,17 @@ final class DiagramViewModel {
     private String selectedNodeId;
     private Path directory;
     private FlowProject flows = new FlowProject();
-    private final java.util.Deque<String> parents = new java.util.ArrayDeque<>();
 
     DiagramViewModel() {
+        subflowOpen.subscribe(visible -> {
+            if (!visible && !subflowWindows.get().isEmpty()) {
+                var child = subflowWindows.get().getFirst();
+                child.savePending();
+                subflowWindows.set(List.of());
+                updateSummaries();
+                refresh();
+            }
+        });
         canvas.current().onSelect(this::selectNode);
         canvas.current().onDrop(drop -> addComponent(drop.type(), drop.x(), drop.y()));
         canvas.current().onMove(move -> {
@@ -111,7 +121,6 @@ final class DiagramViewModel {
 
     void load(Path projectDirectory) throws Exception {
         directory = projectDirectory;
-        parents.clear();
         project = directory == null ? new DiagramProject() : DiagramStore.read(directory);
         flows = directory == null ? new FlowProject() : FlowStore.read(directory.resolve("bot.json"));
         updateSummaries();
@@ -129,7 +138,6 @@ final class DiagramViewModel {
     }
 
     void openDiagram(String id) {
-        parents.clear();
         chosen.set(id);
         selectDiagram();
         if (diagram != null) open.set(true);
@@ -151,17 +159,36 @@ final class DiagramViewModel {
             child.nodes.add(start); project.diagrams.add(child); splitter.subflowId = child.id;
             available.set(project.diagrams.stream().map(item -> item.id).toList());
         }
-        String parent = diagram.id;
         diagram.name = name.get().isBlank() ? diagram.name : name.get().trim();
-        chosen.set(splitter.subflowId); selectDiagram(); parents.push(parent);
-        status.set("Subfluxo aberto. Salve o diagrama para guardar as alterações.");
+        var child = new DiagramViewModel();
+        child.project = project;
+        child.directory = directory;
+        child.flows = flows;
+        child.available.set(available.get());
+        child.chosen.set(splitter.subflowId);
+        child.selectDiagram();
+        if (child.diagram == null) {
+            status.set("Subfluxo não encontrado: " + splitter.subflowId);
+            return;
+        }
+        child.open.set(true);
+        child.open.subscribe(visible -> {
+            if (!visible) subflowOpen.set(false);
+        });
+        subflowWindows.set(List.of(child));
+        subflowOpen.set(true);
+        child.status.set("Salve o diagrama para guardar as alterações.");
     }
 
-    void backToParent() {
-        if (parents.isEmpty()) { status.set("Este diagrama não foi aberto por um subfluxo."); return; }
+    private void savePending() {
+        for (var child : subflowWindows.get()) child.savePending();
         saveSelectedFields();
         if (diagram != null && !name.get().isBlank()) diagram.name = name.get().trim();
-        chosen.set(parents.pop()); selectDiagram();
+    }
+
+    void close() {
+        savePending();
+        open.set(false);
     }
 
     private void showSelected() {
@@ -213,6 +240,7 @@ final class DiagramViewModel {
     void save() {
         if (diagram == null || directory == null) return;
         try {
+            savePending();
             diagram.name = name.get().isBlank() ? "start" : name.get().trim();
             saveSelectedFields();
             if (diagram.enabled && diagram.nodes.stream().filter(node -> "CALLBACK".equals(node.type))

@@ -24,7 +24,7 @@ A paleta lista os componentes planejados e permite arrastá-los ao canvas. Os n�
 
 ## Splitter e subfluxos
 
-O Splitter recebe a lista retornada pela etapa anterior e executa o subfluxo uma vez por item, na ordem original. O início do subfluxo é do tipo `ITEM`; a primeira action Java recebe esse item em `input` e sua posição, começando em zero, em `index`. A configuração `concat` une respostas de texto, preservando a mensagem de `/youtube_list`. Respostas de outros tipos usam a agregação em lista. Uma referência cíclica de subfluxos é rejeitada em execução. A configuração de caminhos e agregação ainda é limitada.
+O editor abre cada subfluxo em um popup sobre seu diagrama de origem, com estado e canvas próprios; os diagramas compartilham o projeto em memória e o salvamento grava o conjunto. O Splitter recebe a lista retornada pela etapa anterior e executa o subfluxo uma vez por item, na ordem original. O início do subfluxo é do tipo `ITEM`; a primeira action Java recebe esse item em `input` e sua posição, começando em zero, em `index`. A configuração `concat` une respostas de texto, preservando a mensagem de `/youtube_list`. Respostas de outros tipos usam a agregação em lista. Uma referência cíclica de subfluxos é rejeitada em execução. A configuração de caminhos e agregação ainda é limitada.
 
 ## Direção da arquitetura
 

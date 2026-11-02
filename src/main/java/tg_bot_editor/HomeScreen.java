@@ -22,8 +22,7 @@ public final class HomeScreen implements ScreenComponent {
                 new Modal(model.newProjectOpen, newProjectDialog()),
                 new Modal(model.newScriptOpen, newScriptDialog()),
                 new Modal(model.legacyOpen, legacyEditorDialog()),
-                new Modal(model.diagrams.open, diagramDialog()),
-                new Modal(model.diagrams.expandedActionOpen, expandedActionDialog())
+                new Modal(model.diagrams.open, diagramDialog(model.diagrams, false))
         ).fillHeight();
     }
 
@@ -134,28 +133,31 @@ public final class HomeScreen implements ScreenComponent {
                 new Button("Criar script").onClick(model::createScript));
     }
 
-    private Component diagramDialog() {
-        return new Container(new ContainerProps().paddingAll(16).spacingOf(9).width(1080).height(545).themeSurface()).children(
-                new Text("Diagramas", new TextProps().fontSize(22)),
-                new Row(new RowProps().spacingOf(8)).children(
-                        new Select<String>().items(model.diagrams.available).value(model.diagrams.chosen),
-                        new Button("Abrir diagrama").onClick(model::selectDiagram),
-                        new Text("Nome do diagrama"), Components.input(model.diagrams.name, "Nome do diagrama")),
-                new Row(new RowProps().spacingOf(8)).children(
-                        new Button("Salvar diagrama").onClick(model.diagrams::save),
-                        new Button("Voltar ao diagrama anterior").tooltip("Volta do subfluxo para o diagrama que contém o Splitter.")
-                                .onClick(model.diagrams::backToParent),
-                        new Button("Prévia").onClick(model.diagrams::preview),
-                        new Button("Fechar").onClick(() -> model.diagrams.open.set(false))),
-                new Row(new RowProps().spacingOf(10).fillHeight()).children(
-                        diagramPalette(),
-                        model.diagrams.canvas.current(),
-                        new Scroll(new Container(new ContainerProps().paddingAll(12).spacingOf(8)
-                                .width(350).themeSurface()).children(
-                                new Text("Propriedades", new TextProps().fontSize(19)),
-                                new Text(model.diagrams.selectedLabel),
-                                new StateList<>(model.diagrams.selectedTypes, this::componentProperties, 0),
-                                new Text(model.diagrams.status))).fillAvailableHeight()));
+    private Component diagramDialog(DiagramViewModel diagram, boolean subflow) {
+        return new Stack().children(
+                new Container(new ContainerProps().paddingAll(16).spacingOf(9).width(1080).height(545).themeSurface()).children(
+                        new Text(subflow ? "Subfluxo" : "Diagramas", new TextProps().fontSize(22)),
+                        subflow ? new Row(new RowProps().spacingOf(8)).children(
+                                new Text("Nome do subfluxo"), Components.input(diagram.name, "Nome do subfluxo"))
+                                : new Row(new RowProps().spacingOf(8)).children(
+                                new Select<String>().items(diagram.available).value(diagram.chosen),
+                                new Button("Abrir diagrama").onClick(model::selectDiagram),
+                                new Text("Nome do diagrama"), Components.input(diagram.name, "Nome do diagrama")),
+                        new Row(new RowProps().spacingOf(8)).children(
+                                new Button("Salvar diagrama").onClick(diagram::save),
+                                new Button("Prévia").onClick(diagram::preview),
+                                new Button("Fechar").onClick(diagram::close)),
+                        new Row(new RowProps().spacingOf(10).fillHeight()).children(
+                                diagramPalette(), diagram.canvas.current(),
+                                new Scroll(new Container(new ContainerProps().paddingAll(12).spacingOf(8)
+                                        .width(350).themeSurface()).children(
+                                        new Text("Propriedades", new TextProps().fontSize(19)),
+                                        new Text(diagram.selectedLabel),
+                                        new StateList<>(diagram.selectedTypes, type -> componentProperties(diagram, type), 0),
+                                        new Text(diagram.status))).fillAvailableHeight())),
+                new Modal(diagram.expandedActionOpen, expandedActionDialog(diagram)),
+                new Modal(diagram.subflowOpen, new StateList<>(diagram.subflowWindows,
+                        child -> diagramDialog(child, true), 0)));
     }
 
     private Component diagramPalette() {
@@ -177,35 +179,35 @@ public final class HomeScreen implements ScreenComponent {
                 )).fillAvailableHeight());
     }
 
-    private Component componentProperties(String type) {
+    private Component componentProperties(DiagramViewModel diagram, String type) {
         return new Container(new ContainerProps().spacingOf(8)).children(
-                new Text("Nome do componente"), Components.input(model.diagrams.componentName, "Nome do componente"),
-                specificProperties(type));
+                new Text("Nome do componente"), Components.input(diagram.componentName, "Nome do componente"),
+                specificProperties(diagram, type));
     }
 
-    private Component specificProperties(String type) {
+    private Component specificProperties(DiagramViewModel diagram, String type) {
         return switch (type) {
             case "CALLBACK" -> new Container(new ContainerProps().spacingOf(8)).children(
-                    new Text("Comando"), Components.input(model.diagrams.pattern, "/start"));
+                    new Text("Comando"), Components.input(diagram.pattern, "/start"));
             case "RESPONSE" -> new Container(new ContainerProps().spacingOf(8)).children(
-                    new Text("Texto da resposta"), new TextAreaInput(model.diagrams.response,
+                    new Text("Texto da resposta"), new TextAreaInput(diagram.response,
                             new InputProps().height(230).width(320)),
                     new Text("Use {{output}} para enviar o retorno da etapa Java."));
             case "JAVA" -> new Container(new ContainerProps().spacingOf(8)).children(
                     new Row(new RowProps().spacingOf(8)).children(
                             new Text("Action"),
                             new Button("⛶").tooltip("Expandir o editor da action para visualizar e editar o código.")
-                                    .onClick(() -> model.diagrams.expandedActionOpen.set(true))),
-                    new StateList<>(model.diagrams.actionHints, hint -> new Text(hint), 2),
-                    new JavaCodeEditor(model.diagrams.javaScript, 230,
+                                    .onClick(() -> diagram.expandedActionOpen.set(true))),
+                    new StateList<>(diagram.actionHints, hint -> new Text(hint), 2),
+                    new JavaCodeEditor(diagram.javaScript, 230,
                             model.javaKeywords, List.of("context")));
             case "SPLITTER" -> new Container(new ContainerProps().spacingOf(8)).children(
-                    new Text("Lista de entrada"), Components.input(model.diagrams.splitterArray, "{{output}}"),
+                    new Text("Lista de entrada"), Components.input(diagram.splitterArray, "{{output}}"),
                     new Text("Use {{output}} para percorrer a lista retornada pela etapa anterior."),
                     new Text("Na primeira action do subfluxo, input é o item atual."),
                     new Text("index indica a posição do item, a partir de 0."),
                     new Button("Criar ou abrir subfluxo").tooltip("Abre o fluxo de cada item: use input e index na action Java.")
-                            .onClick(model.diagrams::openSubflow));
+                            .onClick(diagram::openSubflow));
             case "ITEM" -> new Container(new ContainerProps().spacingOf(8)).children(
                     new Text("A primeira action Java recebe o item em input."),
                     new Text("index indica a posição do item, a partir de 0."));
@@ -213,12 +215,12 @@ public final class HomeScreen implements ScreenComponent {
         };
     }
 
-    private Component expandedActionDialog() {
+    private Component expandedActionDialog(DiagramViewModel diagram) {
         return new Container(new ContainerProps().paddingAll(20).spacingOf(12).width(1000).height(570).themeSurface()).children(
                 new Text("Action", new TextProps().fontSize(21)),
-                new StateList<>(model.diagrams.actionHints, hint -> new Text(hint), 2),
-                new JavaCodeEditor(model.diagrams.javaScript, 390,
+                new StateList<>(diagram.actionHints, hint -> new Text(hint), 2),
+                new JavaCodeEditor(diagram.javaScript, 390,
                         model.javaKeywords, List.of("context")),
-                new Button("Voltar ao diagrama").onClick(() -> model.diagrams.expandedActionOpen.set(false)));
+                new Button("Voltar ao diagrama").onClick(() -> diagram.expandedActionOpen.set(false)));
     }
 }
