@@ -17,3 +17,6 @@ Esta lista registra trabalho pendente; itens propostos não são funcionalidades
 
 - [ ] Criar e conectar diagramas visualmente; criar componentes de mensagens, botões, condições e persistência para substituir a lógica ainda concentrada em scripts.
 - [ ] Migrar a lógica interna das tarefas de anúncios e YouTube hoje delegadas a `GenshinAdsAction.tick()` e `YouTubeAction.check()`.
+
+- [ ] Criar componente de composição de mensagem com inclusão e remoção visual de elementos Image, Text e Button, vinculados a dados; substituir progressivamente construção manual de `BotReply` nos fluxos.
+- [ ] Para o G1, retornar objetos de notícia na action de busca e usar IF/ELSE nas setas do subfluxo para selecionar composições com ou sem imagem.

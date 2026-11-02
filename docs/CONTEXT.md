@@ -20,3 +20,5 @@ Os detalhes e referências visuais estão em [proposta do editor de diagramas](p
 - Timers visuais usam `intervalMinutes`, iniciam com o bot e substituem agendamentos legados de mesmo ID, sem duplicação. Os diagramas `g1-news`, `ads-tick` e `youtube-new-videos` do bot canônico usam Timer → Java → Splitter. O arquivo `bot.json` permanece como fallback para outros fluxos.
 
 - Gatilhos visuais aceitam `COMMAND`, `CALLBACK`, `TEXT`, `PHOTO` e `DOCUMENT`, com padrão configurável. A disputa com fluxos legados preserva a prioridade de padrão exato, prefixo mais longo e curinga.
+
+- A action “Buscar notícias do G1” retorna objetos sem criar `BotReply`; uma action provisória no subfluxo ainda compõe a mensagem. O componente de composição (Image, Text e Button) e a edição/execução de condições por clique nas setas ainda não foram implementados.

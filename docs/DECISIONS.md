@@ -37,3 +37,7 @@ O Timer de intervalo configurado no diagrama tem prioridade sobre o agendamento 
 ## Gatilhos de eventos
 
 O componente de início permite selecionar o tipo e o padrão do evento. O runner compara especificidade entre diagramas e fluxos legados, com prioridade do diagrama em empate, para que um curinga visual não oculte um padrão legado mais específico.
+
+## Composição de mensagens
+
+Mensagens serão montadas em um componente de composição configurável visualmente, com inclusão e remoção de elementos e vínculo aos dados de etapas anteriores. A meta é eliminar chamadas manuais a `BotReply` dos fluxos. Para G1, as conexões condicionais deverão escolher a composição com imagem ou a composição somente textual. Essas capacidades ainda não estão implementadas.
