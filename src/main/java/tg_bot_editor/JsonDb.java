@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-/** Operações genéricas sobre coleções agrupadas em uma seção JSON do projeto. */
+/** Operações genéricas sobre listas ou coleções agrupadas em uma seção JSON. */
 public final class JsonDb {
     private JsonDb() { }
 
@@ -25,27 +25,38 @@ public final class JsonDb {
         if (old != null && !old.startsWith(project.normalize()))
             throw new IllegalArgumentException("O arquivo legado deve estar dentro do projeto.");
         synchronized (BotDatabase.class) {
-            Map<String, List<Map<String, Object>>> data = BotDatabase.read(database, section, old,
+            String layout = String.valueOf(settings.getOrDefault("layout", "GROUPED"));
+            if (!List.of("GROUPED", "ARRAY").contains(layout))
+                throw new IllegalArgumentException("Formato de coleção JsonDB inválido: " + layout);
+            Map<String, List<Map<String, Object>>> groups = null;
+            List<Map<String, Object>> array = null;
+            if ("ARRAY".equals(layout)) array = BotDatabase.read(database, section, old,
+                    new TypeReference<List<Map<String, Object>>>() { }, ArrayList::new);
+            else groups = BotDatabase.read(database, section, old,
                     new TypeReference<Map<String, List<Map<String, Object>>>>() { }, LinkedHashMap::new);
-            if ("LIST".equals(operation)) return data;
+            if ("LIST".equals(operation)) return array != null ? array : groups;
             if (!List.of("UPSERT", "DELETE").contains(operation)) throw new IllegalArgumentException("Operação JsonDB não suportada: " + operation);
             Object keyValue = DiagramExecutor.value(String.valueOf(settings.getOrDefault("key", "")), input, output);
             Object recordValue = DiagramExecutor.value(String.valueOf(settings.getOrDefault("record", "")), input, output);
-            if (!(keyValue instanceof String key) || key.isBlank() || !(recordValue instanceof Map<?, ?> record))
-                throw new IllegalArgumentException("Informe chave e registro para o JsonDB.");
+            if (!(recordValue instanceof Map<?, ?> record)) throw new IllegalArgumentException("Informe o registro para o JsonDB.");
+            if (groups != null && (!(keyValue instanceof String) || ((String) keyValue).isBlank()))
+                throw new IllegalArgumentException("Informe a chave da coleção agrupada.");
             String identity = String.valueOf(settings.getOrDefault("identity", "")).trim();
             if (identity.isEmpty()) throw new IllegalArgumentException("Informe os campos de identificação do registro.");
             List<String> fields = List.of(identity.split("\\s*,\\s*"));
             if (fields.stream().anyMatch(field -> field.isBlank() || !record.containsKey(field)))
                 throw new IllegalArgumentException("Campos de identificação ausentes no registro.");
-            var entries = new ArrayList<>(data.getOrDefault(key, List.of()));
+            var entries = new ArrayList<>(array != null ? array : groups.getOrDefault((String) keyValue, List.of()));
             entries.removeIf(existing -> fields.stream().allMatch(field -> Objects.equals(
                     normalize(existing.get(field)), normalize(record.get(field)))));
             var copy = new LinkedHashMap<String, Object>();
             record.forEach((field, value) -> copy.put(String.valueOf(field), value));
             if ("UPSERT".equals(operation)) entries.add(copy);
-            if (entries.isEmpty()) data.remove(key); else data.put(key, entries);
-            BotDatabase.write(database, section, data);
+            if (groups != null) {
+                String key = (String) keyValue;
+                if (entries.isEmpty()) groups.remove(key); else groups.put(key, entries);
+                BotDatabase.write(database, section, groups);
+            } else BotDatabase.write(database, section, entries);
             return DiagramExecutor.value(String.valueOf(settings.getOrDefault("result", "{{output}}")), input, output);
         }
     }

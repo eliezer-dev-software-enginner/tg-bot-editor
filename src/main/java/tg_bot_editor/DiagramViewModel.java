@@ -49,6 +49,8 @@ final class DiagramViewModel {
     final State<String> restMethod = State.of("GET");
     final State<String> restBody = State.of("");
     final State<String> jsonSection = State.of("");
+    final State<String> jsonLayout = State.of("GROUPED");
+    final State<List<String>> jsonLayouts = State.of(List.of("GROUPED", "ARRAY"));
     final State<String> jsonPath = State.of("${TG_BOT_DATABASE_FILE}");
     final State<String> jsonOperation = State.of("UPSERT");
     final State<List<String>> jsonOperations = State.of(List.of("LIST", "UPSERT", "DELETE"));
@@ -133,6 +135,7 @@ final class DiagramViewModel {
             restBody.set(String.valueOf(node.settings.getOrDefault("body", "")));
         }
         if ("JSON_DB".equals(node.type)) {
+            jsonLayout.set(String.valueOf(node.settings.getOrDefault("layout", "GROUPED")));
             jsonPath.set(String.valueOf(node.settings.getOrDefault("path", "${TG_BOT_DATABASE_FILE}")));
             jsonSection.set(String.valueOf(node.settings.getOrDefault("section", "")));
             jsonOperation.set(String.valueOf(node.settings.getOrDefault("operation", "UPSERT")));
@@ -227,6 +230,7 @@ final class DiagramViewModel {
                 values.put("body", restBody.get());
             }
             if ("JSON_DB".equals(node.type)) {
+                values.put("layout", jsonLayout.get());
                 values.put("path", jsonPath.get().trim());
                 values.put("section", jsonSection.get().trim()); values.put("operation", jsonOperation.get());
                 values.put("legacy", jsonLegacy.get().trim()); values.put("key", jsonKey.get().trim());
