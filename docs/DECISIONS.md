@@ -16,6 +16,8 @@ O `/start` é o primeiro percurso simples: **Callback de comando → Resposta s�
 
 A action editável de um nó Java pertence ao próprio diagrama. Seu retorno chega à resposta síncrona por `{{output}}`, que isolado preserva também mensagens e listas. Projetos antigos com `flowId` continuam funcionando; ao salvar o nó no editor, o corpo legado é transferido para o diagrama. A compilação usa as classes de `scripts/` do projeto, que ainda podem conter lógica a migrar visualmente.
 
+Na migração de comandos existentes, mova a lógica específica de cada comando para sua action no diagrama e mantenha nas classes apenas operações ainda compartilhadas. Enquanto `bot.json` servir de alternativa para execução legada e chamadas por action, mantenha seu corpo equivalente ao do diagrama e valide os dois percursos.
+
 ## Paleta e inclusão de componentes
 
 A paleta lista os componentes planejados e permite arrastá-los ao canvas. Os nós adicionados ficam inicialmente sem conexão: sua presença não altera o percurso já executado. O editor ainda precisa oferecer criação de conexões e configuração dos novos tipos antes que esses nós sejam executáveis. Um diagrama admite somente um componente de início.
