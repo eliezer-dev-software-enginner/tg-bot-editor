@@ -23,6 +23,7 @@ final class HomeViewModel {
     final State<String> pattern = State.of("");
     final State<String> trigger = State.of("COMMAND");
     final State<String> script = State.of("");
+    final State<List<String>> javaKeywords = State.of(JavaSyntaxIdentifiers.defaults());
     final State<String> environment = State.of("");
     final State<String> sample = State.of("/start");
     final State<String> newProjectName = State.of("");
@@ -67,6 +68,21 @@ final class HomeViewModel {
     void openNewScript() {
         if (file == null) status.set("Abra um projeto antes de criar scripts.");
         else newScriptOpen.set(true);
+    }
+
+    void refreshJavaKeywords() {
+        try { javaKeywords.set(JavaSyntaxIdentifiers.forProject(file == null ? null : file.getParent())); }
+        catch (java.io.IOException error) { status.set("Não foi possível ler as classes em scripts: " + error.getMessage()); }
+    }
+
+    void openDiagram(String id) {
+        refreshJavaKeywords();
+        diagrams.openDiagram(id);
+    }
+
+    void selectDiagram() {
+        refreshJavaKeywords();
+        diagrams.selectDiagram();
     }
 
     private void refresh() {
@@ -211,6 +227,7 @@ final class HomeViewModel {
         ProjectWorkspace.initializeLegacyScripts(absolute.getParent(), loaded);
         ProjectEnvironment.activate(absolute.getParent());
         project = loaded; file = absolute; selected = null;
+        refreshJavaKeywords();
         diagrams.load(file.getParent());
         environment.set(ProjectEnvironment.read(file.getParent()));
         projectLabel.set("Projeto aberto: " + file.getParent().getFileName());
@@ -233,6 +250,7 @@ final class HomeViewModel {
         catch (Exception error) { status.set("Não foi possível fechar sem salvar o rascunho: " + error.getMessage()); return; }
         stopRunningBot();
         file = null; selected = null; project = new FlowProject();
+        refreshJavaKeywords();
         try { diagrams.load(null); } catch (Exception ignored) { }
         projectLabel.set("Nenhum projeto aberto"); title.set(""); description.set(""); pattern.set("");
         script.set(""); environment.set(""); canvas.current().resetView(); refresh(); canvas.current().select(null);
@@ -277,6 +295,7 @@ final class HomeViewModel {
         if (file == null) { status.set("Abra um projeto primeiro."); return; }
         try {
             Path created = ProjectWorkspace.createScript(file.getParent(), newScriptName.get());
+            refreshJavaKeywords();
             newScriptOpen.set(false); newScriptName.set("");
             status.set("Script criado: " + created + " · use "
                     + created.getFileName().toString().replace(".java", ".run();"));

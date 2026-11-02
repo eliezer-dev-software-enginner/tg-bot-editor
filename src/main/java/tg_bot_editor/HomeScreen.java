@@ -69,7 +69,7 @@ public final class HomeScreen implements ScreenComponent {
                 new Text(summary.name(), new TextProps().fontSize(18)),
                 new Text("Gatilho: " + summary.trigger()),
                 new Text(summary.steps() + " componentes · " + (summary.enabled() ? "Ativo" : "Rascunho")),
-                new Button("Abrir diagrama").onClick(() -> model.diagrams.openDiagram(summary.id()))),
+                new Button("Abrir diagrama").onClick(() -> model.openDiagram(summary.id()))),
                 new CardProps().width(240));
     }
 
@@ -91,7 +91,7 @@ public final class HomeScreen implements ScreenComponent {
                 new Row(new RowProps().spacingOf(6)).children(
                         new Text("Script Java · retorne texto ou BotReply"),
                         new Button("?").tooltip("Exemplo: return BotReply.text(\"Escolha\").withButtons(java.util.List.of(BotButton.callback(\"Abrir\", \"menu:abrir\"))); Crie um fluxo CALLBACK com padrão menu:abrir para tratar o clique.")),
-                new JavaCodeEditor(model.script, 230, List.of("ProjectEnvironment", "context"), List.of("context")),
+                new JavaCodeEditor(model.script, 230, model.javaKeywords, List.of("context")),
                 new Row(new RowProps().spacingOf(6)).children(
                         new Button("Aplicar").tooltip("Aplica as alterações da ação selecionada ao projeto. Salve para persistir no disco.").onClick(model::apply),
                         new Button("Excluir").tooltip("Remove a ação selecionada do projeto. Salve para persistir no disco.").onClick(model::remove)),
@@ -139,7 +139,7 @@ public final class HomeScreen implements ScreenComponent {
                 new Text("Diagramas", new TextProps().fontSize(22)),
                 new Row(new RowProps().spacingOf(8)).children(
                         new Select<String>().items(model.diagrams.available).value(model.diagrams.chosen),
-                        new Button("Abrir diagrama").onClick(model.diagrams::selectDiagram),
+                        new Button("Abrir diagrama").onClick(model::selectDiagram),
                         new Text("Nome do diagrama"), Components.input(model.diagrams.name, "Nome do diagrama")),
                 new Row(new RowProps().spacingOf(8)).children(
                         new Button("Salvar diagrama").onClick(model.diagrams::save),
@@ -195,7 +195,7 @@ public final class HomeScreen implements ScreenComponent {
                             new Button("⛶").tooltip("Expandir o editor da action para visualizar e editar o código.")
                                     .onClick(() -> model.diagrams.expandedActionOpen.set(true))),
                     new JavaCodeEditor(model.diagrams.javaScript, 230,
-                            List.of("ProjectEnvironment", "context"), List.of("context")));
+                            model.javaKeywords, List.of("context")));
             default -> new Container(new ContainerProps());
         };
     }
@@ -204,7 +204,7 @@ public final class HomeScreen implements ScreenComponent {
         return new Container(new ContainerProps().paddingAll(20).spacingOf(12).width(1000).height(570).themeSurface()).children(
                 new Text("Action", new TextProps().fontSize(21)),
                 new JavaCodeEditor(model.diagrams.javaScript, 465,
-                        List.of("ProjectEnvironment", "context"), List.of("context")),
+                        model.javaKeywords, List.of("context")),
                 new Button("Voltar ao diagrama").onClick(() -> model.diagrams.expandedActionOpen.set(false)));
     }
 }
