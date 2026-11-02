@@ -18,6 +18,16 @@ public final class ActionCompiler {
 
     /** Compile all project-owned source files and action bodies in one class loader. */
     public static Map<String, BotAction> compileProject(Path projectDirectory, FlowProject project) throws Exception {
+        return compileProject(projectDirectory, project, new DiagramProject());
+    }
+
+    public static String diagramActionKey(String diagramId, String nodeId) {
+        return "diagram:" + diagramId + ":" + nodeId;
+    }
+
+    /** Compile diagram actions in the same class loader as project scripts and legacy flows. */
+    public static Map<String, BotAction> compileProject(Path projectDirectory, FlowProject project,
+                                                        DiagramProject diagrams) throws Exception {
         if (projectDirectory == null) throw new IllegalArgumentException("Abra um projeto para compilar scripts.");
         var compiler = ToolProvider.getSystemJavaCompiler();
         if (compiler == null) throw new IllegalStateException("É necessário um JDK para compilar scripts Java");
@@ -38,6 +48,19 @@ public final class ActionCompiler {
                     + flow.script + "\n}}", StandardCharsets.UTF_8);
             sources.add(source);
             classes.put(flow.id, name);
+        }
+        for (var diagram : diagrams.diagrams) {
+            for (var node : diagram.nodes) {
+                if (!"JAVA".equals(node.type) || !(node.settings.get("action") instanceof String body)
+                        || body.isBlank()) continue;
+                String name = "Action_" + java.util.UUID.randomUUID().toString().replace("-", "");
+                Path source = directory.resolve(name + ".java");
+                Files.writeString(source, "import tg_bot_editor.*; public final class " + name
+                        + " implements BotAction { public Object run(BotContext context) throws Exception {\n"
+                        + body + "\n}}", StandardCharsets.UTF_8);
+                sources.add(source);
+                classes.put(diagramActionKey(diagram.id, node.id), name);
+            }
         }
         if (sources.isEmpty()) return Map.of();
         var errors = new DiagnosticCollector<JavaFileObject>();

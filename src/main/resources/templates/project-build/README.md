@@ -1,8 +1,9 @@
 # Projeto do TG-bot Editor
 
 Este projeto foi criado pelo TG-bot Editor e pode ser compilado e executado sem
-o aplicativo desktop. `bot.json` contém os fluxos, `scripts/` contém as classes
-Java editáveis, e `runtime/` contém o runner de terminal. Nenhum WebView ou
+o aplicativo desktop. `bot.json` contém os fluxos legados, `diagrams.json` os
+diagramas e suas actions Java, `scripts/` as classes Java editáveis e `runtime/`
+o runner de terminal. Nenhum WebView ou
 JavaFX é necessário para executar o bot.
 
 ## Build e execução

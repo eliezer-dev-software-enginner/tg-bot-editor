@@ -123,6 +123,30 @@ class DiagramStoreTest {
         assertEquals("Resposta existente", DiagramExecutor.run(saved));
     }
 
+    @Test void javaActionFlowsThroughResponseWithoutLosingNonTextReplies() throws Exception {
+        Files.createDirectories(directory.resolve("scripts"));
+        var project = new DiagramProject();
+        var diagram = diagram("identity", "Identidade");
+        diagram.enabled = true;
+        var start = node("start", "CALLBACK");
+        start.settings = Map.of("event", "COMMAND", "pattern", "/whoami");
+        var javaNode = node("java", "JAVA");
+        javaNode.settings = Map.of("action", "return java.util.List.of(\"um\", \"dois\");");
+        var response = node("response", "RESPONSE");
+        response.settings = Map.of("text", "{{output}}");
+        diagram.nodes.add(start); diagram.nodes.add(javaNode); diagram.nodes.add(response);
+        diagram.edges.add(edge("start-java", "start", "java", "ALWAYS"));
+        diagram.edges.add(edge("java-response", "java", "response", "ALWAYS"));
+        project.diagrams.add(diagram);
+        DiagramStore.write(directory, project);
+        var restored = DiagramStore.read(directory);
+        var actions = ActionCompiler.compileProject(directory, new FlowProject(), restored);
+        assertEquals(java.util.List.of("um", "dois"),
+                DiagramExecutor.run(restored.diagrams.getFirst(), null, actions));
+        restored.diagrams.getFirst().nodes.getLast().settings = Map.of("text", "Resultado: {{output}}");
+        assertEquals("Resultado: [um, dois]", DiagramExecutor.run(restored.diagrams.getFirst(), null, actions));
+    }
+
     private static DiagramProject.Diagram diagram(String id, String name) {
         var value = new DiagramProject.Diagram(); value.id = id; value.name = name; return value;
     }

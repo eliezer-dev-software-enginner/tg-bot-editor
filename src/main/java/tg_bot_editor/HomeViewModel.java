@@ -122,7 +122,7 @@ final class HomeViewModel {
             if (selected != null && !updateSelected()) return false;
             FlowValidator.validate(project);
             ProjectEnvironment.useDraft(file.getParent(), environment.get());
-            ActionCompiler.compileProject(file.getParent(), project);
+            ActionCompiler.compileProject(file.getParent(), project, DiagramStore.read(file.getParent()));
             FlowStore.write(file, project); ProjectEnvironment.write(file.getParent(), environment.get());
             recent.remember(file); status.set("Projeto salvo: " + file);
             return true;

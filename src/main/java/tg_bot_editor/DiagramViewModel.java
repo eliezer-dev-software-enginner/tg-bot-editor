@@ -5,7 +5,6 @@ import megalodonte.base.state.State;
 import megalodonte.components.DiagramCanvas;
 
 import java.nio.file.Path;
-import java.nio.file.Files;
 import java.util.Map;
 import java.util.List;
 
@@ -22,9 +21,7 @@ final class DiagramViewModel {
     final State<String> response = State.of("");
     final State<String> selectedLabel = State.of("Selecione um componente para ver seu papel.");
     final State<List<String>> selectedTypes = State.of(List.of());
-    final State<String> action = State.of("");
     final State<String> javaScript = State.of("");
-    final State<String> javaSource = State.of("");
     final State<String> status = State.of("");
     final Ref<DiagramCanvas> canvas = new Ref<>(new DiagramCanvas());
     private DiagramProject project = new DiagramProject();
@@ -59,7 +56,7 @@ final class DiagramViewModel {
         if ("CALLBACK".equals(node.type)) pattern.set(String.valueOf(node.settings.getOrDefault("pattern", "")));
         if ("RESPONSE".equals(node.type)) response.set(String.valueOf(node.settings.getOrDefault("text", "")));
         selectedLabel.set("CALLBACK".equals(node.type) ? "Início · comando recebido"
-                : "JAVA".equals(node.type) ? "Java · ação existente: " + node.settings.get("flowId")
+                : "JAVA".equals(node.type) ? "Java · action"
                 : "RESPONSE".equals(node.type) ? "Resposta síncrona" : node.type);
         showAction(node);
         selectedTypes.set(List.of(node.type));
@@ -72,6 +69,10 @@ final class DiagramViewModel {
             var values = new java.util.HashMap<>(node.settings);
             if ("CALLBACK".equals(node.type)) values.put("pattern", pattern.get().trim());
             if ("RESPONSE".equals(node.type)) values.put("text", response.get());
+            if ("JAVA".equals(node.type)) {
+                values.put("action", javaScript.get());
+                values.remove("flowId");
+            }
             node.settings = values;
         });
     }
@@ -129,7 +130,7 @@ final class DiagramViewModel {
         selectedNodeId = null;
         selectedTypes.set(List.of());
         componentName.set("");
-        action.set(""); javaScript.set(""); javaSource.set("");
+        javaScript.set("");
         if (diagram != null) {
             name.set(diagram.name);
             selectedLabel.set("Selecione um componente para editar seu nome.");
@@ -180,6 +181,13 @@ final class DiagramViewModel {
                             && String.valueOf(node.settings.getOrDefault("text", "")).isBlank()))) {
                 status.set("Informe o texto de cada resposta conectada antes de salvar."); return;
             }
+            if (diagram.enabled && diagram.edges.stream().anyMatch(edge -> diagram.nodes.stream()
+                    .anyMatch(node -> node.id.equals(edge.to) && "JAVA".equals(node.type)
+                            && String.valueOf(node.settings.getOrDefault("action", "")).isBlank()
+                            && String.valueOf(node.settings.getOrDefault("flowId", "")).isBlank()))) {
+                status.set("Informe a action de cada componente Java conectado antes de salvar."); return;
+            }
+            ActionCompiler.compileProject(directory, flows, project);
             DiagramStore.write(directory, project);
             updateSummaries();
             status.set("Diagrama salvo. Componentes adicionados sem conexão não são executados.");
@@ -189,28 +197,22 @@ final class DiagramViewModel {
 
     void preview() {
         if (diagram == null) return;
-        status.set(diagram.nodes.stream().anyMatch(node -> "RESPONSE".equals(node.type))
+        status.set(diagram.nodes.stream().noneMatch(node -> "JAVA".equals(node.type))
                 ? "Prévia: " + response.get()
-                : "Esta resposta depende da ação Java. Use o teste local do fluxo para executá-la.");
+                : "A prévia de actions Java no diagrama ainda não está disponível.");
     }
 
     private void showAction(DiagramProject.Node node) {
-        action.set(""); javaScript.set(""); javaSource.set("");
+        javaScript.set("");
         if (!"JAVA".equals(node.type)) return;
+        if (node.settings.get("action") instanceof String body) {
+            javaScript.set(body);
+            return;
+        }
         String flowId = String.valueOf(node.settings.getOrDefault("flowId", ""));
         var flow = flows.flows.stream().filter(item -> flowId.equals(item.id)).findFirst().orElse(null);
-        if (flow == null) { action.set("Ação não encontrada em bot.json: " + flowId); return; }
-        action.set(flow.title + " (" + flow.id + ") · bot.json");
-        javaScript.set(flow.script);
-        var reference = java.util.regex.Pattern.compile("\\b([A-Za-z_$][\\w$]*)\\.[A-Za-z_$][\\w$]*\\s*\\(")
-                .matcher(flow.script);
-        if (reference.find() && directory != null) {
-            Path source = directory.resolve("scripts").resolve(reference.group(1) + ".java");
-            try {
-                javaSource.set(Files.isRegularFile(source) ? "scripts/" + source.getFileName() + "\n\n"
-                        + Files.readString(source) : "Fonte da action não encontrada: " + source.getFileName());
-            } catch (Exception error) { javaSource.set("Não foi possível ler a action: " + error.getMessage()); }
-        } else javaSource.set("Script Java inline: não há classe de action separada.");
+        if (flow != null) javaScript.set(flow.script);
+        else status.set("Action legada não encontrada: " + flowId);
     }
 
     private void refresh() {

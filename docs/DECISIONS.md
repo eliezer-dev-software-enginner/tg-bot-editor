@@ -14,7 +14,7 @@ O `/start` é o primeiro percurso simples: **Callback de comando → Resposta s�
 
 ## Actions Java durante a transição
 
-Um nó Java pode apontar para um fluxo de `bot.json` por `flowId` e executar a action existente. O painel mostra o script e, quando identificada, sua classe em `scripts/` para consulta. Isso preserva o comportamento, mas não conclui a migração visual: navegação, decisões e construção de mensagens ainda podem estar no código legado.
+A action editável de um nó Java pertence ao próprio diagrama. Seu retorno chega à resposta síncrona por `{{output}}`, que isolado preserva também mensagens e listas. Projetos antigos com `flowId` continuam funcionando; ao salvar o nó no editor, o corpo legado é transferido para o diagrama. A compilação usa as classes de `scripts/` do projeto, que ainda podem conter lógica a migrar visualmente.
 
 ## Paleta e inclusão de componentes
 

@@ -186,13 +186,10 @@ public final class HomeScreen implements ScreenComponent {
                     new Text("Comando"), Components.input(model.diagrams.pattern, "/start"));
             case "RESPONSE" -> new Container(new ContainerProps().spacingOf(8)).children(
                     new Text("Texto da resposta"), new TextAreaInput(model.diagrams.response,
-                            new InputProps().height(230).width(320)));
+                            new InputProps().height(230).width(320)),
+                    new Text("Use {{output}} para enviar o retorno da etapa Java."));
             case "JAVA" -> new Container(new ContainerProps().spacingOf(8)).children(
-                    new Text("Action vinculada"), new Text(model.diagrams.action),
-                    new Text("Script Java em bot.json"), new TextAreaInput(model.diagrams.javaScript,
-                            new InputProps().height(95).width(320).editable(false)),
-                    new Text("Código da action em scripts/"), new TextAreaInput(model.diagrams.javaSource,
-                            new InputProps().height(260).width(320).editable(false)));
+                    new Text("Action"), new JavaCodeEditor(model.diagrams.javaScript, 230));
             default -> new Container(new ContainerProps());
         };
     }

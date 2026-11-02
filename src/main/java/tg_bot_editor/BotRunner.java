@@ -44,7 +44,7 @@ public final class BotRunner {
         this.diagrams = DiagramStore.read(projectDirectory);
         this.projectDirectory = projectDirectory;
         FlowValidator.validate(project);
-        actions.putAll(ActionCompiler.compileProject(projectDirectory, project));
+        actions.putAll(ActionCompiler.compileProject(projectDirectory, project, diagrams));
         offset = BotDatabase.read("telegramOffset", null, new TypeReference<Long>() { }, () -> 0L);
     }
 
@@ -56,8 +56,8 @@ public final class BotRunner {
         var project = FlowStore.read(projectFile);
         if (check) {
             FlowValidator.validate(project);
-            DiagramStore.read(projectFile.getParent());
-            int count = ActionCompiler.compileProject(projectFile.getParent(), project).size();
+            var diagrams = DiagramStore.read(projectFile.getParent());
+            int count = ActionCompiler.compileProject(projectFile.getParent(), project, diagrams).size();
             System.out.println("Projeto válido: " + count + " fluxos Java compilados.");
             return;
         }

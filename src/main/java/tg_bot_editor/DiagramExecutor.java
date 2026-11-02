@@ -33,13 +33,21 @@ public final class DiagramExecutor {
         DiagramProject.Node current = diagram.nodes.stream()
                 .filter(node -> "CALLBACK".equals(node.type)).findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Diagrama sem início Callback"));
+        Object output = null;
         for (int steps = 0; steps <= diagram.nodes.size(); steps++) {
-            if ("RESPONSE".equals(current.type)) return string(current, "text");
+            if ("RESPONSE".equals(current.type)) {
+                String response = string(current, "text");
+                if ("{{output}}".equals(response)) return output;
+                return response.replace("{{output}}", output == null ? "" : String.valueOf(output));
+            }
             if ("JAVA".equals(current.type)) {
-                String flowId = string(current, "flowId");
-                BotAction action = actions.get(flowId);
-                if (action == null) throw new IllegalArgumentException("Ação ausente: " + flowId);
-                return action.run(context);
+                String key = string(current, "action").isBlank() ? string(current, "flowId")
+                        : ActionCompiler.diagramActionKey(diagram.id, current.id);
+                BotAction action = actions.get(key);
+                if (action == null) throw new IllegalArgumentException("Ação ausente: " + key);
+                output = action.run(context);
+                String javaId = current.id;
+                if (diagram.edges.stream().noneMatch(edge -> javaId.equals(edge.from))) return output;
             }
             String from = current.id;
             List<DiagramProject.Edge> outgoing = diagram.edges.stream()
