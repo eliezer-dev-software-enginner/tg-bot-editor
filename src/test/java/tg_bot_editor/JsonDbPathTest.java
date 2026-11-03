@@ -8,6 +8,20 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 class JsonDbPathTest {
+    @Test void objectArrayUpdatesKeepOtherPropertiesAndCanRetainInput(@TempDir Path project) throws Exception {
+        ProjectEnvironment.useDraft(project, "");
+        BotDatabase.write("ads", Map.of("ads", java.util.List.of(Map.of("id", "a")),
+                "globalIntervals", Map.of("42", 15)));
+        var settings = new java.util.HashMap<String, Object>(Map.of("operation", "UPSERT", "layout", "OBJECT_ARRAY",
+                "section", "ads", "collection", "ads", "record", "{{output}}", "identity", "id"));
+        JsonDb.execute(settings, null, Map.of("id", "b"));
+        settings.put("operation", "LIST"); settings.put("includeInput", true);
+        var result = (Map<?, ?>) JsonDb.execute(settings, null, Map.of("draft", "retido"));
+        assertEquals(Map.of("draft", "retido"), result.get("input"));
+        assertEquals(2, ((java.util.List<?>) result.get("data")).size());
+        var stored = BotDatabase.read("ads", null, new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {}, java.util.LinkedHashMap::new);
+        assertEquals(Map.of("42", 15), stored.get("globalIntervals"));
+    }
     @Test void arrayCollectionImportsLegacyAndUpdatesByIdentity(@TempDir Path project) throws Exception {
         ProjectEnvironment.useDraft(project, "");
         Files.createDirectories(project.resolve("data"));

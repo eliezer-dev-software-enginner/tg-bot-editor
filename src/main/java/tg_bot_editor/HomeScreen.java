@@ -230,10 +230,12 @@ public final class HomeScreen implements ScreenComponent {
             case "JSON_DB" -> new Container(new ContainerProps().spacingOf(8)).children(
                     new Text("Operação"), new Select<String>().items(diagram.jsonOperations).value(diagram.jsonOperation),
                     new Text("Formato da coleção"), new Select<String>().items(diagram.jsonLayouts).value(diagram.jsonLayout),
-                    new Text("ARRAY: lista · GROUPED: listas por chave."),
+                    new Text("ARRAY: lista · GROUPED: listas por chave · OBJECT_ARRAY: lista dentro de objeto."),
                     new Text("Caminho do JSON"), Components.input(diagram.jsonPath, "${TG_BOT_DATABASE_FILE}"),
                     new Text("Arquivo .json ou ${VARIÁVEL} do ambiente."),
                     new Text("Seção"), Components.input(diagram.jsonSection, "Nome da seção"),
+                    new Text("Coleção dentro do objeto (OBJECT_ARRAY)"), Components.input(diagram.jsonCollection, "Nome da coleção"),
+                    new Text("LIST: preservar entrada junto dos dados"), new Select<String>().items(diagram.jsonBooleanValues).value(diagram.jsonIncludeInput),
                     new Text("Arquivo legado relativo (opcional)"), Components.input(diagram.jsonLegacy, "data/arquivo.json"),
                     new Text("Chave"), Components.input(diagram.jsonKey, "{{output.key}}"),
                     new Text("Registro"), Components.input(diagram.jsonRecord, "{{output.record}}"),

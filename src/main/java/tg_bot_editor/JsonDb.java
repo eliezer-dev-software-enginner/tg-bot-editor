@@ -26,15 +26,39 @@ public final class JsonDb {
             throw new IllegalArgumentException("O arquivo legado deve estar dentro do projeto.");
         synchronized (BotDatabase.class) {
             String layout = String.valueOf(settings.getOrDefault("layout", "GROUPED"));
-            if (!List.of("GROUPED", "ARRAY").contains(layout))
+            if (!List.of("GROUPED", "ARRAY", "OBJECT_ARRAY").contains(layout))
                 throw new IllegalArgumentException("Formato de coleção JsonDB inválido: " + layout);
             Map<String, List<Map<String, Object>>> groups = null;
             List<Map<String, Object>> array = null;
+            Map<String, Object> object = null;
+            String collection = String.valueOf(settings.getOrDefault("collection", "")).trim();
             if ("ARRAY".equals(layout)) array = BotDatabase.read(database, section, old,
                     new TypeReference<List<Map<String, Object>>>() { }, ArrayList::new);
+            else if ("OBJECT_ARRAY".equals(layout)) {
+                if (collection.isEmpty()) throw new IllegalArgumentException("Informe a coleção dentro do objeto JSON.");
+                object = BotDatabase.read(database, section, old,
+                        new TypeReference<Map<String, Object>>() { }, LinkedHashMap::new);
+                Object value = object.get(collection);
+                if (value == null) array = new ArrayList<>();
+                else if (value instanceof List<?> list) {
+                    array = new ArrayList<>();
+                    for (Object item : list) {
+                        if (!(item instanceof Map<?, ?> map)) throw new IllegalArgumentException("A coleção deve conter objetos.");
+                        var copy = new LinkedHashMap<String, Object>();
+                        map.forEach((key, entry) -> copy.put(String.valueOf(key), entry));
+                        array.add(copy);
+                    }
+                } else throw new IllegalArgumentException("A coleção deve ser uma lista.");
+            }
             else groups = BotDatabase.read(database, section, old,
                     new TypeReference<Map<String, List<Map<String, Object>>>>() { }, LinkedHashMap::new);
-            if ("LIST".equals(operation)) return array != null ? array : groups;
+            if ("LIST".equals(operation)) {
+                Object data = array != null ? array : groups;
+                if (!Boolean.TRUE.equals(settings.get("includeInput"))) return data;
+                var result = new LinkedHashMap<String, Object>();
+                result.put("input", output); result.put("data", data);
+                return result;
+            }
             if (!List.of("INSERT", "UPSERT", "DELETE").contains(operation)) throw new IllegalArgumentException("Operação JsonDB não suportada: " + operation);
             Object keyValue = DiagramExecutor.value(String.valueOf(settings.getOrDefault("key", "")), input, output);
             Object recordValue = DiagramExecutor.value(String.valueOf(settings.getOrDefault("record", "")), input, output);
@@ -59,6 +83,9 @@ public final class JsonDb {
                 String key = (String) keyValue;
                 if (entries.isEmpty()) groups.remove(key); else groups.put(key, entries);
                 BotDatabase.write(database, section, groups);
+            } else if (object != null) {
+                object.put(collection, entries);
+                BotDatabase.write(database, section, object);
             } else BotDatabase.write(database, section, entries);
             if ("INSERT".equals(operation)) return insertResult(true, output);
             return DiagramExecutor.value(String.valueOf(settings.getOrDefault("result", "{{output}}")), input, output);

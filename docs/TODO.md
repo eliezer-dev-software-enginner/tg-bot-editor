@@ -28,3 +28,6 @@ Esta lista registra trabalho pendente; itens propostos não são funcionalidades
 - [ ] Continuar migrando os fluxos de anúncios para composição visual. `/listar`, `/publicar` e `/config` já compõem mensagens e botões no diagrama; callbacks e outros comandos ainda usam o fluxo legado.
 
 - [ ] Substituir os retornos antecipados `FlowStop` por condições visuais quando as condições visuais alcançarem todas as verificações e dados necessários.
+# Persistência de anúncios
+
+- [ ] Investigar operações transacionais entre componentes JsonDB e a concorrência com código legado antes de remover as pontes remanescentes.

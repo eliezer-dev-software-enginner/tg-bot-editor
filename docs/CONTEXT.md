@@ -32,3 +32,6 @@ Os detalhes e referências visuais estão em [proposta do editor de diagramas](p
 - O componente reutilizável **Rest HTTP** permite configurar URL, método e corpo, e retorna status, body e headers para a action Java imediatamente seguinte. Os fluxos G1 de teste e agendado usam Rest HTTP (GET), precedido por uma verificação temporária e seguido por Java e Splitter.
 
 - O Rest HTTP permite informar uma variável de ambiente opcional para a URL; seu valor preenchido substitui a URL configurada. `FlowStop` encerra antecipadamente um diagrama com o valor informado, permitindo preservar validações antes de chamadas HTTP enquanto as condições não acessarem todos os dados e verificações necessários.
+# JsonDB com lista em objeto
+
+O formato `OBJECT_ARRAY` permite operar uma lista identificada por nome dentro de uma seção que também contém outras propriedades. Em `LIST`, a opção de preservar entrada retorna `input` e `data` para as próximas etapas.

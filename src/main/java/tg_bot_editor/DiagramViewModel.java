@@ -63,7 +63,10 @@ final class DiagramViewModel {
     final State<String> restBody = State.of("");
     final State<String> jsonSection = State.of("");
     final State<String> jsonLayout = State.of("GROUPED");
-    final State<List<String>> jsonLayouts = State.of(List.of("GROUPED", "ARRAY"));
+    final State<List<String>> jsonLayouts = State.of(List.of("GROUPED", "ARRAY", "OBJECT_ARRAY"));
+    final State<String> jsonCollection = State.of("");
+    final State<String> jsonIncludeInput = State.of("false");
+    final State<List<String>> jsonBooleanValues = State.of(List.of("false", "true"));
     final State<String> jsonPath = State.of("${TG_BOT_DATABASE_FILE}");
     final State<String> jsonOperation = State.of("UPSERT");
     final State<List<String>> jsonOperations = State.of(List.of("LIST", "INSERT", "UPSERT", "DELETE"));
@@ -152,6 +155,8 @@ final class DiagramViewModel {
         }
         if ("JSON_DB".equals(node.type)) {
             jsonLayout.set(String.valueOf(node.settings.getOrDefault("layout", "GROUPED")));
+            jsonCollection.set(String.valueOf(node.settings.getOrDefault("collection", "")));
+            jsonIncludeInput.set(String.valueOf(node.settings.getOrDefault("includeInput", false)));
             jsonPath.set(String.valueOf(node.settings.getOrDefault("path", "${TG_BOT_DATABASE_FILE}")));
             jsonSection.set(String.valueOf(node.settings.getOrDefault("section", "")));
             jsonOperation.set(String.valueOf(node.settings.getOrDefault("operation", "UPSERT")));
@@ -250,6 +255,8 @@ final class DiagramViewModel {
             }
             if ("JSON_DB".equals(node.type)) {
                 values.put("layout", jsonLayout.get());
+                values.put("collection", jsonCollection.get().trim());
+                values.put("includeInput", Boolean.parseBoolean(jsonIncludeInput.get()));
                 values.put("path", jsonPath.get().trim());
                 values.put("section", jsonSection.get().trim()); values.put("operation", jsonOperation.get());
                 values.put("legacy", jsonLegacy.get().trim()); values.put("key", jsonKey.get().trim());

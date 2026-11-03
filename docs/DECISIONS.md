@@ -59,3 +59,6 @@ A direção é oferecer um componente Rest HTTP reutilizável por todos os fluxo
 O componente de composição visual também será usado nos anúncios. Imagens, textos, links e botões, inclusive os que acionam callbacks, deverão ser configurados no diagrama, substituindo progressivamente sua construção manual em Java.
 
 Como solução transitória até que os ramos condicionais visuais alcancem todas as verificações necessárias, uma action pode retornar `new FlowStop(valor)` para encerrar o diagrama antes da próxima etapa. O Rest HTTP pode usar uma variável de ambiente opcional como URL, com a URL configurada como padrão quando a variável estiver vazia ou ausente.
+# Coleções aninhadas no JsonDB
+
+O formato `OBJECT_ARRAY` preserva as demais propriedades do objeto ao alterar sua coleção, permitindo migrar anúncios existentes sem recriar o banco.
