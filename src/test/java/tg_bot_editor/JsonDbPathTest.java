@@ -8,6 +8,50 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 class JsonDbPathTest {
+    @Test void readsPathsAndProjectsValuesAcrossLists(@TempDir Path project) throws Exception {
+        ProjectEnvironment.useDraft(project, "");
+        Files.writeString(project.resolve("db.json"), """
+                {"user":{"name":"Maria","age":26},"products":[
+                  {"name":"Phone","fixes_id":[1234,4567,2313,1111]},
+                  {"name":"Tablet","fixes_id":[8,9]}]}
+                """);
+        var settings = new java.util.HashMap<String, Object>(Map.of("operation", "LIST", "path", "db.json", "dataPath", "user.name"));
+        assertEquals("Maria", JsonDb.execute(settings, null, null));
+        settings.put("dataPath", "products.fixes_id");
+        assertEquals(java.util.List.of(1234, 4567, 2313, 1111, 8, 9), JsonDb.execute(settings, null, null));
+        settings.put("dataPath", "products.name");
+        assertEquals(java.util.List.of("Phone", "Tablet"), JsonDb.execute(settings, null, null));
+        settings.put("dataPath", "user.unknown"); assertNull(JsonDb.execute(settings, null, null));
+        settings.put("dataPath", ""); assertTrue(((Map<?, ?>) JsonDb.execute(settings, null, null)).containsKey("products"));
+    }
+
+    @Test void writesToNestedListAndPreservesOtherFields(@TempDir Path project) throws Exception {
+        ProjectEnvironment.useDraft(project, "");
+        Files.writeString(project.resolve("db.json"), "{\"user\":{\"name\":\"Maria\"},\"shop\":{\"products\":[{\"id\":1}]}}");
+        var settings = new java.util.HashMap<String, Object>(Map.of("operation", "UPSERT", "path", "db.json",
+                "dataPath", "shop.products", "record", "{{output}}", "identity", "id"));
+        JsonDb.execute(settings, null, Map.of("id", 2, "name", "Phone"));
+        settings.put("operation", "LIST");
+        assertEquals(2, ((java.util.List<?>) JsonDb.execute(settings, null, null)).size());
+        settings.put("dataPath", "user.name"); assertEquals("Maria", JsonDb.execute(settings, null, null));
+        settings.put("dataPath", "shop.products"); settings.put("operation", "DELETE");
+        JsonDb.execute(settings, null, Map.of("id", 1));
+        settings.put("operation", "LIST"); assertEquals(java.util.List.of(Map.of("id", 2, "name", "Phone")), JsonDb.execute(settings, null, null));
+        settings.put("dataPath", "groups.{{output.group}}"); settings.put("operation", "UPSERT");
+        settings.put("record", "{{output.item}}");
+        JsonDb.execute(settings, null, Map.of("group", "abc", "item", Map.of("id", 5)));
+        settings.put("operation", "LIST");
+        assertEquals(java.util.List.of(Map.of("id", 5)), JsonDb.execute(settings, null, Map.of("group", "abc")));
+    }
+    @Test void objectListReadsEntireSection(@TempDir Path project) throws Exception {
+        ProjectEnvironment.useDraft(project, "");
+        var saved = Map.of("ads", java.util.List.of(Map.of("id", "a")), "globalIntervals", Map.of("42", 15));
+        BotDatabase.write("ads", saved);
+        var settings = new java.util.HashMap<String, Object>(Map.of("operation", "LIST", "layout", "OBJECT", "section", "ads"));
+        assertEquals(saved, JsonDb.execute(settings, null, null));
+        settings.put("operation", "DELETE");
+        assertThrows(IllegalArgumentException.class, () -> JsonDb.execute(settings, null, null));
+    }
     @Test void objectArrayUpdatesKeepOtherPropertiesAndCanRetainInput(@TempDir Path project) throws Exception {
         ProjectEnvironment.useDraft(project, "");
         BotDatabase.write("ads", Map.of("ads", java.util.List.of(Map.of("id", "a")),

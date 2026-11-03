@@ -35,3 +35,9 @@ Os detalhes e referências visuais estão em [proposta do editor de diagramas](p
 # JsonDB com lista em objeto
 
 O formato `OBJECT_ARRAY` permite operar uma lista identificada por nome dentro de uma seção que também contém outras propriedades. Em `LIST`, a opção de preservar entrada retorna `input` e `data` para as próximas etapas.
+
+O formato `OBJECT` lê a seção inteira com `LIST`, útil quando várias propriedades são necessárias ao mesmo fluxo; ele não oferece operações de escrita.
+
+O painel JsonDB apresenta o arquivo e o caminho dos dados separadamente. Novos componentes aceitam caminhos como `user.name` e `products.fixes_id`; a leitura atravessa listas e reúne os resultados. Diagramas existentes conservam sua configuração anterior ao serem abertos, inclusive as importações já definidas, sem exibir campos legados no painel.
+
+Na operação LIST, o painel mostra apenas arquivo e caminho dos dados. Para inserção, atualização ou exclusão, ele também pede os dados recebidos e os campos que identificam cada registro, com exemplos. O valor encaminhado após alteração mantém a configuração existente e não precisa ser preenchido no painel.

@@ -229,18 +229,20 @@ public final class HomeScreen implements ScreenComponent {
                     new Text("Resposta: status, body e headers na próxima action."));
             case "JSON_DB" -> new Container(new ContainerProps().spacingOf(8)).children(
                     new Text("Operação"), new Select<String>().items(diagram.jsonOperations).value(diagram.jsonOperation),
-                    new Text("Formato da coleção"), new Select<String>().items(diagram.jsonLayouts).value(diagram.jsonLayout),
-                    new Text("ARRAY: lista · GROUPED: listas por chave · OBJECT_ARRAY: lista dentro de objeto."),
-                    new Text("Caminho do JSON"), Components.input(diagram.jsonPath, "${TG_BOT_DATABASE_FILE}"),
+                    new Text("Arquivo JSON"), Components.input(diagram.jsonPath, "${TG_BOT_DATABASE_FILE}"),
                     new Text("Arquivo .json ou ${VARIÁVEL} do ambiente."),
-                    new Text("Seção"), Components.input(diagram.jsonSection, "Nome da seção"),
-                    new Text("Coleção dentro do objeto (OBJECT_ARRAY)"), Components.input(diagram.jsonCollection, "Nome da coleção"),
-                    new Text("LIST: preservar entrada junto dos dados"), new Select<String>().items(diagram.jsonBooleanValues).value(diagram.jsonIncludeInput),
-                    new Text("Arquivo legado relativo (opcional)"), Components.input(diagram.jsonLegacy, "data/arquivo.json"),
-                    new Text("Chave"), Components.input(diagram.jsonKey, "{{output.key}}"),
-                    new Text("Registro"), Components.input(diagram.jsonRecord, "{{output.record}}"),
-                    new Text("Campos de identificação"), Components.input(diagram.jsonIdentity, "id, outroCampo"),
-                    new Text("Valor retornado"), Components.input(diagram.jsonResult, "{{output}}"));
+                    new Text("Caminho dos dados"), Components.input(diagram.jsonDataPath, "user.name ou products.fixes_id"),
+                    new Text("Exemplos: user.name ou products.fixes_id."),
+                    new Text("Deixe vazio para ler tudo."),
+                    new StateList<>(diagram.jsonWriteFields, ignored -> new Container(new ContainerProps().spacingOf(6)).children(
+                            new Text("Dados recebidos da etapa anterior"),
+                            Components.input(diagram.jsonRecord, "{{output}}"),
+                            new Text("{{output}} usa o resultado anterior."),
+                            new Text("{{output.produto}} usa só o campo produto."),
+                            new Text("Campo que identifica cada item"),
+                            Components.input(diagram.jsonIdentity, "Exemplo: id"),
+                            new Text("Exemplo: id identifica o produto"),
+                            new Text("a atualizar ou excluir.")), 5));
             case "TIMER" -> new Container(new ContainerProps().spacingOf(8)).children(
                     new Text("Intervalo em minutos"), Components.input(diagram.timerInterval, "10"),
                     new Text("Executa ao iniciar e depois de cada intervalo."));

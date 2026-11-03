@@ -62,3 +62,9 @@ Como solução transitória até que os ramos condicionais visuais alcancem toda
 # Coleções aninhadas no JsonDB
 
 O formato `OBJECT_ARRAY` preserva as demais propriedades do objeto ao alterar sua coleção, permitindo migrar anúncios existentes sem recriar o banco.
+
+`OBJECT` fornece a leitura integral da seção sem embutir regras específicas de anúncios no JsonDB.
+
+Novos componentes usam caminhos de dados em vez de exigir que o usuário escolha formatos internos. A escrita por caminho altera listas alcançadas através de objetos; a leitura pode projetar campos de elementos de listas. Configurações anteriores permanecem executáveis sem migração automática de dados.
+
+O inspetor apresenta apenas os campos necessários à operação selecionada: a leitura não exige dados de entrada nem identificação, e os campos de escrita explicam a origem dos dados e a finalidade da identificação. Configurações anteriores de retorno continuam preservadas.

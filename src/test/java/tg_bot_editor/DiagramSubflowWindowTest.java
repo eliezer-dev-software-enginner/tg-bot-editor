@@ -123,7 +123,10 @@ class DiagramSubflowWindowTest {
             assertEquals("{} ", rest.settings.get("body"));
             assertEquals(rest.id, restored.edges.getFirst().to);
             editor.addComponent("JSON_DB", 420, 100);
+            assertEquals(List.of(), editor.jsonWriteFields.get());
+            editor.jsonDataPath.set("shop.products");
             editor.jsonSection.set("records"); editor.jsonOperation.set("UPSERT");
+            assertEquals(List.of("write"), editor.jsonWriteFields.get());
             editor.jsonLayout.set("ARRAY");
             editor.jsonPath.set("${OUTRO_JSON}");
             editor.jsonKey.set("{{output.group}}"); editor.jsonRecord.set("{{output.item}}");
@@ -134,6 +137,9 @@ class DiagramSubflowWindowTest {
             assertEquals("ARRAY", json.settings.get("layout"));
             assertEquals("${OUTRO_JSON}", json.settings.get("path"));
             assertEquals("id", json.settings.get("identity"));
+            assertEquals("shop.products", json.settings.get("dataPath"));
+            editor.jsonOperation.set("LIST");
+            assertEquals(List.of(), editor.jsonWriteFields.get());
             return null;
         });
         Platform.runLater(check); check.get(30, TimeUnit.SECONDS);

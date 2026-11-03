@@ -9,6 +9,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.function.Supplier;
 
 /** One atomic JSON document for the bot's persistent state. Legacy files are imported lazily. */
@@ -57,6 +59,15 @@ public final class BotDatabase {
         else root();
     }
 
+    public static synchronized Map<String, Object> readDocument(Path file) throws IOException {
+        return JSON.convertValue(root(file), new TypeReference<LinkedHashMap<String, Object>>() {});
+    }
+
+    public static synchronized void writeDocument(Path file, Map<String, Object> document) throws IOException {
+        ObjectNode root = JSON.valueToTree(document);
+        writeRoot(file, root);
+    }
+
     public static synchronized <T> void write(String section, T value) throws IOException {
         write(file(), section, value);
     }
@@ -64,6 +75,10 @@ public final class BotDatabase {
     public static synchronized <T> void write(Path file, String section, T value) throws IOException {
         ObjectNode root = root(file);
         root.set(section, JSON.valueToTree(value));
+        writeRoot(file, root);
+    }
+
+    private static void writeRoot(Path file, ObjectNode root) throws IOException {
         Files.createDirectories(file.getParent());
         Path temporary = Files.createTempFile(file.getParent(), ".bot-database-", ".tmp");
         try {

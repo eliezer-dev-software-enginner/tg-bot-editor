@@ -31,3 +31,6 @@ Esta lista registra trabalho pendente; itens propostos não são funcionalidades
 # Persistência de anúncios
 
 - [ ] Investigar operações transacionais entre componentes JsonDB e a concorrência com código legado antes de remover as pontes remanescentes.
+- [ ] Avaliar filtros e edição de propriedades de objetos no JsonDB; `OBJECT` oferece apenas leitura integral.
+- [ ] Permitir filtrar e alterar campos individuais e registros dentro de listas pelo caminho, com seleção visual de propriedades.
+- [ ] Substituir referências digitadas de dados recebidos por seleção visual das saídas dos componentes anteriores.

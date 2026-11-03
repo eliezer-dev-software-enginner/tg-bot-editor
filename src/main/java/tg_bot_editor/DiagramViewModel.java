@@ -62,17 +62,20 @@ final class DiagramViewModel {
     final State<String> restMethod = State.of("GET");
     final State<String> restBody = State.of("");
     final State<String> jsonSection = State.of("");
+    final State<String> jsonDataPath = State.of("");
+    private String initialJsonDataPath = "";
     final State<String> jsonLayout = State.of("GROUPED");
-    final State<List<String>> jsonLayouts = State.of(List.of("GROUPED", "ARRAY", "OBJECT_ARRAY"));
+    final State<List<String>> jsonLayouts = State.of(List.of("GROUPED", "ARRAY", "OBJECT_ARRAY", "OBJECT"));
     final State<String> jsonCollection = State.of("");
     final State<String> jsonIncludeInput = State.of("false");
     final State<List<String>> jsonBooleanValues = State.of(List.of("false", "true"));
     final State<String> jsonPath = State.of("${TG_BOT_DATABASE_FILE}");
     final State<String> jsonOperation = State.of("UPSERT");
     final State<List<String>> jsonOperations = State.of(List.of("LIST", "INSERT", "UPSERT", "DELETE"));
+    final State<List<String>> jsonWriteFields = State.of(List.of("write"));
     final State<String> jsonLegacy = State.of("");
     final State<String> jsonKey = State.of("{{output.key}}");
-    final State<String> jsonRecord = State.of("{{output.record}}");
+    final State<String> jsonRecord = State.of("{{output}}");
     final State<String> jsonIdentity = State.of("");
     final State<String> jsonResult = State.of("{{output}}");
     final State<List<String>> restMethods = State.of(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"));
@@ -102,6 +105,7 @@ final class DiagramViewModel {
     private FlowProject flows = new FlowProject();
 
     DiagramViewModel() {
+        jsonOperation.subscribe(operation -> jsonWriteFields.set("LIST".equals(operation) ? List.of() : List.of("write")));
         compositionItems.subscribe(ignored -> updateCompositionPreview());
         subflowOpen.subscribe(visible -> {
             if (!visible && !subflowWindows.get().isEmpty()) {
@@ -162,9 +166,14 @@ final class DiagramViewModel {
             jsonOperation.set(String.valueOf(node.settings.getOrDefault("operation", "UPSERT")));
             jsonLegacy.set(String.valueOf(node.settings.getOrDefault("legacy", "")));
             jsonKey.set(String.valueOf(node.settings.getOrDefault("key", "{{output.key}}")));
-            jsonRecord.set(String.valueOf(node.settings.getOrDefault("record", "{{output.record}}")));
+            jsonRecord.set(String.valueOf(node.settings.getOrDefault("record", node.settings.containsKey("dataPath") ? "{{output}}" : "{{output.record}}")));
             jsonIdentity.set(String.valueOf(node.settings.getOrDefault("identity", "")));
             jsonResult.set(String.valueOf(node.settings.getOrDefault("result", "{{output}}")));
+            String oldPath = jsonSection.get();
+            if ("OBJECT_ARRAY".equals(jsonLayout.get()) && !jsonCollection.get().isBlank()) oldPath += "." + jsonCollection.get();
+            if ("GROUPED".equals(jsonLayout.get()) && !jsonKey.get().isBlank()) oldPath += "." + jsonKey.get();
+            initialJsonDataPath = String.valueOf(node.settings.getOrDefault("dataPath", oldPath));
+            jsonDataPath.set(initialJsonDataPath);
         }
         updateActionHints(node);
         if ("TIMER".equals(node.type)) timerInterval.set(String.valueOf(node.settings.getOrDefault("intervalMinutes", "10")));
@@ -254,6 +263,8 @@ final class DiagramViewModel {
                 values.put("body", restBody.get());
             }
             if ("JSON_DB".equals(node.type)) {
+                if (node.settings.containsKey("dataPath") || !jsonDataPath.get().trim().equals(initialJsonDataPath))
+                    values.put("dataPath", jsonDataPath.get().trim());
                 values.put("layout", jsonLayout.get());
                 values.put("collection", jsonCollection.get().trim());
                 values.put("includeInput", Boolean.parseBoolean(jsonIncludeInput.get()));
@@ -298,7 +309,7 @@ final class DiagramViewModel {
         if ("CALLBACK".equals(type)) node.settings = Map.of("event", "COMMAND", "pattern", "");
         if ("COMPOSITION".equals(type)) node.settings = Map.of("items", List.of());
         if ("REST_HTTP".equals(type)) node.settings = Map.of("url", "", "method", "GET", "body", "");
-        if ("JSON_DB".equals(type)) node.settings = Map.of("section", "", "operation", "UPSERT", "path", "${TG_BOT_DATABASE_FILE}");
+        if ("JSON_DB".equals(type)) node.settings = Map.of("dataPath", "", "operation", "LIST", "path", "${TG_BOT_DATABASE_FILE}");
         if ("TIMER".equals(type)) node.settings = Map.of("intervalMinutes", "10");
         if ("RESPONSE".equals(type)) node.settings = Map.of("text", "");
         diagram.nodes.add(node);

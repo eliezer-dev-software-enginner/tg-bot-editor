@@ -15,18 +15,19 @@ public final class JsonDb {
     public static Object execute(Map<String, Object> settings, Object input, Object output) throws Exception {
         String section = String.valueOf(settings.getOrDefault("section", "")).trim();
         String operation = String.valueOf(settings.getOrDefault("operation", "")).trim();
-        if (!section.matches("[A-Za-z][A-Za-z0-9_-]*"))
-            throw new IllegalArgumentException("Informe uma seção JSON válida.");
         Path project = ProjectEnvironment.directory();
         if (project == null) throw new IllegalStateException("Abra um projeto para acessar o JsonDB.");
         Path database = databasePath(settings, project);
+        if (settings.containsKey("dataPath")) return executePath(settings, input, output, database, operation);
+        if (!section.matches("[A-Za-z][A-Za-z0-9_-]*"))
+            throw new IllegalArgumentException("Informe uma seção JSON válida.");
         String legacy = String.valueOf(settings.getOrDefault("legacy", "")).trim();
         Path old = legacy.isEmpty() ? null : project.resolve(legacy).normalize();
         if (old != null && !old.startsWith(project.normalize()))
             throw new IllegalArgumentException("O arquivo legado deve estar dentro do projeto.");
         synchronized (BotDatabase.class) {
             String layout = String.valueOf(settings.getOrDefault("layout", "GROUPED"));
-            if (!List.of("GROUPED", "ARRAY", "OBJECT_ARRAY").contains(layout))
+            if (!List.of("GROUPED", "ARRAY", "OBJECT_ARRAY", "OBJECT").contains(layout))
                 throw new IllegalArgumentException("Formato de coleção JsonDB inválido: " + layout);
             Map<String, List<Map<String, Object>>> groups = null;
             List<Map<String, Object>> array = null;
@@ -34,7 +35,10 @@ public final class JsonDb {
             String collection = String.valueOf(settings.getOrDefault("collection", "")).trim();
             if ("ARRAY".equals(layout)) array = BotDatabase.read(database, section, old,
                     new TypeReference<List<Map<String, Object>>>() { }, ArrayList::new);
-            else if ("OBJECT_ARRAY".equals(layout)) {
+            else if ("OBJECT".equals(layout)) {
+                object = BotDatabase.read(database, section, old,
+                        new TypeReference<Map<String, Object>>() { }, LinkedHashMap::new);
+            } else if ("OBJECT_ARRAY".equals(layout)) {
                 if (collection.isEmpty()) throw new IllegalArgumentException("Informe a coleção dentro do objeto JSON.");
                 object = BotDatabase.read(database, section, old,
                         new TypeReference<Map<String, Object>>() { }, LinkedHashMap::new);
@@ -53,12 +57,13 @@ public final class JsonDb {
             else groups = BotDatabase.read(database, section, old,
                     new TypeReference<Map<String, List<Map<String, Object>>>>() { }, LinkedHashMap::new);
             if ("LIST".equals(operation)) {
-                Object data = array != null ? array : groups;
+                Object data = array != null ? array : groups != null ? groups : object;
                 if (!Boolean.TRUE.equals(settings.get("includeInput"))) return data;
                 var result = new LinkedHashMap<String, Object>();
                 result.put("input", output); result.put("data", data);
                 return result;
             }
+            if ("OBJECT".equals(layout)) throw new IllegalArgumentException("O formato OBJECT suporta apenas LIST.");
             if (!List.of("INSERT", "UPSERT", "DELETE").contains(operation)) throw new IllegalArgumentException("Operação JsonDB não suportada: " + operation);
             Object keyValue = DiagramExecutor.value(String.valueOf(settings.getOrDefault("key", "")), input, output);
             Object recordValue = DiagramExecutor.value(String.valueOf(settings.getOrDefault("record", "")), input, output);
@@ -90,6 +95,89 @@ public final class JsonDb {
             if ("INSERT".equals(operation)) return insertResult(true, output);
             return DiagramExecutor.value(String.valueOf(settings.getOrDefault("result", "{{output}}")), input, output);
         }
+    }
+
+    private static Object executePath(Map<String, Object> settings, Object input, Object output, Path database,
+                                      String operation) throws Exception {
+        String path = String.valueOf(settings.getOrDefault("dataPath", "")).trim();
+        List<String> fields = pathFields(path, input, output);
+        synchronized (BotDatabase.class) {
+            Map<String, Object> document = BotDatabase.readDocument(database);
+            if ("LIST".equals(operation)) {
+                Object data = select(document, fields, 0);
+                if (!Boolean.TRUE.equals(settings.get("includeInput"))) return data;
+                var result = new LinkedHashMap<String, Object>();
+                result.put("input", output); result.put("data", data); return result;
+            }
+            if (!List.of("INSERT", "UPSERT", "DELETE").contains(operation))
+                throw new IllegalArgumentException("Operação JsonDB não suportada: " + operation);
+            if (fields.isEmpty()) throw new IllegalArgumentException("Informe o caminho da lista a alterar.");
+            Object recordValue = DiagramExecutor.value(String.valueOf(settings.getOrDefault("record", "")), input, output);
+            if (!(recordValue instanceof Map<?, ?> record)) throw new IllegalArgumentException("Informe o registro para o JsonDB.");
+            String identity = String.valueOf(settings.getOrDefault("identity", "")).trim();
+            if (identity.isEmpty()) throw new IllegalArgumentException("Informe os campos de identificação do registro.");
+            List<String> identityFields = List.of(identity.split("\\s*,\\s*"));
+            if (identityFields.stream().anyMatch(field -> field.isBlank() || !record.containsKey(field)))
+                throw new IllegalArgumentException("Campos de identificação ausentes no registro.");
+            Map<String, Object> parent = document;
+            for (String field : fields.subList(0, fields.size() - 1)) {
+                Object next = parent.get(field);
+                if (next == null && !"DELETE".equals(operation)) { next = new LinkedHashMap<String, Object>(); parent.put(field, next); }
+                if (next == null) return DiagramExecutor.value(String.valueOf(settings.getOrDefault("result", "{{output}}")), input, output);
+                if (!(next instanceof Map<?, ?>)) throw new IllegalArgumentException("O caminho de escrita deve atravessar apenas objetos JSON.");
+                @SuppressWarnings("unchecked") Map<String, Object> child = (Map<String, Object>) next;
+                parent = child;
+            }
+            String last = fields.getLast(); Object value = parent.get(last);
+            if (value != null && !(value instanceof List<?>)) throw new IllegalArgumentException("O caminho de escrita deve apontar para uma lista.");
+            var entries = new ArrayList<Object>(value == null ? List.of() : (List<?>) value);
+            boolean exists = entries.stream().anyMatch(item -> matches(item, record, identityFields));
+            if ("INSERT".equals(operation) && exists) return insertResult(false, output);
+            entries.removeIf(item -> matches(item, record, identityFields));
+            if (!"DELETE".equals(operation)) entries.add(new LinkedHashMap<>(record));
+            if (value != null || !"DELETE".equals(operation)) { parent.put(last, entries); BotDatabase.writeDocument(database, document); }
+            return "INSERT".equals(operation) ? insertResult(true, output)
+                    : DiagramExecutor.value(String.valueOf(settings.getOrDefault("result", "{{output}}")), input, output);
+        }
+    }
+
+    private static boolean matches(Object item, Map<?, ?> record, List<String> fields) {
+        return item instanceof Map<?, ?> map && fields.stream().allMatch(field -> Objects.equals(
+                normalize(map.get(field)), normalize(record.get(field))));
+    }
+
+    private static Object select(Object current, List<String> fields, int position) {
+        if (position == fields.size()) return current;
+        if (current instanceof Map<?, ?> map) return select(map.get(fields.get(position)), fields, position + 1);
+        if (current instanceof List<?> list) {
+            var projected = new ArrayList<Object>();
+            for (Object item : list) {
+                Object value = select(item, fields, position);
+                if (value instanceof List<?> values) projected.addAll(values);
+                else if (value != null) projected.add(value);
+            }
+            return projected;
+        }
+        return null;
+    }
+
+    private static List<String> pathFields(String path, Object input, Object output) {
+        if (path.isEmpty()) return List.of();
+        var fields = new ArrayList<String>(); var part = new StringBuilder(); boolean reference = false;
+        for (int i = 0; i < path.length(); i++) {
+            if (path.startsWith("{{", i)) reference = true;
+            if (path.charAt(i) == '.' && !reference) { fields.add(part.toString()); part.setLength(0); }
+            else part.append(path.charAt(i));
+            if (path.startsWith("}}", i)) { part.append('}'); i++; reference = false; }
+        }
+        fields.add(part.toString());
+        var resolved = new ArrayList<String>();
+        for (String field : fields) {
+            Object value = DiagramExecutor.value(field, input, output);
+            if (value == null || value.toString().isBlank() || reference) throw new IllegalArgumentException("Caminho de dados inválido: " + path);
+            resolved.add(value.toString());
+        }
+        return resolved;
     }
 
     private static Map<String, Object> insertResult(boolean inserted, Object value) {
