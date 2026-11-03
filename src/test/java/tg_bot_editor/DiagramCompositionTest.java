@@ -6,6 +6,16 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 class DiagramCompositionTest {
+    @Test void usesDynamicButtonListAndHtml() {
+        var buttons = List.of(BotButton.link("Loja", "https://example.org"), BotButton.callback("Abrir", "ads:open"));
+        var reply = DiagramComposition.compose(Map.of("html", true, "items", List.of(
+                Map.of("type", "TEXT", "value", "{{input.title}}"),
+                Map.of("type", "BUTTONS", "value", "{{input.buttons}}"))),
+                Map.of("title", "<b>Oferta</b>", "buttons", buttons), null);
+        assertTrue(reply.html()); assertEquals("<b>Oferta</b>", reply.text()); assertEquals(buttons, reply.buttons());
+        assertThrows(IllegalArgumentException.class, () -> DiagramComposition.compose(Map.of("items", List.of(
+                Map.of("type", "BUTTONS", "value", "{{input.buttons}}"))), Map.of("buttons", List.of("bad")), null));
+    }
     @Test void groupsButtonsIntoTelegramRowsAndKeepsLegacyButtonsSeparate() throws Exception {
         var parts = List.of(
                 Map.of("type", "TEXT", "value", "Menu"),

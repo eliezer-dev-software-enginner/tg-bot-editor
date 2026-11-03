@@ -25,6 +25,6 @@ Esta lista registra trabalho pendente; itens propostos não são funcionalidades
 
 - [ ] Ampliar o **Rest HTTP** com cabeçalhos personalizados, autenticação e valores dinâmicos. Migrar as requisições manuais dos fluxos que precisarem de HTTP; os dois fluxos G1 já usam esse componente, preservando validações, tratamento de erros e destinos.
 
-- [ ] Migrar também os fluxos de anúncios para o componente de composição visual: configurar imagens, textos, links e botões nas propriedades, inclusive callbacks e publicações, substituindo a montagem manual de `BotReply` e `BotButton` e preservando os comportamentos existentes.
+- [ ] Continuar migrando os fluxos de anúncios para composição visual. `/listar`, `/publicar` e `/config` já compõem mensagens e botões no diagrama; callbacks e outros comandos ainda usam o fluxo legado.
 
 - [ ] Substituir os retornos antecipados `FlowStop` por condições visuais quando as condições visuais alcançarem todas as verificações e dados necessários.

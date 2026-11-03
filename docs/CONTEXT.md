@@ -2,6 +2,8 @@
 
 O TG-bot Editor cria e executa projetos de bots Telegram. O editor fornece mecanismos genéricos; comandos, respostas e regras de negócio pertencem a cada projeto. O bot `meu-primeiro-projeto` é um repositório separado: alterações no editor não atualizam automaticamente os seus dados ou runtime.
 
+A composição aceita HTML e listas dinâmicas `BUTTONS`. Em actions de subfluxo, `originalSplitterItem` mantém o item original quando `input` já contém o resultado de outra etapa.
+
 ## Estado atual
 
 - A tela inicial lista os diagramas de `diagrams.json` em cards. Cada card abre seu diagrama. Os comandos ainda não migrados permanecem em `bot.json` e o runner mantém a execução legada; a interface inicial não oferece mais os botões de comando antigo.

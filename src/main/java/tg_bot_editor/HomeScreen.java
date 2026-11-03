@@ -205,7 +205,9 @@ public final class HomeScreen implements ScreenComponent {
         return switch (type) {
             case "COMPOSITION" -> new Container(new ContainerProps().spacingOf(8)).children(
                     new Text("Elementos da mensagem"),
+                    new Checkbox("Interpretar texto como HTML do Telegram", diagram.compositionHtml),
                     new Text("Use {{input.campo}} ou {{output.campo}}."),
+                    new Text("BUTTONS usa uma referência a uma lista de botões."),
                     new StateList<>(diagram.compositionItems, item -> compositionItem(diagram, item), 8),
                     new Button("+ Adicionar elemento").tooltip("Adiciona texto, imagem, link ou botão à mensagem.").onClick(diagram::addCompositionItem),
                     new Text("Prévia da mensagem", new TextProps().fontSize(17)),
@@ -276,7 +278,7 @@ public final class HomeScreen implements ScreenComponent {
 
     private Component compositionItem(DiagramViewModel diagram, DiagramViewModel.CompositionItem item) {
         return new Container(new ContainerProps().spacingOf(5)).children(
-                new Text("Tipo: TEXT, IMAGE, LINK ou BUTTON"),
+                new Text("Tipo: TEXT, IMAGE, LINK, BUTTON ou BUTTONS"),
                 new Select<String>().items(diagram.compositionTypes).value(item.type),
                 new Text("Valor ou texto"), Components.input(item.value, "Texto ou {{input.campo}}"),
                 new StateList<>(item.buttonFields, ignored -> new Container(new ContainerProps().spacingOf(5)).children(

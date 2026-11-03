@@ -47,6 +47,19 @@ public final class DiagramComposition {
                     }
                     buttons.add(button);
                 }
+                case "BUTTONS" -> {
+                    String reference = string(item, "value");
+                    if (!reference.startsWith("{{") || !reference.endsWith("}}"))
+                        throw new IllegalArgumentException("Informe a referência da lista de botões.");
+                    Object resolved = DiagramExecutor.value(reference, input, output);
+                    if (!(resolved instanceof Iterable<?> values))
+                        throw new IllegalArgumentException("A composição precisa receber uma lista de botões.");
+                    for (Object valueButton : values) {
+                        if (!(valueButton instanceof BotButton button))
+                            throw new IllegalArgumentException("A lista contém um botão inválido.");
+                        buttons.add(button);
+                    }
+                }
                 default -> throw new IllegalArgumentException("Tipo de composição desconhecido: " + type);
             }
         }
@@ -60,7 +73,8 @@ public final class DiagramComposition {
                 caption = truncate(prefix, available) + "\n" + link;
             } else caption = truncate(caption, 1024);
         }
-        return (image == null ? BotReply.text(caption) : BotReply.photo(image, caption)).withButtons(buttons);
+        BotReply reply = (image == null ? BotReply.text(caption) : BotReply.photo(image, caption)).withButtons(buttons);
+        return Boolean.TRUE.equals(settings.get("html")) ? reply.asHtml() : reply;
     }
 
     private static String truncate(String text, int limit) {

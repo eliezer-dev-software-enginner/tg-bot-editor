@@ -1,5 +1,7 @@
 # Decisões de desenvolvimento
 
+A composição pode receber uma lista de botões `BUTTONS` e aplicar HTML, sem criar manualmente a mensagem na action. Actions de subfluxo recebem também o item original, permitindo encaminhar a mensagem composta ao destino correto após etapas intermediárias.
+
 A prévia de composição usa uma imagem incluída no aplicativo e texto de exemplo para referências dinâmicas, sem executar o fluxo ou acessar imagens externas. Botões com o mesmo número de linha compartilham uma linha do teclado do Telegram; botões sem linha mantêm o comportamento anterior de uma linha por botão.
 
 O JsonDB opera sobre dados configurados no diagrama, sem regras de comandos do bot no editor. Os formatos ARRAY e GROUPED permitem listas simples ou agrupadas; LIST lê uma seção, INSERT inclui somente se a identidade não existir e retorna `inserted` e `value`, UPSERT substitui ou acrescenta e DELETE remove um registro, preservando os demais registros e usando a gravação atômica do banco. A importação de arquivo legado é opcional e relativa ao projeto. Consultas mais avançadas permanecem pendentes.

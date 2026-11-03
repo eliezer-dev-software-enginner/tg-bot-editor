@@ -59,7 +59,12 @@ public final class ActionCompiler {
                 boolean receivesPrevious = diagram.edges.stream().anyMatch(edge -> node.id.equals(edge.to)
                         && diagram.nodes.stream().anyMatch(previous -> previous.id.equals(edge.from)
                         && java.util.Set.of("REST_HTTP", "COMPOSITION", "JSON_DB", "JAVA", "SPLITTER").contains(previous.type)));
-                String method = itemSubflow || receivesPrevious
+                String method = itemSubflow
+                        ? " public Object run(BotContext context) throws Exception { return run(context, null, -1); }"
+                          + " public Object run(BotContext context, Object input) throws Exception { return run(context, input, -1); }"
+                          + " public Object run(BotContext context, Object input, int index) throws Exception { return run(context, input, index, input); }"
+                          + " public Object run(BotContext context, Object input, int index, Object originalSplitterItem) throws Exception {\n"
+                        : receivesPrevious
                         ? " public Object run(BotContext context) throws Exception { return run(context, null, -1); }"
                           + " public Object run(BotContext context, Object input) throws Exception { return run(context, input, -1); }"
                           + " public Object run(BotContext context, Object input, int index) throws Exception {\n"

@@ -51,10 +51,11 @@ final class DiagramViewModel {
     final State<String> timerInterval = State.of("10");
     final State<String> response = State.of("");
     final State<List<CompositionItem>> compositionItems = State.of(List.of());
+    final State<Boolean> compositionHtml = State.of(false);
     final State<String> compositionPreviewText = State.of("");
     final State<List<String>> compositionImageVisible = State.of(List.of());
     final State<List<PreviewRow>> compositionPreviewRows = State.of(List.of());
-    final State<List<String>> compositionTypes = State.of(List.of("TEXT", "IMAGE", "LINK", "BUTTON"));
+    final State<List<String>> compositionTypes = State.of(List.of("TEXT", "IMAGE", "LINK", "BUTTON", "BUTTONS"));
     final State<List<String>> compositionButtonKinds = State.of(List.of("URL", "CALLBACK"));
     final State<String> restUrl = State.of("");
     final State<String> restUrlEnv = State.of("");
@@ -138,6 +139,7 @@ final class DiagramViewModel {
             event.set(String.valueOf(node.settings.getOrDefault("event", "COMMAND")));
         }
         if ("COMPOSITION".equals(node.type)) {
+            compositionHtml.set(Boolean.TRUE.equals(node.settings.get("html")));
             Object items = node.settings.get("items");
             compositionItems.set(items instanceof List<?> list ? list.stream()
                     .filter(Map.class::isInstance).map(item -> new CompositionItem((Map<?, ?>) item, this::updateCompositionPreview)).toList() : List.of());
@@ -236,7 +238,10 @@ final class DiagramViewModel {
                 values.put("pattern", pattern.get().trim());
                 values.put("event", event.get());
             }
-            if ("COMPOSITION".equals(node.type)) values.put("items", compositionItems.get().stream().map(CompositionItem::values).toList());
+            if ("COMPOSITION".equals(node.type)) {
+                values.put("items", compositionItems.get().stream().map(CompositionItem::values).toList());
+                values.put("html", compositionHtml.get());
+            }
             if ("REST_HTTP".equals(node.type)) {
                 values.put("url", restUrl.get().trim());
                 values.put("urlEnv", restUrlEnv.get().trim());
@@ -318,6 +323,9 @@ final class DiagramViewModel {
                 Object key = raw.matches("[1-9][0-9]*") ? raw : item;
                 rows.computeIfAbsent(key, ignored -> new java.util.ArrayList<>()).add(value.isBlank() ? "Botão" : value);
             }
+            if ("BUTTONS".equals(item.type.get())) {
+                rows.put(new Object(), List.of("Botão de exemplo"));
+            }
         }
         compositionPreviewText.set(text.isEmpty() ? "Oi, tudo bem?!" : String.join("\n", text));
         compositionImageVisible.set(image == null ? List.of() : List.of("IMAGE"));
@@ -335,6 +343,7 @@ final class DiagramViewModel {
                 : afterComposition ? List.of("input contém a mensagem da composição anterior.")
                 : inSubflow ? List.of("Na primeira action, input é o item atual.",
                         "Nas seguintes, input é o resultado anterior.",
+                        "originalSplitterItem mantém o item original do subfluxo.",
                         "index é a posição do item (a partir de 0).", "Exemplo: return input;") : List.of());
     }
 
@@ -480,6 +489,7 @@ final class DiagramViewModel {
         actionHints.set(diagram != null && diagram.nodes.stream().anyMatch(node -> "ITEM".equals(node.type))
                 ? List.of("Na primeira action, input é o item atual.",
                         "Nas seguintes, input é o resultado anterior.",
+                        "originalSplitterItem mantém o item original do subfluxo.",
                         "index é a posição do item (a partir de 0).",
                         "Exemplo: return input;") : List.of());
         if (diagram != null) {

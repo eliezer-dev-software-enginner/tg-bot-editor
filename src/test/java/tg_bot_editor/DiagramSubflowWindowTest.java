@@ -191,6 +191,7 @@ class DiagramSubflowWindowTest {
             diagram.nodes.add(start); project.diagrams.add(diagram); DiagramStore.write(directory, project);
             var editor = new DiagramViewModel(); editor.load(directory); editor.openDiagram("main");
             editor.addComponent("COMPOSITION", 200, 100); editor.addCompositionItem(); editor.addCompositionItem();
+            editor.compositionHtml.set(true);
             var first = editor.compositionItems.get().getFirst(); first.type.set("TEXT"); first.value.set("Olá {{input.name}}");
             assertEquals("Oi, tudo bem?!", editor.compositionPreviewText.get());
             editor.addCompositionItem(); var button1 = editor.compositionItems.get().getLast();
@@ -203,6 +204,7 @@ class DiagramSubflowWindowTest {
             assertTrue(editor.status.get().startsWith("Diagrama salvo"), editor.status.get());
             var restored = DiagramStore.read(directory).diagrams.getFirst();
             var composition = restored.nodes.stream().filter(node -> node.type.equals("COMPOSITION")).findFirst().orElseThrow();
+            assertEquals(true, composition.settings.get("html"));
             var items = (List<?>) composition.settings.get("items"); assertEquals(1, items.size());
             assertEquals("Olá {{input.name}}", ((Map<?, ?>) items.getFirst()).get("value"));
             return null;
