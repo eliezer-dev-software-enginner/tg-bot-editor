@@ -82,3 +82,7 @@ O inspetor apresenta apenas os campos necessários à operação selecionada: a 
 `SET` e `REMOVE` alteram uma propriedade por caminho sem substituir o documento inteiro na interface; a escrita física é atômica e preserva as demais propriedades do JSON.
 
 Listas repetidas de botões são declaradas na composição para que menus dinâmicos não precisem construir botões em código. A saída `ON_ERROR` é restrita a JsonDB e permite compensar recursos externos após falha de gravação; ela não representa uma transação entre componentes.
+
+A duplicação de componentes copia as configurações sem conexões; inícios não podem ser duplicados e Splitters com subfluxo ficam bloqueados até haver cópia independente do subfluxo. Ao excluir um Splitter, preserva-se seu subfluxo para evitar perda de trabalho. A prévia de resposta usa dados ilustrativos para referências dinâmicas.
+
+O Converter oferece inicialmente JSON_PARSE, JSON_STRINGIFY, BASE64_ENCODE, BASE64_DECODE e TEXT_TRIM; erros de entrada são propagados ao fluxo. Outras conversões permanecem abertas a necessidades futuras.

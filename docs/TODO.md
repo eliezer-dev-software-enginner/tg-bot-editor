@@ -5,11 +5,13 @@ Esta lista registra trabalho pendente; itens propostos não são funcionalidades
 - [ ] Migrar progressivamente os fluxos que ainda vivem no editor legado, preservando respostas, permissões, estado e comportamento do bot.
 - [ ] Substituir chamadas de classes legadas contidas nas actions Java por etapas visuais de dados, decisões e respostas, mantendo Java para operações pontuais. A consulta e seleção de vídeos ainda usam `YouTubeAction.checkVisual`; a composição das notificações está nos diagramas.
 - [ ] Implementar teste local e prévia das actions Java a partir do diagrama; a interface inicial já não expõe o editor de comandos antigos.
-- [ ] Ampliar a edição de conexões, configurar, duplicar e excluir componentes no diagrama. A paleta adiciona nós por arraste; as alças conectam saída a entrada e a seleção da seta permite excluir a conexão.
+- [x] Permitir duplicar componentes comuns sem conexões, mantendo configurações independentes.
+- [x] Permitir excluir componentes e suas conexões, preservando subfluxos.
+- [ ] Permitir duplicar Splitter com subfluxo independente e ampliar a edição de conexões.
 - [ ] Ampliar o editor de condições para grupos e comparações múltiplas; o executor já avalia grupos e o painel edita uma comparação simples IF ou ELSE ao clicar na seta.
-- [ ] Ampliar o JsonDB com filtros; LIST, INSERT, UPSERT, DELETE, SET, REMOVE e caminhos já existem. Implementar JDBC, Converter e Generator; ampliar o tratamento de erros do Splitter e a seleção visual de caminhos.
+- [ ] Ampliar o JsonDB com filtros; LIST, INSERT, UPSERT, DELETE, SET, REMOVE e caminhos já existem. Implementar JDBC e Generator; ampliar Converter conforme novos formatos necessários; ampliar o tratamento de erros do Splitter e a seleção visual de caminhos.
 - [ ] Ampliar a composição visual de mensagens, imagens e botões do Telegram e seus fluxos de clique; composição e botões de callback já estão disponíveis.
-- [ ] Criar o componente **Button** na paleta e exibir, no painel de propriedades à direita, uma prévia de como o Telegram apresentará os componentes de saída, incluindo **Resposta síncrona** e **Button**. A prévia deve acompanhar os valores configurados.
+- [ ] Criar o componente **Button** na paleta e exibir, no painel de propriedades à direita, uma prévia de como o Telegram apresentará os componentes de saída, incluindo **Button**. A prévia de Resposta síncrona acompanha texto fixo e usa exemplo para referências dinâmicas.
 - [ ] Definir o modelo dos gatilhos restantes, dos agendamentos e das interações entre diagramas, preservando os tipos existentes no runner.
 - [ ] Estudar a documentação pública do TOTVS iPaaS indicada na proposta e confrontá-la com os requisitos do bot antes de assumir comportamentos não observados.
 - [ ] Validar os percursos migrados em execução real no Telegram quando houver autorização e configuração para isso; os testes locais não comprovam entregas reais.
@@ -45,3 +47,7 @@ Esta lista registra trabalho pendente; itens propostos não são funcionalidades
 - [ ] Avaliar inclusão configurável de recursos adicionais necessários a scripts, sem empacotar dados particulares automaticamente.
 
 - [ ] Evoluir o tratamento visual de erros e transações entre componentes; a conexão `ON_ERROR` atual cobre apenas falhas do JsonDB.
+
+- [x] Exibir prévia da Resposta síncrona no painel de propriedades.
+
+- [x] Implementar Converter com JSON_PARSE, JSON_STRINGIFY, BASE64_ENCODE, BASE64_DECODE e TEXT_TRIM.

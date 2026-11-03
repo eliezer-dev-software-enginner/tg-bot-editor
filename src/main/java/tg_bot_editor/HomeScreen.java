@@ -182,7 +182,10 @@ public final class HomeScreen implements ScreenComponent {
         if ("EDGE".equals(type)) return edgeProperties(diagram);
         return new Container(new ContainerProps().spacingOf(8)).children(
                 new Text("Nome do componente"), Components.input(diagram.componentName, "Nome do componente"),
-                specificProperties(diagram, type));
+                specificProperties(diagram, type),
+                new Row(new RowProps().spacingOf(6)).children(
+                        new Button("Duplicar").tooltip("Copia o componente configurado sem suas conexões.").onClick(diagram::duplicateComponent),
+                        new Button("Excluir").tooltip("Remove o componente e suas conexões; salve o diagrama para gravar.").onClick(diagram::deleteComponent)));
     }
 
     private Component edgeProperties(DiagramViewModel diagram) {
@@ -204,6 +207,11 @@ public final class HomeScreen implements ScreenComponent {
 
     private Component specificProperties(DiagramViewModel diagram, String type) {
         return switch (type) {
+            case "CONVERTER" -> new Container(new ContainerProps().spacingOf(8)).children(
+                    new Text("Conversão"), new Select<String>().items(diagram.converterOperations).value(diagram.converterOperation),
+                    new Text("Valor de entrada"), Components.input(diagram.converterValue, "{{output}}"),
+                    new Text("Use {{output}} ou {{input.campo}} para selecionar dados."),
+                    new Text("JSON_PARSE lê JSON; JSON_STRINGIFY gera JSON. BASE64 usa UTF-8; TEXT_TRIM remove espaços das extremidades."));
             case "COMPOSITION" -> new Container(new ContainerProps().spacingOf(8)).children(
                     new Text("Elementos da mensagem"),
                     new Checkbox("Interpretar texto como HTML do Telegram", diagram.compositionHtml),
@@ -260,7 +268,10 @@ public final class HomeScreen implements ScreenComponent {
             case "RESPONSE" -> new Container(new ContainerProps().spacingOf(8)).children(
                     new Text("Texto da resposta"), new TextAreaInput(diagram.response,
                             new InputProps().height(230).width(320)),
-                    new Text("Use {{output}} para enviar o retorno da etapa Java."));
+                    new Text("Use {{output}} para enviar o retorno da etapa Java."),
+                    new Text("Prévia da mensagem"),
+                    new Text("Referências dinâmicas usam dados de exemplo na prévia."),
+                    new Card(new Container(new ContainerProps().paddingAll(8)).children(new Text(diagram.responsePreview))));
             case "JAVA" -> new Container(new ContainerProps().spacingOf(8)).children(
                     new Row(new RowProps().spacingOf(8)).children(
                             new Text("Action"),

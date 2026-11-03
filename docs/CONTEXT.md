@@ -59,3 +59,7 @@ As operações `SET` e `REMOVE` definem e removem um valor por caminho dentro de
 A composição aceita `BUTTON_LIST` para repetir botões a partir de uma lista, com modelos visuais para texto e destino. Uma conexão `ON_ERROR` de JsonDB permite tratar falhas da operação em outro componente; sem essa conexão o erro é propagado.
 
 O Rest HTTP também aceita cabeçalhos configuráveis, token Bearer obtido de variável do ambiente e referências a input/output na URL, corpo e valores dos cabeçalhos. Valores dinâmicos de URL devem estar codificados previamente.
+
+O painel de propriedades permite duplicar componentes sem conexões e excluir componentes com suas conexões; subfluxos são preservados na exclusão. Inícios e Splitters com subfluxo não podem ser duplicados. Respostas síncronas exibem prévia do texto fixo ou exemplo para referências dinâmicas.
+
+O Converter executa cinco operações de JSON, Base64 UTF-8 e remoção de espaços, recebendo dados por referência e retornando o resultado para a próxima etapa.

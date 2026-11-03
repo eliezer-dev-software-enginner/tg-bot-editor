@@ -84,6 +84,13 @@ public final class DiagramExecutor {
                 String compositionId = current.id;
                 if (diagram.edges.stream().noneMatch(edge -> compositionId.equals(edge.from))) return output;
             }
+            if ("CONVERTER".equals(current.type)) {
+                String reference = string(current, "value");
+                Object source = reference.isBlank() ? output : value(reference, input, output);
+                output = convert(string(current, "operation"), source);
+                String converterId = current.id;
+                if (diagram.edges.stream().noneMatch(edge -> converterId.equals(edge.from))) return output;
+            }
             if ("REST_HTTP".equals(current.type)) {
                 output = RestHttp.execute(current.settings, input, output);
                 String restId = current.id;
@@ -189,6 +196,18 @@ public final class DiagramExecutor {
             current = map.get(parts[i]);
         }
         return current;
+    }
+
+    static Object convert(String operation, Object source) throws Exception {
+        if (source == null) throw new IllegalArgumentException("Converter precisa receber um valor.");
+        return switch (operation) {
+            case "JSON_PARSE" -> new com.fasterxml.jackson.databind.ObjectMapper().readValue(String.valueOf(source), Object.class);
+            case "JSON_STRINGIFY" -> new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(source);
+            case "BASE64_ENCODE" -> java.util.Base64.getEncoder().encodeToString(String.valueOf(source).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            case "BASE64_DECODE" -> new String(java.util.Base64.getDecoder().decode(String.valueOf(source)), java.nio.charset.StandardCharsets.UTF_8);
+            case "TEXT_TRIM" -> String.valueOf(source).trim();
+            default -> throw new IllegalArgumentException("Operação de conversão não suportada: " + operation);
+        };
     }
 
     private static int compare(Object left, Object right) {

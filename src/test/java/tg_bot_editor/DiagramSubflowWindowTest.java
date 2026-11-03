@@ -15,6 +15,39 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 class DiagramSubflowWindowTest {
+    @Test void duplicatesAndDeletesComponentsAndShowsResponsePreview() throws Exception {
+        assumeTrue(System.getenv("DISPLAY") != null, "Requer ambiente gráfico JavaFX");
+        var started = new CountDownLatch(1);
+        try { Platform.startup(started::countDown); } catch (IllegalStateException alreadyStarted) { started.countDown(); }
+        assertTrue(started.await(10, TimeUnit.SECONDS));
+        var check = new FutureTask<Void>(() -> {
+            java.nio.file.Files.createDirectories(directory.resolve("scripts"));
+            FlowStore.write(directory.resolve("bot.json"), new FlowProject());
+            var editor = new DiagramViewModel(); editor.load(directory); editor.createDiagram();
+            editor.addComponent("CALLBACK", 20, 20); editor.pattern.set("/test");
+            editor.addComponent("RESPONSE", 250, 20); editor.response.set("Olá!");
+            assertEquals("Olá!", editor.responsePreview.get());
+            editor.response.set("{{output}}"); assertEquals("Oi, tudo bem?!", editor.responsePreview.get());
+            editor.response.set("Olá!"); editor.duplicateComponent();
+            assertEquals("Olá!", editor.response.get());
+            editor.response.set("Outra resposta"); editor.save();
+            var saved = DiagramStore.read(directory).diagrams.getFirst();
+            var replies = saved.nodes.stream().filter(node -> node.type.equals("RESPONSE")).toList();
+            assertEquals(2, replies.size());
+            assertEquals("Olá!", replies.getFirst().settings.get("text"));
+            assertEquals("Outra resposta", replies.getLast().settings.get("text"));
+            String start = saved.nodes.stream().filter(node -> node.type.equals("CALLBACK")).findFirst().orElseThrow().id;
+            editor.connect(start, replies.getLast().id); editor.selectNode(replies.getLast().id);
+            editor.deleteComponent(); editor.save();
+            saved = DiagramStore.read(directory).diagrams.getFirst();
+            assertEquals(1, saved.nodes.stream().filter(node -> node.type.equals("RESPONSE")).count());
+            assertTrue(saved.edges.isEmpty());
+            editor.selectNode(start); editor.duplicateComponent();
+            assertTrue(editor.status.get().contains("apenas um componente"));
+            return null;
+        });
+        Platform.runLater(check); check.get(30, TimeUnit.SECONDS);
+    }
     @TempDir Path directory;
 
     @Test void createsDraftAndActivatesConfiguredDiagram() throws Exception {

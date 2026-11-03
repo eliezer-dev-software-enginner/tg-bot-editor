@@ -57,6 +57,10 @@ final class DiagramViewModel {
     final State<List<String>> eventTypes = State.of(List.of("COMMAND", "CALLBACK", "TEXT", "PHOTO", "DOCUMENT"));
     final State<String> timerInterval = State.of("10");
     final State<String> response = State.of("");
+    final State<String> converterOperation = State.of("JSON_PARSE");
+    final State<String> converterValue = State.of("{{output}}");
+    final State<List<String>> converterOperations = State.of(List.of("JSON_PARSE", "JSON_STRINGIFY", "BASE64_ENCODE", "BASE64_DECODE", "TEXT_TRIM"));
+    final State<String> responsePreview = State.of("Oi, tudo bem?!");
     final State<List<CompositionItem>> compositionItems = State.of(List.of());
     final State<Boolean> compositionHtml = State.of(false);
     final State<String> compositionPreviewText = State.of("");
@@ -116,6 +120,8 @@ final class DiagramViewModel {
     private FlowProject flows = new FlowProject();
 
     DiagramViewModel() {
+        response.subscribe(value -> responsePreview.set(value == null || value.isBlank() || value.contains("{{")
+                ? "Oi, tudo bem?!" : value));
         jsonOperation.subscribe(operation -> {
             jsonWriteFields.set(List.of("LIST", "REMOVE").contains(operation) ? List.of() : List.of("write"));
             jsonIdentityFields.set(List.of("INSERT", "UPSERT", "DELETE").contains(operation) ? List.of("identity") : List.of());
@@ -172,6 +178,10 @@ final class DiagramViewModel {
             restBody.set(String.valueOf(node.settings.getOrDefault("body", "")));
             restHeaders.set(String.valueOf(node.settings.getOrDefault("headers", "")));
             restTokenEnv.set(String.valueOf(node.settings.getOrDefault("bearerTokenEnv", "")));
+        }
+        if ("CONVERTER".equals(node.type)) {
+            converterOperation.set(String.valueOf(node.settings.getOrDefault("operation", "JSON_PARSE")));
+            converterValue.set(String.valueOf(node.settings.getOrDefault("value", "{{output}}")));
         }
         if ("JSON_DB".equals(node.type)) {
             jsonLayout.set(String.valueOf(node.settings.getOrDefault("layout", "GROUPED")));
@@ -287,6 +297,10 @@ final class DiagramViewModel {
                 values.put("headers", restHeaders.get());
                 values.put("bearerTokenEnv", restTokenEnv.get().trim());
             }
+            if ("CONVERTER".equals(node.type)) {
+                values.put("operation", converterOperation.get());
+                values.put("value", converterValue.get().trim());
+            }
             if ("JSON_DB".equals(node.type)) {
                 if (node.settings.containsKey("dataPath") || !jsonDataPath.get().trim().equals(initialJsonDataPath)
                         || !jsonOperation.get().equals(initialJsonOperation))
@@ -335,12 +349,48 @@ final class DiagramViewModel {
         if ("CALLBACK".equals(type)) node.settings = Map.of("event", "COMMAND", "pattern", "");
         if ("COMPOSITION".equals(type)) node.settings = Map.of("items", List.of());
         if ("REST_HTTP".equals(type)) node.settings = Map.of("url", "", "method", "GET", "body", "");
+        if ("CONVERTER".equals(type)) node.settings = Map.of("operation", "JSON_PARSE", "value", "{{output}}");
         if ("JSON_DB".equals(type)) node.settings = Map.of("dataPath", "", "operation", "LIST", "path", "${TG_BOT_DATABASE_FILE}");
         if ("TIMER".equals(type)) node.settings = Map.of("intervalMinutes", "10");
         if ("RESPONSE".equals(type)) node.settings = Map.of("text", "");
         diagram.nodes.add(node);
         refresh(); canvas.current().select(node.id); selectNode(node.id);
         status.set("Componente adicionado sem conexão. A configuração e execução dos novos tipos ainda estão em desenvolvimento.");
+    }
+
+    void duplicateComponent() {
+        if (diagram == null || selectedNodeId == null) return;
+        saveSelectedFields();
+        var source = diagram.nodes.stream().filter(node -> node.id.equals(selectedNodeId)).findFirst().orElse(null);
+        if (source == null) return;
+        if (List.of("CALLBACK", "TIMER", "ITEM").contains(source.type)) {
+            status.set("O diagrama admite apenas um componente de início."); return;
+        }
+        if (source.subflowId != null) {
+            status.set("Duplique o Splitter antes de criar seu subfluxo; a cópia de subfluxos ainda não está disponível."); return;
+        }
+        var copy = new DiagramProject.Node();
+        copy.id = java.util.UUID.randomUUID().toString(); copy.name = source.name + " (cópia)";
+        copy.type = source.type; copy.x = source.x + 40; copy.y = source.y + 40;
+        copy.settings = new com.fasterxml.jackson.databind.ObjectMapper().convertValue(source.settings,
+                new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, Object>>() {});
+        diagram.nodes.add(copy);
+        refresh(); canvas.current().select(copy.id); selectNode(copy.id);
+        status.set("Componente duplicado sem conexões. Salve o diagrama para gravar.");
+    }
+
+    void deleteComponent() {
+        if (diagram == null || selectedNodeId == null) return;
+        String id = selectedNodeId;
+        var node = diagram.nodes.stream().filter(item -> item.id.equals(id)).findFirst().orElse(null);
+        if (node == null) return;
+        diagram.nodes.remove(node);
+        diagram.edges.removeIf(edge -> id.equals(edge.from) || id.equals(edge.to));
+        selectedNodeId = null; selectedTypes.set(List.of()); componentName.set("");
+        selectedLabel.set("Selecione um componente para ver seu papel.");
+        refresh();
+        status.set(node.subflowId == null ? "Componente e conexões removidos. Salve o diagrama para gravar."
+                : "Componente e conexões removidos; o subfluxo foi preservado. Salve para gravar.");
     }
 
     void addCompositionItem() {
