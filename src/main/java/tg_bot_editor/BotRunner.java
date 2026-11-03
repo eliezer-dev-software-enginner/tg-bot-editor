@@ -394,11 +394,13 @@ public final class BotRunner {
             throw new IllegalStateException("Telegram recusou sendMessage");
     }
 
-    private static String replyMarkup(BotReply reply) throws Exception {
+    static String replyMarkup(BotReply reply) throws Exception {
         if (reply.buttons() == null || reply.buttons().isEmpty()) return "";
         var keyboard = JSON.createArrayNode();
+        var rows = new java.util.LinkedHashMap<Integer, com.fasterxml.jackson.databind.node.ArrayNode>();
         for (var button : reply.buttons()) {
-            var row = keyboard.addArray();
+            var row = button.row() == 0 ? keyboard.addArray()
+                    : rows.computeIfAbsent(button.row(), ignored -> keyboard.addArray());
             var item = row.addObject().put("text", button.text());
             if (button.url() != null) item.put("url", button.url());
             else if (button.callbackData() != null) item.put("callback_data", button.callbackData());

@@ -11,21 +11,29 @@ import java.util.List;
 /** First diagram editor slice: /start event connected to a visual text response. */
 final class DiagramViewModel {
     record Summary(String id, String name, String trigger, int steps, boolean enabled) { }
+    record PreviewRow(List<String> buttons) { }
     static final class CompositionItem {
         final State<String> type = State.of("TEXT");
         final State<String> value = State.of("");
         final State<String> target = State.of("");
         final State<String> buttonKind = State.of("URL");
+        final State<String> row = State.of("");
         final State<List<String>> buttonFields = State.of(List.of());
-        CompositionItem(Map<?, ?> item) {
+        CompositionItem(Map<?, ?> item, Runnable updatePreview) {
             type.set(String.valueOf(item.containsKey("type") ? item.get("type") : "TEXT"));
             value.set(String.valueOf(item.containsKey("value") ? item.get("value") : ""));
             target.set(String.valueOf(item.containsKey("target") ? item.get("target") : ""));
             buttonKind.set(String.valueOf(item.containsKey("buttonKind") ? item.get("buttonKind") : "URL"));
+            row.set(String.valueOf(item.containsKey("row") ? item.get("row") : ""));
             type.subscribe(value -> buttonFields.set("BUTTON".equals(value) ? List.of("BUTTON") : List.of()));
+            type.subscribe(ignored -> updatePreview.run());
+            value.subscribe(ignored -> updatePreview.run());
+            target.subscribe(ignored -> updatePreview.run());
+            buttonKind.subscribe(ignored -> updatePreview.run());
+            row.subscribe(ignored -> updatePreview.run());
         }
         Map<String, Object> values() { return Map.of("type", type.get(), "value", value.get(),
-                "target", target.get(), "buttonKind", buttonKind.get()); }
+                "target", target.get(), "buttonKind", buttonKind.get(), "row", row.get()); }
     }
     final State<Boolean> open = State.of(false);
     final State<Boolean> expandedActionOpen = State.of(false);
@@ -43,6 +51,9 @@ final class DiagramViewModel {
     final State<String> timerInterval = State.of("10");
     final State<String> response = State.of("");
     final State<List<CompositionItem>> compositionItems = State.of(List.of());
+    final State<String> compositionPreviewText = State.of("");
+    final State<List<String>> compositionImageVisible = State.of(List.of());
+    final State<List<PreviewRow>> compositionPreviewRows = State.of(List.of());
     final State<List<String>> compositionTypes = State.of(List.of("TEXT", "IMAGE", "LINK", "BUTTON"));
     final State<List<String>> compositionButtonKinds = State.of(List.of("URL", "CALLBACK"));
     final State<String> restUrl = State.of("");
@@ -87,6 +98,7 @@ final class DiagramViewModel {
     private FlowProject flows = new FlowProject();
 
     DiagramViewModel() {
+        compositionItems.subscribe(ignored -> updateCompositionPreview());
         subflowOpen.subscribe(visible -> {
             if (!visible && !subflowWindows.get().isEmpty()) {
                 var child = subflowWindows.get().getFirst();
@@ -128,7 +140,7 @@ final class DiagramViewModel {
         if ("COMPOSITION".equals(node.type)) {
             Object items = node.settings.get("items");
             compositionItems.set(items instanceof List<?> list ? list.stream()
-                    .filter(Map.class::isInstance).map(item -> new CompositionItem((Map<?, ?>) item)).toList() : List.of());
+                    .filter(Map.class::isInstance).map(item -> new CompositionItem((Map<?, ?>) item, this::updateCompositionPreview)).toList() : List.of());
         }
         if ("REST_HTTP".equals(node.type)) {
             restUrl.set(String.valueOf(node.settings.getOrDefault("url", "")));
@@ -284,12 +296,32 @@ final class DiagramViewModel {
 
     void addCompositionItem() {
         var items = new java.util.ArrayList<>(compositionItems.get());
-        items.add(new CompositionItem(Map.of())); compositionItems.set(List.copyOf(items));
+        items.add(new CompositionItem(Map.of(), this::updateCompositionPreview)); compositionItems.set(List.copyOf(items));
     }
 
     void removeCompositionItem(CompositionItem item) {
         var items = new java.util.ArrayList<>(compositionItems.get());
         items.remove(item); compositionItems.set(List.copyOf(items));
+    }
+
+    private void updateCompositionPreview() {
+        var text = new java.util.ArrayList<String>();
+        var rows = new java.util.LinkedHashMap<Object, java.util.List<String>>();
+        String image = null;
+        for (var item : compositionItems.get()) {
+            String value = item.value.get();
+            if (("TEXT".equals(item.type.get()) || "LINK".equals(item.type.get())) && !value.isBlank())
+                text.add(value.contains("{{") ? "Oi, tudo bem?!" : value);
+            if ("IMAGE".equals(item.type.get())) image = value;
+            if ("BUTTON".equals(item.type.get())) {
+                String raw = item.row.get().trim();
+                Object key = raw.matches("[1-9][0-9]*") ? raw : item;
+                rows.computeIfAbsent(key, ignored -> new java.util.ArrayList<>()).add(value.isBlank() ? "Botão" : value);
+            }
+        }
+        compositionPreviewText.set(text.isEmpty() ? "Oi, tudo bem?!" : String.join("\n", text));
+        compositionImageVisible.set(image == null ? List.of() : List.of("IMAGE"));
+        compositionPreviewRows.set(rows.values().stream().map(values -> new PreviewRow(List.copyOf(values))).toList());
     }
 
     private void updateActionHints(DiagramProject.Node node) {

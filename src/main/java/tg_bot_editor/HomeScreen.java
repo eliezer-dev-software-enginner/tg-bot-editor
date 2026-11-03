@@ -207,7 +207,15 @@ public final class HomeScreen implements ScreenComponent {
                     new Text("Elementos da mensagem"),
                     new Text("Use {{input.campo}} ou {{output.campo}}."),
                     new StateList<>(diagram.compositionItems, item -> compositionItem(diagram, item), 8),
-                    new Button("+ Adicionar elemento").tooltip("Adiciona texto, imagem, link ou botão à mensagem.").onClick(diagram::addCompositionItem));
+                    new Button("+ Adicionar elemento").tooltip("Adiciona texto, imagem, link ou botão à mensagem.").onClick(diagram::addCompositionItem),
+                    new Text("Prévia da mensagem", new TextProps().fontSize(17)),
+                    new Text("Prévia ilustrativa com imagem e dados de exemplo."),
+                    new Card(new Container(new ContainerProps().paddingAll(8).spacingOf(7)).children(
+                            new StateList<>(diagram.compositionImageVisible, ignored -> new Image(
+                                    HomeScreen.class.getResource("/icon.png").toExternalForm(), new ImageProps().width(260).height(135)), 0),
+                            new Text(diagram.compositionPreviewText),
+                            new StateList<>(diagram.compositionPreviewRows, row -> new Row(new RowProps().spacingOf(4))
+                                    .children(row.buttons().stream().map(Button::new).toArray(Component[]::new)), 5))));
             case "REST_HTTP" -> new Container(new ContainerProps().spacingOf(8)).children(
                     new Text("URL"), Components.input(diagram.restUrl, "https://exemplo.com/api"),
                     new Text("Variável de ambiente da URL (opcional)"),
@@ -274,7 +282,10 @@ public final class HomeScreen implements ScreenComponent {
                 new StateList<>(item.buttonFields, ignored -> new Container(new ContainerProps().spacingOf(5)).children(
                         new Text("Botão: tipo e destino"),
                         new Select<String>().items(diagram.compositionButtonKinds).value(item.buttonKind),
-                        Components.input(item.target, "URL ou callback")), 0),
+                        Components.input(item.target, "URL ou callback"),
+                        new Text("Linha do botão (opcional)"),
+                        Components.input(item.row, "Ex.: 1"),
+                        new Text("Mesma linha agrupa os botões.")), 0),
                 new Button("− Remover elemento").tooltip("Remove este elemento da composição.").onClick(() -> diagram.removeCompositionItem(item)));
     }
 

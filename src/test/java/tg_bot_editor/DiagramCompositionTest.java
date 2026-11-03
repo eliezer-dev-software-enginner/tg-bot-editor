@@ -6,6 +6,22 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 class DiagramCompositionTest {
+    @Test void groupsButtonsIntoTelegramRowsAndKeepsLegacyButtonsSeparate() throws Exception {
+        var parts = List.of(
+                Map.of("type", "TEXT", "value", "Menu"),
+                Map.of("type", "BUTTON", "value", "Um", "target", "a", "buttonKind", "CALLBACK", "row", "1"),
+                Map.of("type", "BUTTON", "value", "Dois", "target", "https://example.org", "buttonKind", "URL", "row", "1"),
+                Map.of("type", "BUTTON", "value", "Três", "target", "b", "buttonKind", "CALLBACK"));
+        var reply = DiagramComposition.compose(Map.of("items", parts), null, null);
+        var rows = new com.fasterxml.jackson.databind.ObjectMapper().readTree(BotRunner.replyMarkup(reply)).path("inline_keyboard");
+        assertEquals(2, rows.size()); assertEquals(2, rows.get(0).size()); assertEquals(1, rows.get(1).size());
+        assertEquals("a", rows.get(0).get(0).path("callback_data").asText());
+        assertEquals("https://example.org", rows.get(0).get(1).path("url").asText());
+        var legacy = BotReply.text("legacy").withButtons(List.of(BotButton.callback("A", "a"), BotButton.callback("B", "b")));
+        assertEquals(2, new com.fasterxml.jackson.databind.ObjectMapper().readTree(BotRunner.replyMarkup(legacy)).path("inline_keyboard").size());
+        assertThrows(IllegalArgumentException.class, () -> DiagramComposition.compose(Map.of("items", List.of(
+                Map.of("type", "BUTTON", "value", "X", "target", "x", "buttonKind", "CALLBACK", "row", "0"))), null, null));
+    }
     @Test void buildsPhotoTextLinksAndCallbackButtonsFromData() {
         var settings = Map.<String, Object>of("items", List.of(
                 Map.of("type", "IMAGE", "value", "{{input.image}}"),

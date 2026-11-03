@@ -36,9 +36,16 @@ public final class DiagramComposition {
                     String target = render(string(item, "target"), input, output);
                     if (content.isBlank() || target.isBlank()) throw new IllegalArgumentException("Informe o texto e destino do botão.");
                     String kind = string(item, "buttonKind");
-                    if ("CALLBACK".equals(kind)) buttons.add(BotButton.callback(content, target));
-                    else if ("URL".equals(kind)) buttons.add(BotButton.link(content, target));
+                    BotButton button;
+                    if ("CALLBACK".equals(kind)) button = BotButton.callback(content, target);
+                    else if ("URL".equals(kind)) button = BotButton.link(content, target);
                     else throw new IllegalArgumentException("Tipo de botão inválido: " + kind);
+                    String row = string(item, "row").trim();
+                    if (!row.isEmpty()) {
+                        try { button = button.inRow(Integer.parseInt(row)); }
+                        catch (NumberFormatException error) { throw new IllegalArgumentException("A linha do botão deve ser um número inteiro positivo.", error); }
+                    }
+                    buttons.add(button);
                 }
                 default -> throw new IllegalArgumentException("Tipo de composição desconhecido: " + type);
             }

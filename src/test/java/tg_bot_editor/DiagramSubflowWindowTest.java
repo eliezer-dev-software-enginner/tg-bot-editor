@@ -192,6 +192,13 @@ class DiagramSubflowWindowTest {
             var editor = new DiagramViewModel(); editor.load(directory); editor.openDiagram("main");
             editor.addComponent("COMPOSITION", 200, 100); editor.addCompositionItem(); editor.addCompositionItem();
             var first = editor.compositionItems.get().getFirst(); first.type.set("TEXT"); first.value.set("Olá {{input.name}}");
+            assertEquals("Oi, tudo bem?!", editor.compositionPreviewText.get());
+            editor.addCompositionItem(); var button1 = editor.compositionItems.get().getLast();
+            button1.type.set("BUTTON"); button1.value.set("Abrir"); button1.row.set("1");
+            editor.addCompositionItem(); var button2 = editor.compositionItems.get().getLast();
+            button2.type.set("BUTTON"); button2.value.set("Editar"); button2.row.set("1");
+            assertEquals(List.of("Abrir", "Editar"), editor.compositionPreviewRows.get().getFirst().buttons());
+            editor.removeCompositionItem(button1); editor.removeCompositionItem(button2);
             var remove = editor.compositionItems.get().getLast(); editor.removeCompositionItem(remove); editor.save();
             assertTrue(editor.status.get().startsWith("Diagrama salvo"), editor.status.get());
             var restored = DiagramStore.read(directory).diagrams.getFirst();
