@@ -65,9 +65,19 @@ public final class DiagramExecutor {
                 return response.replace("{{output}}", output == null ? "" : String.valueOf(output));
             }
             if ("JSON_DB".equals(current.type)) {
-                output = JsonDb.execute(current.settings, input, output);
                 String jsonId = current.id;
-                if (diagram.edges.stream().noneMatch(edge -> jsonId.equals(edge.from))) return output;
+                try { output = JsonDb.execute(current.settings, input, output); }
+                catch (Exception error) {
+                    var failure = diagram.edges.stream().filter(edge -> jsonId.equals(edge.from) && "ON_ERROR".equals(edge.kind)).findFirst();
+                    if (failure.isEmpty()) throw error;
+                    var details = new java.util.LinkedHashMap<String, Object>();
+                    details.put("previous", output); details.put("error", error); output = details;
+                    String target = failure.get().to;
+                    current = diagram.nodes.stream().filter(node -> target.equals(node.id)).findFirst()
+                            .orElseThrow(() -> new IllegalArgumentException("Componente de erro ausente"));
+                    continue;
+                }
+                if (diagram.edges.stream().noneMatch(edge -> jsonId.equals(edge.from) && !"ON_ERROR".equals(edge.kind))) return output;
             }
             if ("COMPOSITION".equals(current.type)) {
                 output = DiagramComposition.compose(current.settings, input, output);
@@ -75,7 +85,7 @@ public final class DiagramExecutor {
                 if (diagram.edges.stream().noneMatch(edge -> compositionId.equals(edge.from))) return output;
             }
             if ("REST_HTTP".equals(current.type)) {
-                output = RestHttp.execute(current.settings);
+                output = RestHttp.execute(current.settings, input, output);
                 String restId = current.id;
                 if (diagram.edges.stream().noneMatch(edge -> restId.equals(edge.from))) return output;
             }
@@ -122,7 +132,7 @@ public final class DiagramExecutor {
             }
             String from = current.id;
             List<DiagramProject.Edge> outgoing = diagram.edges.stream()
-                    .filter(edge -> from.equals(edge.from)).toList();
+                    .filter(edge -> from.equals(edge.from) && !"ON_ERROR".equals(edge.kind)).toList();
             DiagramProject.Edge selected = selectEdge(outgoing, input, output, diagram.name);
             String target = selected.to;
             current = diagram.nodes.stream().filter(node -> target.equals(node.id)).findFirst()

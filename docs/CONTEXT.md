@@ -38,6 +38,24 @@ O formato `OBJECT_ARRAY` permite operar uma lista identificada por nome dentro d
 
 O formato `OBJECT` lê a seção inteira com `LIST`, útil quando várias propriedades são necessárias ao mesmo fluxo; ele não oferece operações de escrita.
 
+O botão **Construir bot** salva o projeto e o diagrama aberto, exporta os comandos, executa `gradlew build` em segundo plano e verifica o JAR com `--check`. O resultado aparece no estado da interface e os detalhes ficam em `build/tg-bot-editor-build.log` no projeto.
+
+O arquivo de comandos e o menu Telegram reúnem os gatilhos de comando dos diagramas ativos e os fluxos legados, com prioridade para o nome do diagrama quando há duplicidade. O JAR continua dependendo do projeto externo para carregar `bot.json`, `diagrams.json` e `scripts/`.
+
+A construção também produz `build/distributions/bot-portatil.zip`, com JAR, arquivos de fluxo e scripts Java, sem `.env`, dados ou imagens. O editor seleciona `gradlew` no Unix e `gradlew.bat` no Windows; a seleção foi testada automaticamente, mas a execução no Windows ainda precisa de validação naquele sistema.
+
 O painel JsonDB apresenta o arquivo e o caminho dos dados separadamente. Novos componentes aceitam caminhos como `user.name` e `products.fixes_id`; a leitura atravessa listas e reúne os resultados. Diagramas existentes conservam sua configuração anterior ao serem abertos, inclusive as importações já definidas, sem exibir campos legados no painel.
 
+No projeto canônico do bot, a exclusão de anúncios agora usa diagramas para pedir confirmação e para excluir pelo JsonDB; outros callbacks continuam pendentes.
+
+O projeto do bot também usa diagramas para iniciar a edição de anúncios e compor as mensagens do teste G1 e das notificações YouTube; a busca dos vídeos e etapas posteriores da edição ainda são legadas.
+
+O comando `/importarads` usa composição e JsonDB para escolher o modo; os callbacks de escolha também são visuais. O processamento do arquivo continua legado no projeto do bot.
+
 Na operação LIST, o painel mostra apenas arquivo e caminho dos dados. Para inserção, atualização ou exclusão, ele também pede os dados recebidos e os campos que identificam cada registro, com exemplos. O valor encaminhado após alteração mantém a configuração existente e não precisa ser preenchido no painel.
+
+As operações `SET` e `REMOVE` definem e removem um valor por caminho dentro de objetos; apenas `SET` solicita o valor recebido, e nenhuma delas requer campos de identificação.
+
+A composição aceita `BUTTON_LIST` para repetir botões a partir de uma lista, com modelos visuais para texto e destino. Uma conexão `ON_ERROR` de JsonDB permite tratar falhas da operação em outro componente; sem essa conexão o erro é propagado.
+
+O Rest HTTP também aceita cabeçalhos configuráveis, token Bearer obtido de variável do ambiente e referências a input/output na URL, corpo e valores dos cabeçalhos. Valores dinâmicos de URL devem estar codificados previamente.

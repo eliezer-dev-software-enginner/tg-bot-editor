@@ -125,7 +125,7 @@ public final class BotRunner {
 
     private void registerPrivateCommands() {
         var commands = JSON.createArrayNode();
-        var available = BotCommands.list(project);
+        var available = BotCommands.list(project, diagrams);
         if (available.size() > 100) throw new IllegalStateException("O Telegram aceita no máximo 100 comandos.");
         for (var command : available)
             commands.addObject().put("command", command.name().substring(1))

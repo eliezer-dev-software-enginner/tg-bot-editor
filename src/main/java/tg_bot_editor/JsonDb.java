@@ -109,6 +109,23 @@ public final class JsonDb {
                 var result = new LinkedHashMap<String, Object>();
                 result.put("input", output); result.put("data", data); return result;
             }
+            if ("SET".equals(operation) || "REMOVE".equals(operation)) {
+                if (fields.isEmpty()) throw new IllegalArgumentException("Informe o caminho do valor a alterar.");
+                Map<String, Object> parent = document;
+                for (String field : fields.subList(0, fields.size() - 1)) {
+                    Object next = parent.get(field);
+                    if (next == null && "SET".equals(operation)) { next = new LinkedHashMap<String, Object>(); parent.put(field, next); }
+                    if (next == null) return DiagramExecutor.value(String.valueOf(settings.getOrDefault("result", "{{output}}")), input, output);
+                    if (!(next instanceof Map<?, ?>)) throw new IllegalArgumentException("O caminho de escrita deve atravessar apenas objetos JSON.");
+                    @SuppressWarnings("unchecked") Map<String, Object> child = (Map<String, Object>) next;
+                    parent = child;
+                }
+                String last = fields.getLast();
+                if ("SET".equals(operation)) parent.put(last, DiagramExecutor.value(String.valueOf(settings.getOrDefault("record", "{{output}}")), input, output));
+                else parent.remove(last);
+                BotDatabase.writeDocument(database, document);
+                return DiagramExecutor.value(String.valueOf(settings.getOrDefault("result", "{{output}}")), input, output);
+            }
             if (!List.of("INSERT", "UPSERT", "DELETE").contains(operation))
                 throw new IllegalArgumentException("Operação JsonDB não suportada: " + operation);
             if (fields.isEmpty()) throw new IllegalArgumentException("Informe o caminho da lista a alterar.");

@@ -33,7 +33,7 @@ public final class DiagramProject {
         public String id;
         public String from;
         public String to;
-        /** ALWAYS, IF, ELSE. Conditions belong to the connection, not the node. */
+        /** ALWAYS, IF, ELSE, ON_ERROR. Conditions belong to the connection, not the node. */
         public String kind = "ALWAYS";
         public String name = "";
         public List<ConditionGroup> groups = new ArrayList<>();

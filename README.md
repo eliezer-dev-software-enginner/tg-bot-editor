@@ -26,7 +26,9 @@ Por padrão, o Gradle inclui os checkouts de `megalodonte-components` e `megalod
 3. Clique em **Aplicar** para atualizar o fluxo e em **Salvar projeto** para gravá-lo. **Executar teste** roda a ação selecionada localmente com a entrada de exemplo, sem enviar mensagem ao Telegram.
 4. Preencha `TG_BOT_TOKEN` em **Variáveis de ambiente do projeto** ou no `.env` do projeto. Clique em **Executar** para iniciar o bot; o mesmo botão passa a **Parar** enquanto ele estiver ativo. A saída fica em `data/bot-runner.log` na pasta do projeto.
 
-**Abrir projeto** seleciona um `bot.json` existente. **Abrir pasta do projeto** mostra os arquivos para edição externa. **Exportar comandos** cria `comandos.txt` a partir dos fluxos `COMMAND`; ao iniciar, o runner também publica esses comandos no menu `/` do Telegram. Reinicie o bot depois de alterar fluxos ou scripts. Use apenas uma instância por token, pois duas instâncias disputam o long polling.
+**Abrir projeto** seleciona um `bot.json` existente. **Abrir pasta do projeto** mostra os arquivos para edição externa. **Construir bot** salva o projeto e o diagrama aberto, gera `comandos.txt`, executa o build Gradle e verifica os fluxos Java sem iniciar o bot. Também cria `build/distributions/bot-portatil.zip` com o JAR, `bot.json`, `diagrams.json` quando existir e os arquivos Java de `scripts/`. O pacote não inclui `.env`, dados, imagens ou outros recursos externos: transfira-os separadamente quando forem necessários. O resultado aparece no editor e o log fica em `build/tg-bot-editor-build.log`. O menu Telegram reúne comandos dos diagramas ativos e dos fluxos existentes. Reinicie o bot depois de alterar fluxos ou scripts.
+
+Para usar o pacote em outra máquina com JDK 21 ou superior, extraia-o e execute `java -jar bot.jar --check bot.json`. Crie um `.env` na pasta extraída com `TG_BOT_TOKEN` e `TG_BOT_ADMIN_ID` e inicie com `java -jar bot.jar bot.json`. Use apenas uma instância por token, pois duas instâncias disputam o long polling.
 
 Um projeto criado pelo editor tem esta estrutura:
 
@@ -57,7 +59,9 @@ var resposta = (java.util.Map<?, ?>) input;
 return resposta.get("body");
 ```
 
-Respostas HTTP de erro também são retornadas com seu status; falhas de conexão e URLs inválidas interrompem o fluxo. A conexão tem limite de 10 segundos e a requisição, 20 segundos. Cabeçalhos personalizados, autenticação configurável, parâmetros dinâmicos e seleção de codificação ainda não estão disponíveis. Projetos antigos precisam atualizar os arquivos do runtime para executar esse componente.
+Também é possível informar cabeçalhos, um por linha, por exemplo `Content-Type: application/json` e `X-Usuario: {{output.usuario}}`. URL, corpo e valores dos cabeçalhos aceitam `{{input.campo}}` e `{{output.campo}}`; use valores já codificados para trechos de URL. Para autenticação Bearer, configure no painel somente o nome de uma variável, como `API_TOKEN`, e defina seu valor no `.env` do projeto. O token não precisa ser salvo no diagrama. Uma referência ausente ou uma variável de token vazia interrompe o fluxo.
+
+Respostas HTTP de erro também são retornadas com seu status; falhas de conexão e URLs inválidas interrompem o fluxo. A conexão tem limite de 10 segundos e a requisição, 20 segundos. A codificação da resposta ainda não é configurável. Projetos antigos precisam atualizar os arquivos do runtime para executar esse componente.
 
 Condições aceitam `EQ`, `NE`, `LT`, `GT`, `LE` e `GE`. Use `{{input.campo}}` para dados recebidos pelo subfluxo e `{{output.campo}}` para o resultado anterior; `''` representa texto vazio. Por exemplo, `{{input.image}} NE ''` segue o ramo IF quando há imagem; caso contrário, segue ELSE. Se mais de um IF corresponder, o primeiro na ordem do diagrama é escolhido. O editor ainda não altera grupos avançados existentes.
 
@@ -66,6 +70,8 @@ O componente **Composição** monta uma mensagem sem código de apresentação. 
 Para incluir uma lista de botões produzida por outra etapa, adicione um elemento `BUTTONS` e informe uma referência como `{{input.buttons}}`; cada item deve ser um `BotButton`. A opção **Interpretar texto como HTML do Telegram** ativa o formato HTML na mensagem. No subfluxo do Splitter, actions após outras etapas podem consultar `originalSplitterItem` para acessar o item original; `input` continua sendo o resultado da etapa anterior.
 
 O **JsonDB** lê e altera dados em um arquivo JSON. Em **Arquivo JSON**, informe um caminho `.json`, absoluto ou relativo ao projeto, ou uma variável como `${TG_BOT_DATABASE_FILE}`. Em **Caminho dos dados**, indique os campos separados por pontos: `user.name` obtém o nome dentro de `user` e `products.fixes_id` reúne os identificadores dos produtos de uma lista. Deixe o caminho vazio para ler todo o documento. Se um campo simples não existir, a leitura retorna `null`; ao atravessar uma lista, campos ausentes são ignorados e listas encontradas são reunidas.
+
+As operações `SET` e `REMOVE` definem ou removem um valor em um caminho dentro de objetos, como `user.name`. Em `SET`, informe o valor recebido da etapa anterior; `REMOVE` não precisa de valor.
 
 Para inserir, atualizar ou excluir, indique o caminho da lista, o registro recebido (por exemplo `{{output.record}}`) e seus campos de identificação, como `id`. O caminho pode conter uma referência dinâmica em um segmento, por exemplo `destinos.{{output.usuario}}`. As gravações atravessam objetos até a lista; para modificar elementos dentro de uma lista, selecione primeiro o registro apropriado. Após a alteração, a etapa encaminha os dados recebidos; em uma inserção, também informa se o registro foi incluído.
 

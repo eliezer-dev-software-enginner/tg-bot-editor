@@ -7,7 +7,7 @@ import java.util.regex.Pattern;
 
 /** Monta uma mensagem a partir de elementos configurados no diagrama. */
 public final class DiagramComposition {
-    private static final Pattern REFERENCE = Pattern.compile("\\{\\{\\s*(input|output)(?:\\.([A-Za-z0-9_.-]+))?\\s*}}");
+    private static final Pattern REFERENCE = Pattern.compile("\\{\\{\\s*(input|output|item)(?:\\.([A-Za-z0-9_.-]+))?\\s*}}");
     private DiagramComposition() { }
 
     public static BotReply compose(Map<String, Object> settings, Object input, Object output) {
@@ -60,6 +60,19 @@ public final class DiagramComposition {
                         buttons.add(button);
                     }
                 }
+                case "BUTTON_LIST" -> {
+                    Object resolved = DiagramExecutor.value(string(item, "value"), input, output);
+                    if (!(resolved instanceof Iterable<?> values)) throw new IllegalArgumentException("A lista de botões precisa receber uma lista.");
+                    String kind = string(item, "buttonKind");
+                    for (Object valueButton : values) {
+                        String label = render(string(item, "buttonText"), input, output, valueButton);
+                        String target = render(string(item, "target"), input, output, valueButton);
+                        if (label.isBlank() || target.isBlank()) throw new IllegalArgumentException("Informe o texto e destino dos botões.");
+                        if ("CALLBACK".equals(kind)) buttons.add(BotButton.callback(label, target));
+                        else if ("URL".equals(kind)) buttons.add(BotButton.link(label, target));
+                        else throw new IllegalArgumentException("Tipo de botão inválido: " + kind);
+                    }
+                }
                 default -> throw new IllegalArgumentException("Tipo de composição desconhecido: " + type);
             }
         }
@@ -87,9 +100,13 @@ public final class DiagramComposition {
     }
 
     private static String render(String template, Object input, Object output) {
+        return render(template, input, output, null);
+    }
+
+    private static String render(String template, Object input, Object output, Object item) {
         var matcher = REFERENCE.matcher(template); var result = new StringBuffer();
         while (matcher.find()) {
-            Object value = "input".equals(matcher.group(1)) ? input : output;
+            Object value = switch (matcher.group(1)) { case "input" -> input; case "item" -> item; default -> output; };
             if (matcher.group(2) != null) for (String part : matcher.group(2).split("\\.")) {
                 if (!(value instanceof Map<?, ?> map)) throw new IllegalArgumentException("Caminho de composição inválido: " + matcher.group());
                 value = map.get(part);

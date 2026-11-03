@@ -38,7 +38,7 @@ public final class HomeScreen implements ScreenComponent {
                         new Button("Abrir pasta do projeto").onClick(model::openFolder),
                         new Button("Salvar projeto").onClick(model::save),
                         new Button(model.botActionLabel, new ButtonProps().primary()).onClick(model::toggleBot),
-                        new Button("Exportar comandos").onClick(model::exportCommands)),
+                        new Button("Construir bot").tooltip("Salva, verifica e cria um pacote portátil do bot.").onClick(model::buildBot)),
                 new Row(new RowProps().spacingOf(7)).children(
                         new Button("+ Script").onClick(model::openNewScript)));
     }
@@ -190,6 +190,7 @@ public final class HomeScreen implements ScreenComponent {
                 new Text("Nome da condição"), Components.input(diagram.edgeName, "Nome opcional"),
                 new Text("Tipo da conexão"), new Select<String>().items(diagram.edgeKinds).value(diagram.edgeKind),
                 new Text("ALWAYS: sempre · IF: condição · ELSE: alternativa"),
+                new Text("ON_ERROR: se o JsonDB falhar."),
                 new StateList<>(diagram.edgeConditionForm, ignored -> new Container(new ContainerProps().spacingOf(8)).children(
                         new Text("Dado de entrada"), Components.input(diagram.edgeLeft, "{{output.image}}"),
                         new Text("Operação"), new Select<String>().items(diagram.edgeOperators).value(diagram.edgeOperator),
@@ -226,6 +227,11 @@ public final class HomeScreen implements ScreenComponent {
                     new Text("Método"), new Select<String>().items(diagram.restMethods).value(diagram.restMethod),
                     new Text("Corpo opcional (UTF-8)"), new TextAreaInput(diagram.restBody,
                             new InputProps().height(100).width(320)),
+                    new Text("Cabeçalhos (um por linha: Nome: valor)"),
+                    new TextAreaInput(diagram.restHeaders, new InputProps().height(100).width(320)),
+                    new Text("Variável de ambiente do token Bearer (opcional)"),
+                    Components.input(diagram.restTokenEnv, "Ex.: API_TOKEN"),
+                    new Text("URL, corpo e cabeçalhos aceitam {{input.campo}} e {{output.campo}}."),
                     new Text("Resposta: status, body e headers na próxima action."));
             case "JSON_DB" -> new Container(new ContainerProps().spacingOf(8)).children(
                     new Text("Operação"), new Select<String>().items(diagram.jsonOperations).value(diagram.jsonOperation),
@@ -238,7 +244,8 @@ public final class HomeScreen implements ScreenComponent {
                             new Text("Dados recebidos da etapa anterior"),
                             Components.input(diagram.jsonRecord, "{{output}}"),
                             new Text("{{output}} usa o resultado anterior."),
-                            new Text("{{output.produto}} usa só o campo produto."),
+                            new Text("{{output.produto}} usa só o campo produto.")), 5),
+                    new StateList<>(diagram.jsonIdentityFields, ignored -> new Container(new ContainerProps().spacingOf(6)).children(
                             new Text("Campo que identifica cada item"),
                             Components.input(diagram.jsonIdentity, "Exemplo: id"),
                             new Text("Exemplo: id identifica o produto"),
@@ -282,7 +289,7 @@ public final class HomeScreen implements ScreenComponent {
 
     private Component compositionItem(DiagramViewModel diagram, DiagramViewModel.CompositionItem item) {
         return new Container(new ContainerProps().spacingOf(5)).children(
-                new Text("Tipo: TEXT, IMAGE, LINK, BUTTON ou BUTTONS"),
+                new Text("Escolha o tipo de elemento"),
                 new Select<String>().items(diagram.compositionTypes).value(item.type),
                 new Text("Valor ou texto"), Components.input(item.value, "Texto ou {{input.campo}}"),
                 new StateList<>(item.buttonFields, ignored -> new Container(new ContainerProps().spacingOf(5)).children(
@@ -292,6 +299,12 @@ public final class HomeScreen implements ScreenComponent {
                         new Text("Linha do botão (opcional)"),
                         Components.input(item.row, "Ex.: 1"),
                         new Text("Mesma linha agrupa os botões.")), 0),
+                new StateList<>(item.buttonListFields, ignored -> new Container(new ContainerProps().spacingOf(5)).children(
+                        new Text("Lista: use {{output.destinos}} no valor."),
+                        new Text("Texto de cada botão"), Components.input(item.buttonText, "{{item.nome}}"),
+                        new Text("Tipo e destino de cada botão"),
+                        new Select<String>().items(diagram.compositionButtonKinds).value(item.buttonKind),
+                        Components.input(item.target, "ads:send:{{item.id}}")), 0),
                 new Button("− Remover elemento").tooltip("Remove este elemento da composição.").onClick(() -> diagram.removeCompositionItem(item)));
     }
 

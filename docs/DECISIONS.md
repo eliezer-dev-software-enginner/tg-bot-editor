@@ -54,7 +54,7 @@ Mensagens podem ser montadas no componente de composição com elementos TEXT, I
 
 ## Requisições HTTP visuais
 
-A direção é oferecer um componente Rest HTTP reutilizável por todos os fluxos que precisarem de requisições, com URL e método configuráveis e resposta disponível ao próximo componente. O G1 é apenas um exemplo inicial. Em **G1: testar envio** e no G1 agendado, o GET antecede o Java de processamento e o Splitter. A implementação retorna um mapa com status, body e headers, inclusive em respostas HTTP de erro; falhas de rede interrompem o fluxo. Cabeçalhos personalizados e parâmetros dinâmicos permanecem pendentes.
+A direção é oferecer um componente Rest HTTP reutilizável por todos os fluxos que precisarem de requisições, com URL e método configuráveis e resposta disponível ao próximo componente. O G1 é apenas um exemplo inicial. Em **G1: testar envio** e no G1 agendado, o GET antecede o Java de processamento e o Splitter. A implementação retorna um mapa com status, body e headers, inclusive em respostas HTTP de erro; falhas de rede interrompem o fluxo. Cabeçalhos personalizados e referências a input/output podem ser configurados na interface; autenticação Bearer usa uma variável do ambiente, sem gravar o token no diagrama. A interpolação na URL não codifica automaticamente os valores.
 
 O componente de composição visual também será usado nos anúncios. Imagens, textos, links e botões, inclusive os que acionam callbacks, deverão ser configurados no diagrama, substituindo progressivamente sua construção manual em Java.
 
@@ -65,6 +65,20 @@ O formato `OBJECT_ARRAY` preserva as demais propriedades do objeto ao alterar su
 
 `OBJECT` fornece a leitura integral da seção sem embutir regras específicas de anúncios no JsonDB.
 
+A migração de callbacks específicos de anúncios permanece nos diagramas do projeto do bot; o editor fornece apenas a composição, o roteamento e a persistência genéricos.
+
+Composições visuais do YouTube recebem dados do projeto e preservam a confirmação de envio sem adicionar regras específicas do bot ao editor.
+
+O antigo botão de exportação de comandos passou a construir e validar o JAR do bot, mantendo também a geração de `comandos.txt`. A execução do Gradle ocorre fora da thread da interface e não inicia o bot.
+
+A construção não duplica diagramas em `bot.json`: a lista exportada e o menu são derivados das duas fontes reais, respeitando a prioridade dos diagramas ativos e excluindo rascunhos.
+
+A distribuição portátil contém apenas os arquivos necessários para o projeto e scripts Java; estado, imagens e credenciais são transferidos separadamente. O pacote é produzido após o build e a verificação do JAR, sem iniciar o bot.
+
 Novos componentes usam caminhos de dados em vez de exigir que o usuário escolha formatos internos. A escrita por caminho altera listas alcançadas através de objetos; a leitura pode projetar campos de elementos de listas. Configurações anteriores permanecem executáveis sem migração automática de dados.
 
 O inspetor apresenta apenas os campos necessários à operação selecionada: a leitura não exige dados de entrada nem identificação, e os campos de escrita explicam a origem dos dados e a finalidade da identificação. Configurações anteriores de retorno continuam preservadas.
+
+`SET` e `REMOVE` alteram uma propriedade por caminho sem substituir o documento inteiro na interface; a escrita física é atômica e preserva as demais propriedades do JSON.
+
+Listas repetidas de botões são declaradas na composição para que menus dinâmicos não precisem construir botões em código. A saída `ON_ERROR` é restrita a JsonDB e permite compensar recursos externos após falha de gravação; ela não representa uma transação entre componentes.

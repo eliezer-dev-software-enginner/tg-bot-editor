@@ -6,6 +6,24 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 class DiagramCompositionTest {
+    @Test void repeatsDeclarativeButtonsFromData() {
+        var settings = Map.<String, Object>of("items", List.of(Map.of("type", "TEXT", "value", "Destinos"),
+                Map.of("type", "BUTTON_LIST", "value", "{{output.targets}}", "buttonKind", "CALLBACK",
+                        "buttonText", "{{item.name}}", "target", "ads:send:{{output.id}}:{{item.key}}")));
+        var reply = DiagramComposition.compose(settings, null, Map.of("id", "ad", "targets", List.of(
+                Map.of("name", "Grupo", "key", "-2s:_"), Map.of("name", "Tópico", "key", "-5k:9"))));
+        assertEquals("Grupo", reply.buttons().getFirst().text());
+        assertEquals("ads:send:ad:-2s:_", reply.buttons().getFirst().callbackData());
+        assertEquals("ads:send:ad:-5k:9", reply.buttons().getLast().callbackData());
+        assertThrows(IllegalArgumentException.class, () -> DiagramComposition.compose(settings, null, Map.of("id", "x", "targets", "inválido")));
+    }
+    @Test void restoresEditableButtonListConfiguration() {
+        var item = new DiagramViewModel.CompositionItem(Map.of("type", "BUTTON_LIST", "value", "{{output.items}}",
+                "buttonText", "{{item.label}}", "target", "ads:{{item.id}}", "buttonKind", "CALLBACK"), () -> {});
+        assertEquals(List.of("BUTTON_LIST"), item.buttonListFields.get());
+        assertEquals("{{item.label}}", item.values().get("buttonText"));
+        item.type.set("TEXT"); assertTrue(item.buttonListFields.get().isEmpty());
+    }
     @Test void usesDynamicButtonListAndHtml() {
         var buttons = List.of(BotButton.link("Loja", "https://example.org"), BotButton.callback("Abrir", "ads:open"));
         var reply = DiagramComposition.compose(Map.of("html", true, "items", List.of(

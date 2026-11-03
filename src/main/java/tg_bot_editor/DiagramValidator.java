@@ -42,13 +42,18 @@ public final class DiagramValidator {
             throw new IllegalArgumentException("Diagrama deve ter um único componente de início: " + diagram.name);
         Set<String> edgeIds = new HashSet<>();
         Map<String, Integer> elseCount = new HashMap<>();
+        Map<String, Integer> errorCount = new HashMap<>();
         for (var edge : diagram.edges) {
             if (edge == null || blank(edge.id) || !edgeIds.add(edge.id)
                     || !nodes.containsKey(edge.from) || !nodes.containsKey(edge.to)
-                    || edge.from.equals(edge.to) || !Set.of("ALWAYS", "IF", "ELSE").contains(edge.kind)
+                    || edge.from.equals(edge.to) || !Set.of("ALWAYS", "IF", "ELSE", "ON_ERROR").contains(edge.kind)
                     || edge.groups == null)
                 throw new IllegalArgumentException("Conexão inválida em " + diagram.name);
-            if (edge.kind.equals("ELSE")) {
+            if (edge.kind.equals("ON_ERROR")) {
+                if (!nodes.get(edge.from).type.equals("JSON_DB") || !edge.groups.isEmpty()
+                        || errorCount.merge(edge.from, 1, Integer::sum) > 1)
+                    throw new IllegalArgumentException("Ramo de erro inválido em " + diagram.name);
+            } else if (edge.kind.equals("ELSE")) {
                 if (!edge.groups.isEmpty() || elseCount.merge(edge.from, 1, Integer::sum) > 1)
                     throw new IllegalArgumentException("Ramo alternativo inválido em " + diagram.name);
             } else if (edge.kind.equals("IF")) {

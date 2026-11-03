@@ -8,6 +8,21 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 class JsonDbPathTest {
+    @Test void setsAndRemovesNestedValuesWithoutChangingOtherData(@TempDir Path project) throws Exception {
+        ProjectEnvironment.useDraft(project, "");
+        Files.writeString(project.resolve("db.json"), "{\"ads\":{\"globalIntervals\":{\"8\":15},\"ads\":[{\"id\":\"a\"}]}}");
+        var settings = new java.util.HashMap<String, Object>(Map.of("operation", "SET", "path", "db.json",
+                "dataPath", "ads.globalIntervals.{{output.owner}}", "record", "{{output.value}}"));
+        JsonDb.execute(settings, null, Map.of("owner", "7", "value", 30));
+        settings.put("operation", "LIST");
+        assertEquals(30, JsonDb.execute(settings, null, Map.of("owner", "7")));
+        settings.put("operation", "REMOVE"); JsonDb.execute(settings, null, Map.of("owner", "7"));
+        settings.put("operation", "LIST");
+        assertNull(JsonDb.execute(settings, null, Map.of("owner", "7")));
+        assertEquals(15, JsonDb.execute(settings, null, Map.of("owner", "8")));
+        settings.put("dataPath", "ads.ads");
+        assertEquals(java.util.List.of(Map.of("id", "a")), JsonDb.execute(settings, null, null));
+    }
     @Test void readsPathsAndProjectsValuesAcrossLists(@TempDir Path project) throws Exception {
         ProjectEnvironment.useDraft(project, "");
         Files.writeString(project.resolve("db.json"), """

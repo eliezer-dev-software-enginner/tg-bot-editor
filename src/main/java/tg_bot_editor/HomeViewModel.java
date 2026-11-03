@@ -38,6 +38,7 @@ final class HomeViewModel {
     private FlowProject project = new FlowProject();
     private FlowProject.Flow selected;
     private volatile Process botProcess;
+    private volatile boolean building;
 
     HomeViewModel() {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
@@ -197,13 +198,29 @@ final class HomeViewModel {
         botActionLabel.set("■ Parando...");
         status.set("Parando o bot...");
     }
-    void exportCommands() {
+    void buildBot() {
         if (file == null) { status.set("Crie ou abra um projeto primeiro."); return; }
-        try {
-            if (selected != null) copyFieldsToSelected();
-            Path exported = CommandExporter.export(project, file.getParent());
-            status.set("Comandos exportados: " + exported);
-        } catch (Exception error) { status.set("Falha ao exportar comandos: " + error.getMessage()); }
+        if (building) { status.set("A construção já está em andamento."); return; }
+        if (Boolean.TRUE.equals(diagrams.open.get())) {
+            diagrams.save();
+            if (!diagrams.status.get().startsWith("Diagrama salvo")) { status.set(diagrams.status.get()); return; }
+        }
+        if (!saveProject()) return;
+        Path projectDirectory = file.getParent();
+        try { CommandExporter.export(project, projectDirectory); }
+        catch (Exception error) { status.set("Falha ao exportar comandos: " + error.getMessage()); return; }
+        building = true;
+        status.set("Construindo bot; acompanhe build/tg-bot-editor-build.log.");
+        Thread worker = new Thread(() -> {
+            try {
+                Path jar = BotProjectBuilder.build(projectDirectory);
+                megalodonte.base.UI.runOnUi(() -> { building = false; status.set("Bot construído e validado. Pacote: " + BotProjectBuilder.distributionPath(projectDirectory)); });
+            } catch (Exception error) {
+                megalodonte.base.UI.runOnUi(() -> { building = false; status.set("Falha ao construir bot: " + error.getMessage()); });
+            }
+        }, "tg-bot-editor-build");
+        worker.setDaemon(true);
+        worker.start();
     }
     void test() {
         if (file == null || selected == null) { status.set("Selecione uma ação em um projeto aberto."); return; }

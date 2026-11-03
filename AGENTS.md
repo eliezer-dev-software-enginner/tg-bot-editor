@@ -17,3 +17,7 @@ O bot `meu-primeiro-projeto` usado em produção está no checkout Git
 principal. A cópia antiga em `~/Documents/TG-bot Editor/projects/` não é outro
 checkout de publicação; nunca a trate como fonte de verdade. Ao migrar fluxos,
 confirme também qual `bot.json` a interface está exibindo.
+
+Em cada iteração de desenvolvimento relacionada à migração visual, revise e
+atualize `docs/PROGRESSO.md` no checkout canônico do bot, seguindo o método e
+registrando a revisão mesmo quando o percentual permanecer igual.

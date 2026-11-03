@@ -18,7 +18,25 @@ public final class BotCommands {
     }
 
     public static List<Entry> list(FlowProject project) {
+        return list(project, null);
+    }
+
+    /** Diagramas ativos têm prioridade, assim como no roteamento de comandos. */
+    public static List<Entry> list(FlowProject project, DiagramProject diagrams) {
         var commands = new LinkedHashMap<String, Entry>();
+        if (diagrams != null && diagrams.diagrams != null) for (var diagram : diagrams.diagrams) {
+            if (diagram == null || !diagram.enabled || diagram.nodes == null) continue;
+            for (var node : diagram.nodes) {
+                if (node == null || !"CALLBACK".equals(node.type) || node.settings == null
+                        || !"COMMAND".equalsIgnoreCase(String.valueOf(node.settings.get("event")))) continue;
+                String name = String.valueOf(node.settings.getOrDefault("pattern", "")).strip();
+                if (!name.matches("/[a-z0-9_]{1,32}")) continue;
+                String description = diagram.name == null || diagram.name.isBlank() ? name.substring(1) : diagram.name;
+                description = description.strip().replaceAll("\\R+", " ");
+                if (description.length() > 256) description = description.substring(0, 256);
+                commands.putIfAbsent(name, new Entry(name, description));
+            }
+        }
         for (var flow : project.flows) {
             if (flow == null || !"COMMAND".equalsIgnoreCase(flow.trigger) || flow.pattern == null) continue;
             String name = flow.pattern.strip();

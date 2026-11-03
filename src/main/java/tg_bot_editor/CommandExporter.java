@@ -11,12 +11,16 @@ public final class CommandExporter {
 
     public static Path export(FlowProject project, Path projectDirectory) throws IOException {
         Path output = projectDirectory.resolve("comandos.txt");
-        Files.writeString(output, format(project), StandardCharsets.UTF_8);
+        Files.writeString(output, format(project, DiagramStore.read(projectDirectory)), StandardCharsets.UTF_8);
         return output;
     }
 
     public static String format(FlowProject project) {
-        var commands = BotCommands.list(project);
+        return format(project, null);
+    }
+
+    public static String format(FlowProject project, DiagramProject diagrams) {
+        var commands = BotCommands.list(project, diagrams);
         StringBuilder output = new StringBuilder("Comandos de ")
                 .append(project.name == null || project.name.isBlank() ? "Meu bot" : project.name)
                 .append("\n\n");

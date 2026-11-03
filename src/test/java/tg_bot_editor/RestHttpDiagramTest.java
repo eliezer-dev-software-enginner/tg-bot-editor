@@ -13,6 +13,30 @@ import static org.junit.jupiter.api.Assertions.*;
 class RestHttpDiagramTest {
     @TempDir Path directory;
 
+    @Test void requestUsesDynamicValuesHeadersAndBearerFromEnvironment() throws Exception {
+        var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/api", exchange -> {
+            String result = exchange.getRequestURI().getQuery() + "|" + exchange.getRequestHeaders().getFirst("X-Name")
+                    + "|" + exchange.getRequestHeaders().getFirst("Authorization") + "|"
+                    + new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+            byte[] bytes = result.getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, bytes.length);
+            try (var stream = exchange.getResponseBody()) { stream.write(bytes); }
+        });
+        server.start();
+        try {
+            ProjectEnvironment.useDraft(directory, "API_TOKEN=example-token");
+            var settings = Map.<String, Object>of("url", "http://127.0.0.1:" + server.getAddress().getPort() + "/api?id={{output.id}}",
+                    "method", "POST", "body", "Olá {{input.name}}", "headers", "X-Name: {{input.name}}",
+                    "bearerTokenEnv", "API_TOKEN");
+            var result = RestHttp.execute(settings, Map.of("name", "Maria"), Map.of("id", 42));
+            assertEquals("id=42|Maria|Bearer example-token|Olá Maria", result.get("body"));
+            assertThrows(IllegalArgumentException.class, () -> RestHttp.execute(settings, Map.of(), Map.of("id", 42)));
+            assertThrows(IllegalArgumentException.class, () -> RestHttp.execute(Map.of("url", settings.get("url"),
+                    "bearerTokenEnv", "MISSING_TOKEN"), Map.of(), Map.of("id", 1)));
+        } finally { server.stop(0); }
+    }
+
     @Test void generatedProjectExecutesRestThenJavaAndPreservesResponse() throws Exception {
         var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/api", exchange -> {

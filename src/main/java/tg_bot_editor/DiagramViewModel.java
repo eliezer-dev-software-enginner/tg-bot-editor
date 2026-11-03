@@ -17,23 +17,30 @@ final class DiagramViewModel {
         final State<String> value = State.of("");
         final State<String> target = State.of("");
         final State<String> buttonKind = State.of("URL");
+        final State<String> buttonText = State.of("");
         final State<String> row = State.of("");
         final State<List<String>> buttonFields = State.of(List.of());
+        final State<List<String>> buttonListFields = State.of(List.of());
         CompositionItem(Map<?, ?> item, Runnable updatePreview) {
             type.set(String.valueOf(item.containsKey("type") ? item.get("type") : "TEXT"));
             value.set(String.valueOf(item.containsKey("value") ? item.get("value") : ""));
             target.set(String.valueOf(item.containsKey("target") ? item.get("target") : ""));
             buttonKind.set(String.valueOf(item.containsKey("buttonKind") ? item.get("buttonKind") : "URL"));
+            buttonText.set(String.valueOf(item.containsKey("buttonText") ? item.get("buttonText") : ""));
             row.set(String.valueOf(item.containsKey("row") ? item.get("row") : ""));
             type.subscribe(value -> buttonFields.set("BUTTON".equals(value) ? List.of("BUTTON") : List.of()));
+            type.subscribe(value -> buttonListFields.set("BUTTON_LIST".equals(value) ? List.of("BUTTON_LIST") : List.of()));
+            buttonFields.set("BUTTON".equals(type.get()) ? List.of("BUTTON") : List.of());
+            buttonListFields.set("BUTTON_LIST".equals(type.get()) ? List.of("BUTTON_LIST") : List.of());
             type.subscribe(ignored -> updatePreview.run());
             value.subscribe(ignored -> updatePreview.run());
             target.subscribe(ignored -> updatePreview.run());
             buttonKind.subscribe(ignored -> updatePreview.run());
+            buttonText.subscribe(ignored -> updatePreview.run());
             row.subscribe(ignored -> updatePreview.run());
         }
         Map<String, Object> values() { return Map.of("type", type.get(), "value", value.get(),
-                "target", target.get(), "buttonKind", buttonKind.get(), "row", row.get()); }
+                "target", target.get(), "buttonKind", buttonKind.get(), "buttonText", buttonText.get(), "row", row.get()); }
     }
     final State<Boolean> open = State.of(false);
     final State<Boolean> expandedActionOpen = State.of(false);
@@ -55,15 +62,18 @@ final class DiagramViewModel {
     final State<String> compositionPreviewText = State.of("");
     final State<List<String>> compositionImageVisible = State.of(List.of());
     final State<List<PreviewRow>> compositionPreviewRows = State.of(List.of());
-    final State<List<String>> compositionTypes = State.of(List.of("TEXT", "IMAGE", "LINK", "BUTTON", "BUTTONS"));
+    final State<List<String>> compositionTypes = State.of(List.of("TEXT", "IMAGE", "LINK", "BUTTON", "BUTTONS", "BUTTON_LIST"));
     final State<List<String>> compositionButtonKinds = State.of(List.of("URL", "CALLBACK"));
     final State<String> restUrl = State.of("");
     final State<String> restUrlEnv = State.of("");
     final State<String> restMethod = State.of("GET");
     final State<String> restBody = State.of("");
+    final State<String> restHeaders = State.of("");
+    final State<String> restTokenEnv = State.of("");
     final State<String> jsonSection = State.of("");
     final State<String> jsonDataPath = State.of("");
     private String initialJsonDataPath = "";
+    private String initialJsonOperation = "";
     final State<String> jsonLayout = State.of("GROUPED");
     final State<List<String>> jsonLayouts = State.of(List.of("GROUPED", "ARRAY", "OBJECT_ARRAY", "OBJECT"));
     final State<String> jsonCollection = State.of("");
@@ -71,8 +81,9 @@ final class DiagramViewModel {
     final State<List<String>> jsonBooleanValues = State.of(List.of("false", "true"));
     final State<String> jsonPath = State.of("${TG_BOT_DATABASE_FILE}");
     final State<String> jsonOperation = State.of("UPSERT");
-    final State<List<String>> jsonOperations = State.of(List.of("LIST", "INSERT", "UPSERT", "DELETE"));
+    final State<List<String>> jsonOperations = State.of(List.of("LIST", "INSERT", "UPSERT", "DELETE", "SET", "REMOVE"));
     final State<List<String>> jsonWriteFields = State.of(List.of("write"));
+    final State<List<String>> jsonIdentityFields = State.of(List.of("identity"));
     final State<String> jsonLegacy = State.of("");
     final State<String> jsonKey = State.of("{{output.key}}");
     final State<String> jsonRecord = State.of("{{output}}");
@@ -83,7 +94,7 @@ final class DiagramViewModel {
     final State<String> splitterAggregation = State.of("list");
     final State<List<String>> splitterAggregations = State.of(List.of("list", "concat", "flatten"));
     final State<String> edgeKind = State.of("ALWAYS");
-    final State<List<String>> edgeKinds = State.of(List.of("ALWAYS", "IF", "ELSE"));
+    final State<List<String>> edgeKinds = State.of(List.of("ALWAYS", "IF", "ELSE", "ON_ERROR"));
     final State<String> edgeName = State.of("");
     final State<String> edgeLeft = State.of("{{output}}");
     final State<String> edgeOperator = State.of("NE");
@@ -105,7 +116,10 @@ final class DiagramViewModel {
     private FlowProject flows = new FlowProject();
 
     DiagramViewModel() {
-        jsonOperation.subscribe(operation -> jsonWriteFields.set("LIST".equals(operation) ? List.of() : List.of("write")));
+        jsonOperation.subscribe(operation -> {
+            jsonWriteFields.set(List.of("LIST", "REMOVE").contains(operation) ? List.of() : List.of("write"));
+            jsonIdentityFields.set(List.of("INSERT", "UPSERT", "DELETE").contains(operation) ? List.of("identity") : List.of());
+        });
         compositionItems.subscribe(ignored -> updateCompositionPreview());
         subflowOpen.subscribe(visible -> {
             if (!visible && !subflowWindows.get().isEmpty()) {
@@ -156,6 +170,8 @@ final class DiagramViewModel {
             restUrlEnv.set(String.valueOf(node.settings.getOrDefault("urlEnv", "")));
             restMethod.set(String.valueOf(node.settings.getOrDefault("method", "GET")));
             restBody.set(String.valueOf(node.settings.getOrDefault("body", "")));
+            restHeaders.set(String.valueOf(node.settings.getOrDefault("headers", "")));
+            restTokenEnv.set(String.valueOf(node.settings.getOrDefault("bearerTokenEnv", "")));
         }
         if ("JSON_DB".equals(node.type)) {
             jsonLayout.set(String.valueOf(node.settings.getOrDefault("layout", "GROUPED")));
@@ -164,6 +180,7 @@ final class DiagramViewModel {
             jsonPath.set(String.valueOf(node.settings.getOrDefault("path", "${TG_BOT_DATABASE_FILE}")));
             jsonSection.set(String.valueOf(node.settings.getOrDefault("section", "")));
             jsonOperation.set(String.valueOf(node.settings.getOrDefault("operation", "UPSERT")));
+            initialJsonOperation = jsonOperation.get();
             jsonLegacy.set(String.valueOf(node.settings.getOrDefault("legacy", "")));
             jsonKey.set(String.valueOf(node.settings.getOrDefault("key", "{{output.key}}")));
             jsonRecord.set(String.valueOf(node.settings.getOrDefault("record", node.settings.containsKey("dataPath") ? "{{output}}" : "{{output.record}}")));
@@ -217,8 +234,14 @@ final class DiagramViewModel {
         }
         String kind = edgeKind.get();
         var siblings = diagram.edges.stream().filter(other -> other != edge && other.from.equals(edge.from)).toList();
-        if ("ALWAYS".equals(kind) && !siblings.isEmpty()
-                || !"ALWAYS".equals(kind) && siblings.stream().anyMatch(other -> "ALWAYS".equals(other.kind))) {
+        var source = diagram.nodes.stream().filter(node -> node.id.equals(edge.from)).findFirst().orElse(null);
+        if ("ON_ERROR".equals(kind) && (source == null || !"JSON_DB".equals(source.type)
+                || siblings.stream().anyMatch(other -> "ON_ERROR".equals(other.kind)))) {
+            status.set("A saída de erro é exclusiva do JsonDB e aceita apenas uma conexão."); return;
+        }
+        var normalSiblings = siblings.stream().filter(other -> !"ON_ERROR".equals(other.kind)).toList();
+        if ("ALWAYS".equals(kind) && !normalSiblings.isEmpty()
+                || !"ALWAYS".equals(kind) && !"ON_ERROR".equals(kind) && normalSiblings.stream().anyMatch(other -> "ALWAYS".equals(other.kind))) {
             status.set("Uma saída incondicional não pode coexistir com outros ramos."); return;
         }
         if ("ELSE".equals(kind) && diagram.edges.stream().anyMatch(other -> other != edge && other.from.equals(edge.from) && "ELSE".equals(other.kind))) {
@@ -261,9 +284,12 @@ final class DiagramViewModel {
                 values.put("urlEnv", restUrlEnv.get().trim());
                 values.put("method", restMethod.get());
                 values.put("body", restBody.get());
+                values.put("headers", restHeaders.get());
+                values.put("bearerTokenEnv", restTokenEnv.get().trim());
             }
             if ("JSON_DB".equals(node.type)) {
-                if (node.settings.containsKey("dataPath") || !jsonDataPath.get().trim().equals(initialJsonDataPath))
+                if (node.settings.containsKey("dataPath") || !jsonDataPath.get().trim().equals(initialJsonDataPath)
+                        || !jsonOperation.get().equals(initialJsonOperation))
                     values.put("dataPath", jsonDataPath.get().trim());
                 values.put("layout", jsonLayout.get());
                 values.put("collection", jsonCollection.get().trim());
@@ -341,7 +367,7 @@ final class DiagramViewModel {
                 Object key = raw.matches("[1-9][0-9]*") ? raw : item;
                 rows.computeIfAbsent(key, ignored -> new java.util.ArrayList<>()).add(value.isBlank() ? "Botão" : value);
             }
-            if ("BUTTONS".equals(item.type.get())) {
+            if ("BUTTONS".equals(item.type.get()) || "BUTTON_LIST".equals(item.type.get())) {
                 rows.put(new Object(), List.of("Botão de exemplo"));
             }
         }
@@ -374,7 +400,9 @@ final class DiagramViewModel {
             status.set("Conecte a saída de um componente à entrada de outro componente válido."); return;
         }
         var outgoing = diagram.edges.stream().filter(edge -> edge.from.equals(sourceId)).toList();
-        if (outgoing.stream().anyMatch(edge -> "ALWAYS".equals(edge.kind))) {
+        boolean addError = "JSON_DB".equals(source.type) && outgoing.stream().anyMatch(edge -> "ALWAYS".equals(edge.kind))
+                && outgoing.stream().noneMatch(edge -> "ON_ERROR".equals(edge.kind));
+        if (outgoing.stream().anyMatch(edge -> "ALWAYS".equals(edge.kind)) && !addError) {
             status.set("Transforme a saída existente em IF antes de adicionar outro ramo."); return;
         }
         if (outgoing.stream().anyMatch(edge -> edge.to.equals(target.id))) {
@@ -393,8 +421,10 @@ final class DiagramViewModel {
         saveSelectedFields();
         var edge = new DiagramProject.Edge(); edge.id = java.util.UUID.randomUUID().toString();
         edge.from = sourceId; edge.to = target.id;
-        if (!outgoing.isEmpty()) {
-            if (outgoing.stream().noneMatch(existing -> "ELSE".equals(existing.kind))) edge.kind = "ELSE";
+        var normalOutgoing = outgoing.stream().filter(existing -> !"ON_ERROR".equals(existing.kind)).toList();
+        if (addError) edge.kind = "ON_ERROR";
+        else if (!normalOutgoing.isEmpty()) {
+            if (normalOutgoing.stream().noneMatch(existing -> "ELSE".equals(existing.kind))) edge.kind = "ELSE";
             else {
                 edge.kind = "IF";
                 var group = new DiagramProject.ConditionGroup(); var comparison = new DiagramProject.Comparison();
