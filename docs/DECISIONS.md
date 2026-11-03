@@ -1,5 +1,11 @@
 # Decisões de desenvolvimento
 
+A prévia de composição usa uma imagem incluída no aplicativo e texto de exemplo para referências dinâmicas, sem executar o fluxo ou acessar imagens externas. Botões com o mesmo número de linha compartilham uma linha do teclado do Telegram; botões sem linha mantêm o comportamento anterior de uma linha por botão.
+
+O JsonDB opera sobre dados configurados no diagrama, sem regras de comandos do bot no editor. Os formatos ARRAY e GROUPED permitem listas simples ou agrupadas; LIST lê uma seção, INSERT inclui somente se a identidade não existir e retorna `inserted` e `value`, UPSERT substitui ou acrescenta e DELETE remove um registro, preservando os demais registros e usando a gravação atômica do banco. A importação de arquivo legado é opcional e relativa ao projeto. Consultas mais avançadas permanecem pendentes.
+
+O caminho configurado no JsonDB determina o arquivo realmente lido e gravado. A referência `${TG_BOT_DATABASE_FILE}` usa a configuração do ambiente ou o banco padrão, mantendo compatibilidade com os diagramas que não informam caminho.
+
 ## Propriedade dos fluxos
 
 O editor e o runtime oferecem componentes e mecanismos reutilizáveis. Comandos, respostas, permissões e regras específicas do bot ficam no projeto do bot, em seus diagramas, `bot.json` e scripts. Quando o runtime muda, suas fontes distribuídas aos projetos gerados precisam acompanhar a alteração.
@@ -7,6 +13,8 @@ O editor e o runtime oferecem componentes e mecanismos reutilizáveis. Comandos,
 ## Um projeto, vários diagramas
 
 Cada diagrama representa um fluxo de entrada independente. Os diagramas ficam em `diagrams.json`, separado de `bot.json`, para permitir a migração gradual. Quando um diagrama habilitado reconhece o evento, ele tem prioridade sobre o fluxo legado correspondente; a lógica antiga permanece como compatibilidade até ser migrada e validada.
+
+Novos diagramas recebem identificador único e começam desativados. A primeira ativação exige um componente de início conectado; diagramas existentes mantêm sua compatibilidade. A alteração é gravada ao salvar e passa a valer na próxima inicialização do bot.
 
 ## Primeiro fluxo visual
 
@@ -20,11 +28,11 @@ Na migração de comandos existentes, mova a lógica específica de cada comando
 
 ## Paleta e inclusão de componentes
 
-A paleta lista os componentes planejados e permite arrastá-los ao canvas. Os nós adicionados ficam inicialmente sem conexão: sua presença não altera o percurso já executado. O editor ainda precisa oferecer criação de conexões e configuração dos novos tipos antes que esses nós sejam executáveis. Um diagrama admite somente um componente de início.
+A paleta lista os componentes planejados e permite arrastá-los ao canvas. Os nós adicionados ficam inicialmente sem conexão: sua presença não altera o percurso já executado. Conexões são criadas arrastando da alça direita de saída para a esquerda de entrada, com validação de ciclos e duplicidade; inícios só têm saída e respostas só têm entrada. A seleção das setas permite excluir a conexão ou editar uma comparação IF ou um ramo ELSE. O Rest HTTP já é configurável e executável; outros tipos ainda aguardam implementação. Um diagrama admite somente um componente de início.
 
 ## Splitter e subfluxos
 
-O editor abre cada subfluxo em um popup sobre seu diagrama de origem, com estado e canvas próprios; os diagramas compartilham o projeto em memória e o salvamento grava o conjunto. O Splitter recebe a lista retornada pela etapa anterior e executa o subfluxo uma vez por item, na ordem original. O início do subfluxo é do tipo `ITEM`; a primeira action Java recebe esse item em `input` e sua posição, começando em zero, em `index`. A configuração `concat` une respostas de texto, `list` mantém cada resultado e `flatten` reúne os itens de listas devolvidas pelo subfluxo. As opções são editáveis nas propriedades do Splitter. Uma referência cíclica de subfluxos é rejeitada em execução. A configuração de caminhos ainda é limitada.
+O editor abre cada subfluxo em um popup sobre seu diagrama de origem, com estado e canvas próprios; os diagramas compartilham o projeto em memória e o salvamento grava o conjunto. O Splitter recebe a lista retornada pela etapa anterior ou uma lista em caminho como `{{output.result.items}}` e executa o subfluxo uma vez por item, na ordem original. O início do subfluxo é do tipo `ITEM`; a primeira action Java recebe esse item em `input` e sua posição, começando em zero, em `index`. A configuração `concat` une respostas de texto, `list` mantém cada resultado e `flatten` reúne os itens de listas devolvidas pelo subfluxo. As opções são editáveis nas propriedades do Splitter. Uma referência cíclica de subfluxos é rejeitada em execução. A configuração de caminhos é textual e aceita mapas aninhados.
 
 ## Direção da arquitetura
 
@@ -40,4 +48,12 @@ O componente de início permite selecionar o tipo e o padrão do evento. O runne
 
 ## Composição de mensagens
 
-Mensagens serão montadas em um componente de composição configurável visualmente, com inclusão e remoção de elementos e vínculo aos dados de etapas anteriores. A meta é eliminar chamadas manuais a `BotReply` dos fluxos. Para G1, as conexões condicionais deverão escolher a composição com imagem ou a composição somente textual. Essas capacidades ainda não estão implementadas.
+Mensagens podem ser montadas no componente de composição com elementos TEXT, IMAGE, LINK e BUTTON vinculados aos dados anteriores. A meta é eliminar chamadas manuais a `BotReply` dos fluxos. No G1 agendado, IF/ELSE escolhe a composição com ou sem imagem; a prévia e a migração dos demais fluxos continuam pendentes. O executor processa grupos ALL/ANY e comparações EQ/NE/LT/GT/LE/GE, enquanto a interface edita apenas uma comparação simples por seta e não sobrescreve grupos avançados.
+
+## Requisições HTTP visuais
+
+A direção é oferecer um componente Rest HTTP reutilizável por todos os fluxos que precisarem de requisições, com URL e método configuráveis e resposta disponível ao próximo componente. O G1 é apenas um exemplo inicial. Em **G1: testar envio** e no G1 agendado, o GET antecede o Java de processamento e o Splitter. A implementação retorna um mapa com status, body e headers, inclusive em respostas HTTP de erro; falhas de rede interrompem o fluxo. Cabeçalhos personalizados e parâmetros dinâmicos permanecem pendentes.
+
+O componente de composição visual também será usado nos anúncios. Imagens, textos, links e botões, inclusive os que acionam callbacks, deverão ser configurados no diagrama, substituindo progressivamente sua construção manual em Java.
+
+Como solução transitória até que os ramos condicionais visuais alcancem todas as verificações necessárias, uma action pode retornar `new FlowStop(valor)` para encerrar o diagrama antes da próxima etapa. O Rest HTTP pode usar uma variável de ambiente opcional como URL, com a URL configurada como padrão quando a variável estiver vazia ou ausente.
